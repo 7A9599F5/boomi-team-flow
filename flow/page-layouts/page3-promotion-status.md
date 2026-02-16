@@ -1,0 +1,425 @@
+# Page 3: Promotion Status (Developer Swimlane)
+
+## Overview
+
+The Promotion Status page displays the results of the promotion execution. It shows which components were successfully created/updated, which failed, and which need credential reconfiguration. Users can submit the promotion for deployment or end the flow.
+
+## Page Load Behavior
+
+1. **Arrival condition:** User navigates here after `executePromotion` Message step completes
+
+2. **Flow Service async handling:**
+   - Flow Service automatically sends wait responses during long-running promotion
+   - User sees spinner/progress indicator during execution
+   - State persisted via IndexedDB (cached every 30 seconds)
+   - User CAN close browser and return later
+   - On completion: Flow Service callback resumes the flow
+   - If user returns to URL: Sees completed results
+
+3. **Populate results:**
+   - `promotionResults` Flow value contains array of component results
+   - `promotionId` Flow value for audit reference
+   - `componentsCreated`, `componentsUpdated`, `componentsFailed` counts
+
+4. **Calculate summary counts:**
+   - Total components = `promotionResults.length`
+   - Created count = components where `action = "CREATE"`
+   - Updated count = components where `action = "UPDATE"`
+   - Failed count = components where `status = "FAILED"`
+   - Config stripped count = components where `configStripped = true`
+
+## Wait State (During Execution)
+
+**Visual Display:**
+- Page-level overlay or loading screen
+- Large spinner/loading animation
+- Progress message: "Promoting components to primary account..."
+- Optional progress indicator:
+  - "Processing component 5 of 12..."
+  - Progress bar showing percentage (if API provides progress updates)
+- Subtext: "This may take several minutes. You can safely close this window."
+
+**State Persistence:**
+- Flow Service caches state to IndexedDB every 30 seconds
+- Includes: promotionId, request parameters, user context
+- User can close browser window
+- User can return to same URL later
+- On return: Flow Service checks execution status and resumes
+
+**User Experience:**
+- User does NOT need to stay on page
+- No "keep this window open" warnings needed
+- Modern async experience
+
+## Components (After Completion)
+
+### Results Data Grid
+
+**Component Type:** Data Grid / Table
+
+**Data Source:**
+- API: `executePromotion` response → `results` array
+- Flow value: `promotionResults`
+
+**Columns:**
+
+| Column | Field | Width | Sortable | Formatting |
+|--------|-------|-------|----------|------------|
+| Component | `name` | 25% | Yes | Plain text |
+| Action | `action` | 10% | Yes | Badge: CREATE/UPDATE/SKIPPED |
+| Status | `status` | 10% | Yes | Badge: SUCCESS/FAILED/SKIPPED |
+| Prod Component ID | `prodComponentId` | 20% | No | Clickable link (optional) |
+| Prod Version | `prodVersion` | 8% | Yes | Numeric |
+| Config Stripped | `configStripped` | 10% | Yes | Checkmark/X icon |
+| Error | `errorMessage` | 17% | No | Truncated, tooltip |
+
+**Column Details:**
+
+1. **Component**
+   - Display: Component name (e.g., "Order Processing Main")
+   - Format: Plain text, left-aligned
+   - Sortable: Alphabetical
+
+2. **Action**
+   - Display: "CREATE", "UPDATE", or "SKIPPED"
+   - Format: Badge/pill:
+     - **CREATE:** Blue badge
+     - **UPDATE:** Green badge
+     - **SKIPPED:** Gray badge
+   - Sortable: Alphabetical
+
+3. **Status**
+   - Display: "SUCCESS", "FAILED", or "SKIPPED"
+   - Format: Badge/pill with color:
+     - **SUCCESS:** Green badge with checkmark icon
+     - **FAILED:** Red badge with X icon
+     - **SKIPPED:** Gray badge
+   - Sortable: By status (SUCCESS → SKIPPED → FAILED)
+
+4. **Prod Component ID**
+   - Display: Production component ID (GUID)
+   - Format: Truncated to first 12 chars (e.g., "a1b2c3d4e5f6...")
+   - Tooltip: Show full GUID on hover
+   - Optional: Clickable link → opens component in Boomi UI (new tab)
+   - Empty: "-" if action was SKIPPED or FAILED
+   - Not sortable
+
+5. **Prod Version**
+   - Display: New version number in prod account
+   - Format: Numeric text, centered
+   - Empty: "-" if SKIPPED or FAILED
+   - Sortable: Numeric order
+
+6. **Config Stripped**
+   - Display: Boolean indicating if credentials were removed
+   - Format:
+     - **True:** Warning icon (⚠️) with orange color, text "Yes"
+     - **False:** Checkmark icon (✓) with green color, text "No"
+   - Tooltip: "Credential configuration was removed for security"
+   - Sortable: Boolean (Yes → No)
+
+7. **Error**
+   - Display: Error message if status = FAILED
+   - Format: Red text, truncated to 50 chars
+   - Tooltip: Show full error message on hover
+   - Empty: "-" if SUCCESS or SKIPPED
+   - Not sortable
+
+**Row Styling:**
+- **FAILED rows:** Red background color (light red, e.g., #ffebee)
+- **SKIPPED rows:** Gray background color (light gray, e.g., #f5f5f5)
+- **SUCCESS rows:** White/default background
+- **Config stripped rows:** Small warning icon in row (in addition to column)
+
+**Sorting:**
+- Default sort: By dependency order (same as Page 2)
+- User can sort by: Component name, Action, Status, Prod Version, Config Stripped
+
+**Filters (Optional):**
+- Quick filters above grid:
+  - "Show All" (default)
+  - "Show Failed Only"
+  - "Show Config Stripped Only"
+
+---
+
+### Summary Section
+
+**Component Type:** Info panel / Label group
+
+**Location:** Above the Results Data Grid
+
+**Content:**
+
+1. **Promotion ID**
+   - Text: `"Promotion ID: {promotionId}"`
+   - Format: Monospace font, small text
+   - Purpose: Audit trail reference
+   - Copyable: Click to copy icon next to ID
+
+2. **Created Count**
+   - Text: `"Created: {componentsCreated}"`
+   - Format: Badge/pill with blue background
+   - Icon: Plus icon (+)
+   - Only shown if > 0
+
+3. **Updated Count**
+   - Text: `"Updated: {componentsUpdated}"`
+   - Format: Badge/pill with green background
+   - Icon: Refresh icon
+   - Only shown if > 0
+
+4. **Failed Count**
+   - Text: `"Failed: {componentsFailed}"`
+   - Format: Badge/pill with red background
+   - Icon: X icon
+   - Only shown if > 0
+   - Prominent warning styling
+
+**Layout:**
+- Horizontal arrangement on desktop
+- Wrap or stack on mobile
+- Clear visual separation from grid (border or background)
+
+---
+
+### Credential Warning Box
+
+**Component Type:** Alert / Warning panel
+
+**Visibility:** Shown when any component has `configStripped = true`
+
+**Content:**
+
+**Header:**
+- Icon: Warning icon (⚠️)
+- Title: "Credential Reconfiguration Required"
+- Color: Orange/yellow warning background
+
+**Body:**
+```
+The following components need credential reconfiguration in the primary account:
+
+• DB Connection - MySQL Prod
+• API Profile - Salesforce
+• SFTP Connection - Legacy FTP
+
+These components had their credentials removed for security reasons during promotion.
+```
+
+**List:**
+- Bullet list of component names where `configStripped = true`
+- Extracted from `promotionResults` where `configStripped = true`
+
+**Instructions:**
+```
+To reconfigure:
+1. Navigate to the Build tab in the primary Boomi account
+2. Open each listed component
+3. Enter the appropriate connection credentials
+4. Test the connection and save
+```
+
+**Styling:**
+- Border: Orange/yellow
+- Background: Light orange/yellow (#fff4e5)
+- Icon: Warning triangle
+- Padding: 16px
+
+---
+
+### Submit for Deployment Button
+
+**Component Type:** Button (Primary)
+
+**Configuration:**
+- **Label:** "Submit for Integration Pack Deployment"
+- **Style:** Primary button (prominent)
+- **Color:** Accent/success color
+- **Icon (optional):** Right arrow or package icon
+- **Size:** Large
+
+**Enabled Condition:**
+- **Enabled when:** `componentsFailed == 0` (all components succeeded)
+- **Disabled when:** `componentsFailed > 0` (any component failed)
+
+**Disabled State:**
+- Grayed out, not clickable
+- Tooltip: "Some components failed. Fix issues and re-run promotion before submitting for deployment."
+- Alternative: Show warning message below button instead of tooltip
+
+**Behavior:**
+- **On click:**
+  1. Navigate to Page 4 (Deployment Submission)
+  2. Carry forward `promotionId` and `promotionResults` Flow values
+  3. Pre-populate deployment form with promotion data
+
+---
+
+### Done Button
+
+**Component Type:** Button (Secondary)
+
+**Configuration:**
+- **Label:** "Done"
+- **Style:** Secondary button (less prominent)
+- **Color:** Gray or default
+- **Size:** Medium
+
+**Behavior:**
+- **On click:**
+  1. End flow (return to start or exit)
+  2. Show completion message (optional): "Promotion complete. You can close this window."
+  3. Clear Flow values (optional, for cleanup)
+
+**Always Available:**
+- Not conditionally disabled
+- User can exit at any time
+
+---
+
+## Layout
+
+### Page Structure
+
+```
++----------------------------------------------------------+
+| HEADER                                                    |
+| "Promotion Results"                                      |
++----------------------------------------------------------+
+| SUMMARY SECTION                                          |
+| Promotion ID: abc123-def456-ghi789  [Copy]              |
+| [Created: 2] [Updated: 10] [Failed: 0]                  |
++----------------------------------------------------------+
+| CREDENTIAL WARNING BOX (conditional)                     |
+| ⚠️ Credential Reconfiguration Required                  |
+| • DB Connection - MySQL Prod                             |
+| • API Profile - Salesforce                               |
+| Instructions: Navigate to Build tab...                   |
++----------------------------------------------------------+
+| MAIN AREA                                                |
+|                                                          |
+|  Results Data Grid                                       |
+|  +----------------------------------------------------+  |
+|  | Component | Action | Status | Prod ID | Version | ...|  |
+|  |--------------------------------------------------------|  |
+|  | Order Proc| UPDATE | ✓ SUC  | a1b2... | 6       | ...|  |
+|  | DB Conn   | UPDATE | ✓ SUC  | c3d4... | 4       | ⚠️ |  |
+|  | API Prof  | CREATE | ✓ SUC  | e5f6... | 1       | ...|  |
+|  | ...       | ...    | ...    | ...     | ...     | ...|  |
+|  +----------------------------------------------------+  |
+|                                                          |
++----------------------------------------------------------+
+| FOOTER / ACTION BAR                                      |
+| [Done]                [Submit for Integration Pack Deploy]|
++----------------------------------------------------------+
+```
+
+### Layout Details
+
+**Header:**
+- Page title: "Promotion Results"
+- Subheader (optional): "Process: {processName} v{packageVersion}"
+
+**Summary Section:**
+- Positioned above grid
+- Horizontal badges on desktop, wrap on mobile
+- Promotion ID at top left or above badges
+
+**Credential Warning Box:**
+- Positioned between summary and grid
+- Full width
+- Conditionally visible (only if any component has `configStripped = true`)
+
+**Main Area:**
+- Results Data Grid takes full width
+- Responsive table with horizontal scroll on small screens
+- Min height: 300px
+
+**Footer / Action Bar:**
+- Fixed at bottom or below grid
+- Done button left-aligned
+- Submit button right-aligned (only enabled if no failures)
+- Clear visual separation from grid
+
+### Responsive Behavior
+
+**Desktop (> 1024px):**
+- Full table with all columns visible
+- Summary badges horizontal
+- Buttons in footer bar
+
+**Tablet (768px - 1024px):**
+- Scroll table horizontally if needed
+- Summary badges may wrap
+- Buttons full-width or centered
+
+**Mobile (< 768px):**
+- Card-based layout for results
+- Summary stacked vertically
+- Buttons stacked, full-width
+- Credential warning collapsible
+
+## Error Handling
+
+**If any components failed:**
+- Failed count badge prominently displayed in red
+- Failed rows highlighted in red in grid
+- Error messages visible in Error column
+- Submit for Deployment button disabled
+- Show guidance message: "Fix the following issues and re-run promotion:"
+  - List failed component names and error messages
+  - Suggest: "Return to Package Browser to retry after fixing issues"
+
+**Common failure scenarios:**
+- API timeout (suggest retry)
+- Missing dependencies (suggest reviewing dependency tree)
+- Permission errors (suggest admin escalation)
+
+## Accessibility
+
+- **Keyboard navigation:** Tab through grid → buttons
+- **Screen reader:** Announce summary counts, failed components, button states
+- **Focus indicators:** Clear visual focus on buttons
+- **ARIA labels:** Proper labels for grid, alerts, buttons
+- **Color contrast:** Ensure red/green status colors have sufficient contrast
+
+## User Flow Example
+
+1. **User arrives at Page 3 after promotion execution**
+   - Sees "Promoting components..." spinner
+   - Wait state persisted, can close browser
+
+2. **User returns 5 minutes later**
+   - Page resumes automatically
+   - Shows completed results
+
+3. **Promotion completed successfully**
+   - Grid shows 12 components: 2 created, 10 updated, 0 failed
+   - Warning box shows 3 components need credential reconfiguration
+   - Submit for Deployment button enabled
+
+4. **User reviews results**
+   - Sees DB Connection has config stripped warning
+   - Notes error column is empty (no failures)
+   - Copies Promotion ID for reference
+
+5. **User clicks "Submit for Integration Pack Deployment"**
+   - Navigation to Page 4
+   - Deployment form pre-populated with promotion data
+
+**Alternate flow (with failures):**
+
+3. **Promotion completed with 1 failure**
+   - Grid shows 11 success, 1 failed
+   - Failed row highlighted in red
+   - Error message: "API timeout: Connection to external service failed"
+   - Submit for Deployment button disabled
+
+4. **User reviews failure**
+   - Sees which component failed
+   - Reads error message
+   - Decides to fix issue and re-run
+
+5. **User clicks "Done"**
+   - Returns to Package Browser (Page 1) to retry
