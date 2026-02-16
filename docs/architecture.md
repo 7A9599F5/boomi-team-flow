@@ -69,7 +69,7 @@ No firewall issues. Flow → Integration → DataHub all within Boomi's cloud in
 External databases have 30+ second latency due to firewall/domain limitations. DataHub is accessible without latency when Integration atom is on public Boomi cloud. Match rules provide built-in UPSERT behavior.
 
 ### Why Flow Services Server
-Single Flow Service component defines the contract. Exposes all 7 processes as Message Actions. Handles connection management, timeout callbacks, and authentication automatically.
+Single Flow Service component defines the contract. Exposes all 9 processes as Message Actions. Handles connection management, timeout callbacks, and authentication automatically.
 
 ### Why Swimlanes for Approval
 Built-in Flow authorization containers. Three swimlanes implement a 2-layer approval workflow: Dev swimlane for submission, Peer Review swimlane for first approval gate (any dev or admin except submitter), Admin swimlane for final approval and deployment. SSO group restrictions on each swimlane. Flow pauses at each boundary waiting for the next authenticated user.

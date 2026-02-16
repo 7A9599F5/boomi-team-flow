@@ -47,7 +47,7 @@ Everything is built entirely within the Boomi platform — no external servers, 
 | Layer | Boomi Feature | Purpose |
 |-------|--------------|---------|
 | User interface | **Boomi Flow** | The web dashboard developers and admins use |
-| Backend logic | **Boomi Integration** (7 processes) | Orchestrates the promotion workflow, API calls, and data transformations |
+| Backend logic | **Boomi Integration** (9 processes) | Orchestrates the promotion workflow, API calls, peer review, and data transformations |
 | Data storage | **Boomi DataHub** (3 data models) | Stores component mappings, access control lists, and audit logs |
 | API communication | **Boomi Platform API** (Partner API) | Reads and writes components between accounts |
 

@@ -394,7 +394,7 @@ After deploying the Flow Service, configure the Flow application to connect to i
 ### Step 2: Retrieve Connector Configuration
 
 1. Click "Retrieve Connector Configuration Data"
-2. Flow will automatically discover all 7 message actions
+2. Flow will automatically discover all 9 message actions
 3. Auto-generated Flow Types will be created (see below)
 
 ### Step 3: Set Configuration Value

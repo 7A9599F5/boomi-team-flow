@@ -60,7 +60,7 @@ docs/
 
 1. `docs/architecture.md` — system design and key decisions
 2. `docs/BUILD-GUIDE.md` — the implementation playbook (6 phases, 3000+ lines)
-3. `integration/flow-service/flow-service-spec.md` — complete API contract for all 7 message actions
+3. `integration/flow-service/flow-service-spec.md` — complete API contract for all 9 message actions
 4. `flow/flow-structure.md` — dashboard navigation, Flow values, swimlanes
 
 ## Groovy Scripts
