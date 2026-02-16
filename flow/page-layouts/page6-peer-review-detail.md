@@ -61,7 +61,28 @@ The Peer Review Detail page shows the full details of a promotion submission and
   - Action (CREATE/UPDATE)
   - Status (SUCCESS/FAILED)
   - Config Stripped (Yes/No — warning icon)
+  - Changes ("View Diff" link for UPDATE; "View New" for CREATE)
 - Rows: All components from `selectedPeerReview.resultDetail` (parsed JSON)
+
+---
+
+#### Component Diff Panel
+
+**Component Type:** Expandable panel (XmlDiffViewer custom component)
+
+**Trigger:** When reviewer clicks "View Diff" or "View New" link in the component results table
+
+**Location:** Expands inline below Section 2 table (between Section 2 and Section 3)
+
+**Behavior:**
+1. On click: Show loading spinner
+2. Call `generateComponentDiff` message step with `branchId` from promotion data
+3. On response: Render `XmlDiffViewer` with branch vs main XML
+4. Max-height: 500px, scrollable
+5. Close button (X) in top-right
+6. Only one panel open at a time
+
+**Purpose:** Enables peer reviewers to see the actual XML changes for each promoted component, not just metadata. This is the core review mechanism for the diff-based approval workflow.
 
 ---
 
@@ -223,6 +244,12 @@ The Peer Review Detail page shows the full details of a promotion submission and
 6. **Show confirmation:**
    - "Promotion rejected. The submitter has been notified with your feedback."
 
+6b. **Delete promotion branch:**
+   - Call `DELETE /Branch/{branchId}` to clean up the promotion branch
+   - `branchId` from `selectedPeerReview.branchId`
+   - Main branch remains untouched
+   - Update PromotionLog: set `branchId` = null
+
 7. **End flow.**
 
 ---
@@ -269,6 +296,11 @@ The Peer Review Detail page shows the full details of a promotion submission and
 |  +----------------------------------------------------+  |
 |  | [Component results table]                           |  |
 |  | Total: 12 | Created: 2 | Updated: 10               |  |
+|  +----------------------------------------------------+  |
+|                                                          |
+|  Component Diff Panel (on "View Diff" click)             |
+|  +----------------------------------------------------+  |
+|  | XmlDiffViewer: branch vs main comparison            |  |
 |  +----------------------------------------------------+  |
 |                                                          |
 |  Credential Warning (conditional)                        |
