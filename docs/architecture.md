@@ -6,42 +6,46 @@ Boomi's built-in "Copy Component" creates duplicate components (all Version 1) w
 
 ## Solution
 
-A Boomi Flow dashboard where devs promote packaged processes from a dev sub-account to the primary account via Platform API, maintaining a single master component with incremental versions. Admin approval gates Integration Pack deployment.
+A Boomi Flow dashboard where devs promote packaged processes from a dev sub-account to the primary account via Platform API, maintaining a single master component with incremental versions. A 2-layer approval workflow (peer review + admin review) gates Integration Pack deployment.
 
 ## Architecture Overview
 
 ```
-┌──────────────────────────────────────────────┐
-│            BOOMI FLOW DASHBOARD              │
-│                                              │
-│  ┌─────────────┐  ┌──────────────────────┐  │
-│  │ DEV Swimlane│  │ ADMIN Swimlane       │  │
-│  │ Pkg Browser │  │ Approval Queue       │  │
-│  │ Review      │  │ Mapping Viewer       │  │
-│  │ Status      │  │                      │  │
-│  └──────┬──────┘  └──────────┬───────────┘  │
-│         │                    │               │
-└─────────┼────────────────────┼───────────────┘
-          │ Message Actions    │ Message Actions
-          │ (Flow Service)     │ (Flow Service)
-          ▼                    ▼
-┌──────────────────────────────────────────────┐
-│         BOOMI INTEGRATION ENGINE             │
-│         (Public Boomi Cloud Atom)            │
-│                                              │
-│  Process A0: Get Dev Accounts                │
-│  Process A: List Dev Packages                │
-│  Process B: Resolve Dependencies             │
-│  Process C: Execute Promotion                │
-│  Process D: Package & Deploy to IPack        │
-│  Process E: Query Promotion Status           │
-│  Process F: Mapping CRUD                     │
-│                                              │
-│  ┌──────────────┐    ┌───────────────────┐   │
-│  │ HTTP Client  │    │ DataHub Connector │   │
-│  │ (Partner API)│    │ (Hub Auth Token)  │   │
-│  └──────┬───────┘    └───────┬───────────┘   │
-└─────────┼────────────────────┼───────────────┘
+┌───────────────────────────────────────────────────────────┐
+│                   BOOMI FLOW DASHBOARD                    │
+│                                                           │
+│  ┌─────────────┐ ┌───────────────┐ ┌──────────────────┐  │
+│  │ DEV Swimlane│ │ PEER REVIEW   │ │ ADMIN Swimlane   │  │
+│  │ Pkg Browser │ │ Swimlane      │ │ Approval Queue   │  │
+│  │ Review      │ │ Review Queue  │ │ Mapping Viewer   │  │
+│  │ Status      │ │ Review Detail │ │                  │  │
+│  │ Deployment  │ │               │ │                  │  │
+│  └──────┬──────┘ └──────┬────────┘ └────────┬─────────┘  │
+│         │               │                   │             │
+└─────────┼───────────────┼───────────────────┼─────────────┘
+          │               │ Message Actions   │
+          │ Message       │ (Flow Service)    │ Message
+          │ Actions       │                   │ Actions
+          ▼               ▼                   ▼
+┌───────────────────────────────────────────────────────────┐
+│              BOOMI INTEGRATION ENGINE                     │
+│              (Public Boomi Cloud Atom)                    │
+│                                                           │
+│  Process A0: Get Dev Accounts                             │
+│  Process A: List Dev Packages                             │
+│  Process B: Resolve Dependencies                          │
+│  Process C: Execute Promotion                             │
+│  Process D: Package & Deploy to IPack                     │
+│  Process E: Query Promotion Status                        │
+│  Process E2: Query Peer Review Queue                      │
+│  Process E3: Submit Peer Review                           │
+│  Process F: Mapping CRUD                                  │
+│                                                           │
+│  ┌──────────────┐    ┌───────────────────┐                │
+│  │ HTTP Client  │    │ DataHub Connector │                │
+│  │ (Partner API)│    │ (Hub Auth Token)  │                │
+│  └──────┬───────┘    └───────┬───────────┘                │
+└─────────┼────────────────────┼────────────────────────────┘
           ▼                    ▼
 ┌──────────────────┐  ┌────────────────────────┐
 │ Boomi Platform   │  │ Boomi DataHub          │
@@ -68,7 +72,10 @@ External databases have 30+ second latency due to firewall/domain limitations. D
 Single Flow Service component defines the contract. Exposes all 7 processes as Message Actions. Handles connection management, timeout callbacks, and authentication automatically.
 
 ### Why Swimlanes for Approval
-Built-in Flow authorization containers. Dev swimlane for submission, Admin swimlane for approval. SSO group restrictions. Flow pauses waiting for approver.
+Built-in Flow authorization containers. Three swimlanes implement a 2-layer approval workflow: Dev swimlane for submission, Peer Review swimlane for first approval gate (any dev or admin except submitter), Admin swimlane for final approval and deployment. SSO group restrictions on each swimlane. Flow pauses at each boundary waiting for the next authenticated user.
+
+### Why 2-Layer Approval (Peer Review + Admin)
+Peer review catches process logic and configuration issues that automated checks miss. Self-review prevention enforced at both UI level (Flow business rules on `$User/Email`) and backend level (Process E3 compares `reviewerEmail` with `initiatedBy`). Admins only see promotions that have passed peer scrutiny, reducing their review burden.
 
 ## Constraints
 - Flow State is temporary/auto-purged — not usable for persistent storage
@@ -94,9 +101,10 @@ Built-in Flow authorization containers. Dev swimlane for submission, Admin swiml
 - Source: ADMIN_CONFIG (admin-seeded)
 
 ### PromotionLog
-- Purpose: Audit trail for each promotion run
+- Purpose: Audit trail for each promotion run, including 2-layer approval workflow state
 - Match: Exact on `promotionId`
-- Source: PROMOTION_ENGINE
+- Source: PROMOTION_ENGINE (writes promotion data + peer/admin review updates)
+- Key fields for approval workflow: `peerReviewStatus`, `peerReviewedBy`, `peerReviewedAt`, `peerReviewComments`, `adminReviewStatus`, `adminApprovedBy`, `adminApprovedAt`, `adminComments`
 
 ## Integration Processes
 
@@ -107,7 +115,9 @@ Built-in Flow authorization containers. Dev swimlane for submission, Admin swiml
 | B | Resolve Dependencies | resolveDependencies | Recursive dependency traversal + mapping lookup |
 | C | Execute Promotion | executePromotion | Read → strip → rewrite refs → create/update |
 | D | Package and Deploy | packageAndDeploy | Create PackagedComponent, IPack, deploy |
-| E | Query Status | queryStatus | Read PromotionLog from DataHub |
+| E | Query Status | queryStatus | Read PromotionLog from DataHub (supports reviewStage filter) |
+| E2 | Query Peer Review Queue | queryPeerReviewQueue | Query PENDING_PEER_REVIEW promotions, exclude own |
+| E3 | Submit Peer Review | submitPeerReview | Record peer approve/reject with self-review prevention |
 | F | Mapping CRUD | manageMappings | Read/write ComponentMapping records |
 
 ## Promotion Engine Logic (Process C)
