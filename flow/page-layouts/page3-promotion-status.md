@@ -86,6 +86,8 @@ The Promotion Status page displays the results of the promotion execution. It sh
      - **CREATE:** Blue badge
      - **UPDATE:** Green badge
      - **SKIPPED:** Gray badge
+     - **SKIPPED_CONNECTION:** Gray badge with "(shared)" text
+     - **PRE_MAPPED:** Cyan badge — connection was pre-mapped and not promoted
    - Sortable: Alphabetical
 
 3. **Status**
@@ -176,6 +178,12 @@ The Promotion Status page displays the results of the promotion execution. It sh
    - Only shown if > 0
    - Prominent warning styling
 
+5. **Connections Skipped Count**
+   - Text: `"Connections (Shared): {connectionsSkipped}"`
+   - Format: Badge/pill with cyan background
+   - Icon: Link/chain icon
+   - Always shown when `connectionsSkipped > 0`
+
 **Layout:**
 - Horizontal arrangement on desktop
 - Wrap or stack on mobile
@@ -194,7 +202,7 @@ The Promotion Status page displays the results of the promotion execution. It sh
 **Header:**
 - Icon: Warning icon (⚠️)
 - Title: "Credential Reconfiguration Required"
-- Color: Orange/yellow warning background
+- Color: Light yellow/amber background (less prominent — connections are now shared and pre-configured, reducing credential concerns)
 
 **Body:**
 ```
@@ -219,6 +227,8 @@ To reconfigure:
 3. Enter the appropriate connection credentials
 4. Test the connection and save
 ```
+
+**Note:** Connection credentials are no longer affected by promotion. Connections are pre-configured as shared resources in the parent account's `#Connections` folder. Only non-connection components (e.g., custom properties, external endpoints) may need reconfiguration.
 
 **Styling:**
 - Border: Orange/yellow
@@ -290,6 +300,7 @@ To reconfigure:
 | SUMMARY SECTION                                          |
 | Promotion ID: abc123-def456-ghi789  [Copy]              |
 | [Created: 2] [Updated: 10] [Failed: 0]                  |
+| [Connections (Shared): 4]                                |
 +----------------------------------------------------------+
 | CREDENTIAL WARNING BOX (conditional)                     |
 | ⚠️ Credential Reconfiguration Required                  |

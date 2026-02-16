@@ -48,6 +48,9 @@ Flow values are used to maintain state across pages and message steps.
 | `componentsUpdated` | Integer | Count of components updated in promotion |
 | `componentsFailed` | Integer | Count of components that failed in promotion |
 | `totalComponents` | Integer | Total count of components in promotion |
+| `sharedConnections` | List | Connections with pre-seeded mappings (from resolveDependencies); displayed as shared/pre-mapped in UI |
+| `unmappedConnections` | List | Connections missing mappings (from resolveDependencies); blocks promotion if non-empty |
+| `connectionsSkipped` | Integer | Count of shared connections not promoted (from executePromotion response) |
 
 ## Flow Navigation (Step-by-Step)
 

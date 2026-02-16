@@ -64,7 +64,7 @@ The Promotion Review page displays a resolved dependency tree for the selected p
    - Display: Component type (e.g., "process", "connection", "map")
    - Format: Badge/pill with color coding:
      - `process` → Blue badge
-     - `connection` → Green badge
+     - `connection` → Green badge with "(shared)" suffix text (e.g., "connection (shared)")
      - `map` → Purple badge
      - `profile` → Orange badge
      - `operation` → Teal badge
@@ -80,6 +80,8 @@ The Promotion Review page displays a resolved dependency tree for the selected p
    - Format: Badge with color:
      - **NEW:** Blue badge (component doesn't exist in prod)
      - **UPDATE:** Green badge (component exists, will be updated)
+     - **MAPPED:** Cyan badge (shared connection — mapping exists in DataHub, will not be promoted)
+     - **UNMAPPED:** Red badge (shared connection — mapping missing, promotion will fail)
    - Not sortable
 
 5. **Prod Component**
@@ -107,6 +109,8 @@ The Promotion Review page displays a resolved dependency tree for the selected p
 **Row Styling:**
 - **Highlight rows with `hasEnvConfig=true`:** Yellow/orange background color
 - **Root process (first row):** Slightly bolder or different background
+- **Connection rows (shared):** Lighter background (e.g., #f0f7ff), italic text — visually distinct to indicate these components will NOT be promoted
+- **Unmapped connection rows:** Light red background (e.g., #fff0f0), italic text — highlights missing mappings
 - **Alternating row colors:** Light gray/white for readability
 
 **Sorting:**
@@ -158,6 +162,19 @@ The Promotion Review page displays a resolved dependency tree for the selected p
    - Icon: Warning icon (⚠️)
    - Visibility: Only shown if `envConfigCount > 0`
 
+6. **Shared Connections Badge**
+   - Text: `"{sharedConnectionCount} shared connections (pre-mapped)"`
+   - Format: Badge/pill with cyan background
+   - Icon: Link/chain icon
+   - Visibility: Always shown (even if 0, to clarify connections are handled separately)
+
+7. **Unmapped Connections Warning Badge**
+   - Text: `"{unmappedConnectionCount} connections missing mappings — promotion will fail"`
+   - Format: Badge/pill with red/danger background
+   - Icon: Error/X icon
+   - Visibility: Only shown if `unmappedConnectionCount > 0`
+   - Behavior: Draws immediate attention to blocking issue
+
 **Layout:**
 - Horizontal arrangement of badges/labels
 - Wrap on smaller screens
@@ -189,6 +206,7 @@ The Promotion Review page displays a resolved dependency tree for the selected p
   - {newCount} components to create
   - {updateCount} components to update
   - {envConfigCount} components will need credential reconfiguration
+  Shared Connections: {sharedConnectionCount} (pre-mapped, will not be promoted)
   ```
 - **Buttons:**
   - "Cancel" (secondary, left)
@@ -211,6 +229,12 @@ The Promotion Review page displays a resolved dependency tree for the selected p
 - Label changes to "Promoting..."
 - Button disabled (not clickable)
 - User can close browser (state persisted, can return later)
+
+**Disabled State (Unmapped Connections):**
+- Button disabled (not clickable)
+- Label remains "Promote to Primary Account"
+- Tooltip: "Cannot promote — {unmappedConnectionCount} connection(s) missing mappings. Ask an admin to seed the missing mappings in the Mapping Viewer."
+- Visual: Grayed out, same as during execution but without spinner
 
 ---
 
@@ -246,6 +270,7 @@ The Promotion Review page displays a resolved dependency tree for the selected p
 | Root Process: Order Processing Main                     |
 | Total Components: 12                                     |
 | [2 to create] [10 to update] [3 with credentials]      |
+| [4 shared connections (pre-mapped)]                      |
 +----------------------------------------------------------+
 | MAIN AREA                                                |
 |                                                          |
@@ -254,7 +279,7 @@ The Promotion Review page displays a resolved dependency tree for the selected p
 |  | Component | Type | Dev V | Status | Prod ID | ... |  |
 |  |--------------------------------------------------------|  |
 |  | Order Proc| Proc | 5     | UPDATE | a1b2... | ... |  |
-|  | DB Conn   | Conn | 3     | UPDATE | c3d4... | ⚠️  |  |
+|  | DB Conn   |Conn(shared)| 3  | MAPPED | c3d4... |     |  |
 |  | API Prof  | Prof | 2     | NEW    | -       | ... |  |
 |  | ...       | ...  | ...   | ...    | ...     | ... |  |
 |  +----------------------------------------------------+  |

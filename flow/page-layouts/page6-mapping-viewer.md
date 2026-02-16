@@ -45,6 +45,7 @@ The Mapping Viewer page allows admins to view, search, filter, and manually mana
 | Prod Version | `prodLatestVersion` | 8% | Yes | No | Numeric |
 | Last Promoted | `lastPromotedAt` | 12% | Yes | No | Date/time |
 | Promoted By | `lastPromotedBy` | 8% | Yes | No | Email/name |
+| Mapping Source | `mappingSource` | 10% | Yes | Yes (dropdown) | Badge |
 
 **Column Details:**
 
@@ -107,6 +108,14 @@ The Mapping Viewer page allows admins to view, search, filter, and manually mana
    - Sortable: Alphabetical
    - Not filterable
 
+9. **Mapping Source**
+   - Display: How this mapping was created
+   - Format: Badge/pill:
+     - `PROMOTION_ENGINE` → Blue badge, text "Engine"
+     - `ADMIN_SEEDING` → Purple badge, text "Admin Seeded"
+   - Sortable: Alphabetical
+   - Filterable: Dropdown with options: All, PROMOTION_ENGINE, ADMIN_SEEDING
+
 **Row Selection:**
 - **Mode:** Single-row selection (optional, for edit functionality)
 - **Visual:** Highlight selected row with accent color
@@ -155,20 +164,29 @@ The Mapping Viewer page allows admins to view, search, filter, and manually mana
      - Display: Account name (if available) or truncated ID
    - Behavior: On change, filter grid rows by `devAccountId`
 
-3. **Text Search**
+3. **Mapping Source Filter**
+   - Type: Dropdown
+   - Label: "Source"
+   - Options:
+     - "All" (default)
+     - "PROMOTION_ENGINE" (display: "Engine")
+     - "ADMIN_SEEDING" (display: "Admin Seeded")
+   - Behavior: On change, filter grid rows by `mappingSource`
+
+4. **Text Search**
    - Type: Text input
    - Label: "Search"
    - Placeholder: "Search by component name..."
    - Behavior: On input, filter grid rows by `componentName` (partial match, case-insensitive)
    - Debounce: 300ms delay after typing stops
 
-4. **Apply Button**
+5. **Apply Button**
    - Type: Button (primary, small)
    - Label: "Apply Filters"
    - Behavior: Apply all selected filters to grid
    - Optional: Auto-apply on change instead of button
 
-5. **Clear Button**
+6. **Clear Button**
    - Type: Button (secondary, small)
    - Label: "Clear"
    - Behavior: Reset all filters to defaults ("All", empty search)
@@ -296,6 +314,77 @@ API Connection,connection,a1b2c3d4-...,dev789-...,prod012-...,3,2026-02-14 09:15
 
 ---
 
+### Seed Connection Mapping Section
+
+**Component Type:** Collapsible form section (separate from Manual Mapping Form)
+
+**Purpose:** Dedicated workflow for admins to seed connection mappings that link dev account connection IDs to pre-configured parent account connections in the `#Connections` folder.
+
+**Visibility:** Collapsed by default, expandable via "Seed Connection Mapping" button
+
+**Header Text:**
+```
+Connection Mapping Seeding
+
+Connections are shared resources pre-configured once in the parent account's #Connections folder.
+Each dev account has its own connection component IDs that must be mapped to the parent's
+canonical connection IDs. The same parent connection can be mapped from multiple dev accounts.
+```
+
+**Fields:**
+
+1. **Dev Account**
+   - Type: Dropdown
+   - Label: "Dev Account"
+   - Options: List of accessible dev accounts
+   - Required: Yes
+
+2. **Dev Connection ID**
+   - Type: Text Input
+   - Label: "Dev Connection Component ID"
+   - Placeholder: "Enter the connection's component ID from the dev account..."
+   - Required: Yes
+   - Validation: Valid GUID format
+
+3. **Dev Connection Name**
+   - Type: Text Input
+   - Label: "Connection Name"
+   - Placeholder: "e.g., SFTP - Orders Server"
+   - Required: Yes
+
+4. **Parent Connection ID**
+   - Type: Text Input (with lookup button)
+   - Label: "Parent Account Connection ID (from #Connections folder)"
+   - Placeholder: "Enter the canonical connection ID from the parent account..."
+   - Required: Yes
+   - Validation: Valid GUID format
+   - Helper text: "Find this ID in the parent account's Build tab under the #Connections folder"
+
+**Buttons:**
+
+1. **Seed Mapping**
+   - Type: Button (primary)
+   - Label: "Seed Connection Mapping"
+   - Behavior:
+     - Trigger `manageMappings` with `operation = "create"` and `mappingSource = "ADMIN_SEEDING"`
+     - Component type auto-set to `"connection"`
+     - On success: refresh grid, collapse form, show success message
+     - On error: show error, keep form open
+
+2. **Cancel**
+   - Type: Button (secondary)
+   - Label: "Cancel"
+   - Behavior: Collapse form, clear fields
+
+**Admin Workflow Notes:**
+- Connections live in the parent account's `#Connections` folder — they are NOT promoted by the engine
+- Each dev account has its own connection component IDs (created when devs build processes)
+- Admin maps each dev connection ID → the parent's canonical connection ID
+- The same parent connection can serve multiple dev accounts (e.g., all dev accounts' "SFTP Orders" connections map to the same parent connection)
+- Once seeded, the promotion engine skips connections and uses the seeded mappings to rewrite references
+
+---
+
 ### Back to Approvals Link
 
 **Component Type:** Navigation link or button
@@ -350,6 +439,19 @@ API Connection,connection,a1b2c3d4-...,dev789-...,prod012-...,3,2026-02-14 09:15
 | | Component Name:   [__________________]             |   |
 | | Component Type:   [process ▼]                      |   |
 | | [Cancel] [Save Mapping]                            |   |
+| +----------------------------------------------------+   |
+|                                                          |
++----------------------------------------------------------+
+| SEED CONNECTION MAPPING (collapsible)                    |
+| [+ Seed Connection Mapping] (collapsed)                  |
+|                                                          |
+| (When expanded:)                                         |
+| +----------------------------------------------------+   |
+| | Dev Account:        [Select Account ▼]             |   |
+| | Dev Connection ID:  [__________________]           |   |
+| | Connection Name:    [__________________]           |   |
+| | Parent Connection ID:[__________________]          |   |
+| | [Cancel] [Seed Connection Mapping]                 |   |
 | +----------------------------------------------------+   |
 |                                                          |
 +----------------------------------------------------------+
