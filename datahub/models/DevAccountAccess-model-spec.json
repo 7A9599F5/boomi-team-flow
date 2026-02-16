@@ -1,0 +1,58 @@
+{
+  "modelName": "DevAccountAccess",
+  "rootElement": "DevAccountAccess",
+  "description": "Maps SSO security groups to dev sub-account IDs. Controls which Azure AD groups have permission to promote components from specific dev accounts to production. Manually managed by administrators.",
+  "fields": [
+    {
+      "name": "ssoGroupId",
+      "type": "String",
+      "description": "Azure AD group object ID or canonical group name",
+      "required": true,
+      "matchField": true
+    },
+    {
+      "name": "ssoGroupName",
+      "type": "String",
+      "description": "Human-readable Azure AD group display name",
+      "required": true,
+      "matchField": false
+    },
+    {
+      "name": "devAccountId",
+      "type": "String",
+      "description": "Boomi dev sub-account ID that this group can promote from",
+      "required": true,
+      "matchField": true
+    },
+    {
+      "name": "devAccountName",
+      "type": "String",
+      "description": "Human-readable dev account name for display purposes",
+      "required": true,
+      "matchField": false
+    },
+    {
+      "name": "isActive",
+      "type": "String",
+      "description": "Enable/disable access without deleting record (values: 'true' or 'false')",
+      "required": true,
+      "matchField": false
+    }
+  ],
+  "matchRules": [
+    {
+      "type": "EXACT",
+      "description": "Compound match on SSO group ID and dev account ID (one group can access multiple accounts)",
+      "fields": ["ssoGroupId", "devAccountId"]
+    }
+  ],
+  "sources": [
+    {
+      "name": "ADMIN_CONFIG",
+      "type": "contribute-only",
+      "description": "Manually seeded and maintained by system administrators via DataHub API"
+    }
+  ],
+  "dataQualitySteps": [],
+  "notes": "This model provides the authorization layer for the promotion engine. During promotion, the engine validates that the authenticated SSO user belongs to a group with isActive='true' for the source dev account. Multiple groups can map to the same account, and one group can access multiple accounts."
+}

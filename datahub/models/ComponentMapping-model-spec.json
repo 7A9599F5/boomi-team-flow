@@ -1,0 +1,93 @@
+{
+  "modelName": "ComponentMapping",
+  "rootElement": "ComponentMapping",
+  "description": "Maps Boomi components between dev sub-accounts and the primary production account. Tracks promotion history and version information for each component deployed through the automated promotion flow.",
+  "fields": [
+    {
+      "name": "id",
+      "type": "String",
+      "description": "Auto-generated DataHub record ID",
+      "required": false,
+      "matchField": false
+    },
+    {
+      "name": "devComponentId",
+      "type": "String",
+      "description": "Component ID in dev sub-account (Boomi component UUID)",
+      "required": true,
+      "matchField": true
+    },
+    {
+      "name": "devAccountId",
+      "type": "String",
+      "description": "Dev sub-account ID (Boomi account identifier)",
+      "required": true,
+      "matchField": true
+    },
+    {
+      "name": "prodComponentId",
+      "type": "String",
+      "description": "Corresponding component ID in primary production account",
+      "required": true,
+      "matchField": false
+    },
+    {
+      "name": "componentName",
+      "type": "String",
+      "description": "Human-readable component name from Boomi metadata",
+      "required": true,
+      "matchField": false
+    },
+    {
+      "name": "componentType",
+      "type": "String",
+      "description": "Boomi component type: process, connection, map, profile.xml, etc.",
+      "required": true,
+      "matchField": false
+    },
+    {
+      "name": "prodAccountId",
+      "type": "String",
+      "description": "Primary Boomi account ID (production account)",
+      "required": true,
+      "matchField": false
+    },
+    {
+      "name": "prodLatestVersion",
+      "type": "Number",
+      "description": "Latest version number of component in primary account",
+      "required": true,
+      "matchField": false
+    },
+    {
+      "name": "lastPromotedAt",
+      "type": "Date",
+      "description": "Timestamp of last promotion (format: yyyy-MM-dd'T'HH:mm:ss.SSS'Z')",
+      "required": true,
+      "matchField": false
+    },
+    {
+      "name": "lastPromotedBy",
+      "type": "String",
+      "description": "SSO user email who triggered the last promotion",
+      "required": true,
+      "matchField": false
+    }
+  ],
+  "matchRules": [
+    {
+      "type": "EXACT",
+      "description": "Compound match on dev component ID and dev account ID",
+      "fields": ["devComponentId", "devAccountId"]
+    }
+  ],
+  "sources": [
+    {
+      "name": "PROMOTION_ENGINE",
+      "type": "contribute-only",
+      "description": "Updated by the automated promotion engine after each successful component deployment"
+    }
+  ],
+  "dataQualitySteps": [],
+  "notes": "This model enables the promotion engine to track component lineage across accounts and detect when components already exist in production. The compound match key ensures accurate mapping even when component IDs differ between dev and prod environments."
+}

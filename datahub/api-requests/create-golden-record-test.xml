@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<batch src="PROMOTION_ENGINE">
+  <ComponentMapping>
+    <devComponentId>test-dev-comp-001</devComponentId>
+    <devAccountId>TEST_DEV_ACCT</devAccountId>
+    <prodComponentId>test-prod-comp-001</prodComponentId>
+    <componentName>Test Connection</componentName>
+    <componentType>connection</componentType>
+    <prodAccountId>PRIMARY_ACCT</prodAccountId>
+    <prodLatestVersion>1</prodLatestVersion>
+    <lastPromotedAt>2026-02-16T10:30:00.000Z</lastPromotedAt>
+    <lastPromotedBy>test@company.com</lastPromotedBy>
+  </ComponentMapping>
+</batch>

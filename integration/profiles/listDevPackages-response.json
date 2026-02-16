@@ -1,0 +1,16 @@
+{
+  "success": true,
+  "errorCode": "",
+  "errorMessage": "",
+  "packages": [
+    {
+      "packageId": "string",
+      "packageVersion": "string",
+      "componentId": "string",
+      "componentName": "string",
+      "componentType": "string",
+      "createdDate": "2026-01-01T00:00:00.000Z",
+      "notes": "string"
+    }
+  ]
+}

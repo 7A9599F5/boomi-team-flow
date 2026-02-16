@@ -1,0 +1,114 @@
+{
+  "modelName": "PromotionLog",
+  "rootElement": "PromotionLog",
+  "description": "Audit log for each promotion run. Tracks metadata, status, and detailed results for every component promotion from dev to production. Provides compliance trail and debugging information.",
+  "fields": [
+    {
+      "name": "promotionId",
+      "type": "String",
+      "description": "UUID uniquely identifying this promotion run",
+      "required": true,
+      "matchField": true
+    },
+    {
+      "name": "devAccountId",
+      "type": "String",
+      "description": "Source dev sub-account ID",
+      "required": true,
+      "matchField": false
+    },
+    {
+      "name": "prodAccountId",
+      "type": "String",
+      "description": "Target production account ID",
+      "required": true,
+      "matchField": false
+    },
+    {
+      "name": "devPackageId",
+      "type": "String",
+      "description": "PackagedComponent packageId from dev account used for promotion",
+      "required": true,
+      "matchField": false
+    },
+    {
+      "name": "initiatedBy",
+      "type": "String",
+      "description": "SSO user email who initiated the promotion",
+      "required": true,
+      "matchField": false
+    },
+    {
+      "name": "initiatedAt",
+      "type": "Date",
+      "description": "Timestamp when promotion started (format: yyyy-MM-dd'T'HH:mm:ss.SSS'Z')",
+      "required": true,
+      "matchField": false
+    },
+    {
+      "name": "status",
+      "type": "String",
+      "description": "Current status: IN_PROGRESS, COMPLETED, or FAILED",
+      "required": true,
+      "matchField": false
+    },
+    {
+      "name": "componentsTotal",
+      "type": "Number",
+      "description": "Total number of components in dependency tree",
+      "required": true,
+      "matchField": false
+    },
+    {
+      "name": "componentsCreated",
+      "type": "Number",
+      "description": "Number of new components created in production",
+      "required": true,
+      "matchField": false
+    },
+    {
+      "name": "componentsUpdated",
+      "type": "Number",
+      "description": "Number of existing production components updated",
+      "required": true,
+      "matchField": false
+    },
+    {
+      "name": "componentsFailed",
+      "type": "Number",
+      "description": "Number of components that failed to promote",
+      "required": true,
+      "matchField": false
+    },
+    {
+      "name": "errorMessage",
+      "type": "String",
+      "description": "Error details if promotion failed (up to 5000 characters)",
+      "required": false,
+      "matchField": false
+    },
+    {
+      "name": "resultDetail",
+      "type": "String",
+      "description": "JSON string with per-component results and metadata (up to 5000 characters)",
+      "required": false,
+      "matchField": false
+    }
+  ],
+  "matchRules": [
+    {
+      "type": "EXACT",
+      "description": "Match on promotion ID (each promotion run is unique)",
+      "fields": ["promotionId"]
+    }
+  ],
+  "sources": [
+    {
+      "name": "PROMOTION_ENGINE",
+      "type": "contribute-only",
+      "description": "Written by promotion engine at start (IN_PROGRESS) and updated at completion (COMPLETED/FAILED)"
+    }
+  ],
+  "dataQualitySteps": [],
+  "notes": "This model provides complete audit trail for compliance and troubleshooting. The promotion engine creates a record at the start of each promotion (status=IN_PROGRESS) and updates it when complete. The resultDetail field stores structured JSON for detailed analysis of individual component outcomes."
+}

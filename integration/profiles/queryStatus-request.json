@@ -1,0 +1,6 @@
+{
+  "promotionId": "string",
+  "devAccountId": "string",
+  "status": "string",
+  "limit": 50
+}

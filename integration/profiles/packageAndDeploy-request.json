@@ -1,0 +1,10 @@
+{
+  "prodComponentId": "string",
+  "prodAccountId": "string",
+  "packageVersion": "string",
+  "integrationPackId": "string",
+  "createNewPack": false,
+  "newPackName": "string",
+  "newPackDescription": "string",
+  "targetAccountGroupId": "string"
+}

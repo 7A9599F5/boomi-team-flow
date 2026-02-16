@@ -1,0 +1,22 @@
+{
+  "success": true,
+  "errorCode": "",
+  "errorMessage": "",
+  "promotions": [
+    {
+      "promotionId": "string",
+      "devAccountId": "string",
+      "prodAccountId": "string",
+      "devPackageId": "string",
+      "initiatedBy": "string",
+      "initiatedAt": "2026-01-01T00:00:00.000Z",
+      "status": "string",
+      "componentsTotal": 0,
+      "componentsCreated": 0,
+      "componentsUpdated": 0,
+      "componentsFailed": 0,
+      "errorMessage": "string",
+      "resultDetail": "string"
+    }
+  ]
+}

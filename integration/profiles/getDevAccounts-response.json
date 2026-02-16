@@ -1,0 +1,11 @@
+{
+  "success": true,
+  "errorCode": "",
+  "errorMessage": "",
+  "accounts": [
+    {
+      "devAccountId": "string",
+      "devAccountName": "string"
+    }
+  ]
+}

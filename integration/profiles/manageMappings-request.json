@@ -1,0 +1,17 @@
+{
+  "operation": "string",
+  "filters": {
+    "devAccountId": "string",
+    "componentType": "string",
+    "componentName": "string"
+  },
+  "mapping": {
+    "devComponentId": "string",
+    "devAccountId": "string",
+    "prodComponentId": "string",
+    "componentName": "string",
+    "componentType": "string",
+    "prodAccountId": "string",
+    "prodLatestVersion": 0
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "success": true,
+  "errorCode": "",
+  "errorMessage": "",
+  "packagedComponentId": "string",
+  "integrationPackId": "string",
+  "integrationPackName": "string",
+  "releaseVersion": "string",
+  "deploymentStatus": "string",
+  "deployedEnvironments": [
+    {
+      "environmentId": "string",
+      "environmentName": "string",
+      "status": "string"
+    }
+  ]
+}

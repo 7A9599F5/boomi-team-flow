@@ -1,0 +1,12 @@
+{
+  "devAccountId": "string",
+  "prodAccountId": "string",
+  "components": [
+    {
+      "devComponentId": "string",
+      "name": "string",
+      "type": "string"
+    }
+  ],
+  "initiatedBy": "string"
+}

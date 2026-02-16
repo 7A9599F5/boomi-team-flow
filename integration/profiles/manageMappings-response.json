@@ -1,0 +1,20 @@
+{
+  "success": true,
+  "errorCode": "",
+  "errorMessage": "",
+  "operation": "string",
+  "mappings": [
+    {
+      "devComponentId": "string",
+      "devAccountId": "string",
+      "prodComponentId": "string",
+      "componentName": "string",
+      "componentType": "string",
+      "prodAccountId": "string",
+      "prodLatestVersion": 0,
+      "lastPromotedAt": "2026-01-01T00:00:00.000Z",
+      "lastPromotedBy": "string"
+    }
+  ],
+  "totalCount": 0
+}
