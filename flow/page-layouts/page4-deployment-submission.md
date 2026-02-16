@@ -1,8 +1,8 @@
-# Page 4: Deployment Submission (Developer Swimlane → Admin Swimlane Transition)
+# Page 4: Deployment Submission (Developer Swimlane → Peer Review Swimlane Transition)
 
 ## Overview
 
-The Deployment Submission page is where the developer fills out deployment details and submits the promotion for admin approval. This page represents the transition point between the Developer and Admin swimlanes. After submission, the flow pauses at the swimlane boundary until an admin authenticates and takes action.
+The Deployment Submission page is where the developer fills out deployment details and submits the promotion for peer review. This page represents the transition point between the Developer and Peer Review swimlanes — the first step in the 2-layer approval workflow. After submission, the flow pauses at the swimlane boundary until a peer reviewer (any developer or admin except the submitter) authenticates and takes action.
 
 ## Page Load Behavior
 
@@ -181,7 +181,7 @@ The Deployment Submission page is where the developer fills out deployment detai
 **Component Type:** Button (Primary)
 
 **Configuration:**
-- **Label:** "Submit for Approval"
+- **Label:** "Submit for Peer Review"
 - **Style:** Primary button (prominent, large)
 - **Color:** Accent/success color
 - **Icon (optional):** Send/paper plane icon
@@ -222,13 +222,13 @@ The Deployment Submission page is where the developer fills out deployment detai
    }
    ```
 
-3. **Send email notification to admin group:**
-   - **To:** Admin SSO group email distribution list (e.g., `boomi-admins@company.com`)
+3. **Send email notification to dev + admin groups:**
+   - **To:** Dev + Admin distribution lists (e.g., `boomi-developers@company.com`, `boomi-admins@company.com`)
    - **CC:** Submitter (for confirmation)
-   - **Subject:** `"Promotion Approval Needed: {processName} v{packageVersion}"`
+   - **Subject:** `"Peer Review Needed: {processName} v{packageVersion}"`
    - **Body:**
      ```
-     A new promotion has been submitted for approval and deployment.
+     A new promotion has been submitted for peer review.
 
      PROMOTION DETAILS:
      Promotion ID: {promotionId}
@@ -248,26 +248,27 @@ The Deployment Submission page is where the developer fills out deployment detai
      NOTES:
      {deploymentRequest.notes or "No notes provided."}
 
-     Please review and approve/deny this deployment in the Promotion Dashboard:
-     [Link to Flow approval page]
+     Please review in the Promotion Dashboard:
+     [Link to Flow peer review page]
      ```
 
-4. **Transition to Admin Swimlane:**
+4. **Transition to Peer Review Swimlane:**
    - Flow state PAUSES at swimlane boundary
    - Store `deploymentRequest` in Flow state
    - Show confirmation message to developer:
      ```
-     Submitted for approval!
+     Submitted for peer review!
 
-     Your deployment request has been sent to the admin team.
-     You will receive an email notification when an admin approves or denies your request.
+     Your deployment request has been sent for peer review.
+     A team member will review your submission before it advances to admin approval.
+     You will receive email notifications as the review progresses.
 
      Promotion ID: {promotionId}
      ```
 
 5. **End developer flow:**
    - Show "Close" button to exit
-   - Admin must authenticate with SSO to continue flow
+   - Peer reviewer must authenticate with SSO (Boomi Developers or Boomi Admins group) to continue flow
 
 ---
 
@@ -329,7 +330,7 @@ The Deployment Submission page is where the developer fills out deployment detai
 |                                                          |
 +----------------------------------------------------------+
 | FOOTER / ACTION BAR                                      |
-| [Cancel]                        [Submit for Approval]    |
+| [Cancel]                      [Submit for Peer Review]   |
 +----------------------------------------------------------+
 ```
 
@@ -399,7 +400,7 @@ The Deployment Submission page is where the developer fills out deployment detai
 
 ### Form-Level Validation
 
-On "Submit for Approval" click:
+On "Submit for Peer Review" click:
 1. Check all required fields filled
 2. If any validation errors: Show error messages, highlight fields in red
 3. Scroll to first error field
@@ -412,35 +413,36 @@ On "Submit for Approval" click:
 **Confirmation Message:**
 - Display success message on same page or modal:
   ```
-  ✓ Submitted for Approval
+  Submitted for Peer Review
 
-  Your deployment request has been sent to the admin team.
+  Your deployment request has been sent for peer review.
+  A team member will review your submission before it advances to admin approval.
 
   Promotion ID: abc123-def456-ghi789
   Package Version: 1.2.3
   Target Account Group: Production
 
-  You will receive an email notification when an admin approves or denies your request.
+  You will receive email notifications as the review progresses.
   ```
 
 **Actions:**
 - "View Promotion Status" button → Returns to Page 3 (read-only)
 - "Close" button → Ends flow, user can close window
 
-### Admin Notification
+### Peer Review Notification
 
-**Email sent to admin group:**
-- Subject: "Promotion Approval Needed: Order Processing Main v1.2.3"
+**Email sent to dev + admin groups:**
+- Subject: "Peer Review Needed: Order Processing Main v1.2.3"
 - Body includes all submission details
-- Link to Flow application opens Page 5 (Approval Queue)
+- Link to Flow application opens Page 5 (Peer Review Queue)
 
 ### Flow State
 
 **Swimlane boundary pause:**
-- Flow PAUSES at the transition from Developer to Admin swimlane
+- Flow PAUSES at the transition from Developer to Peer Review swimlane
 - Flow state stored with `deploymentRequest` data
-- Admin must authenticate with SSO ("Boomi Admins" group) to access Page 5
-- Fresh Flow session for admin (separate from developer session)
+- Peer reviewer must authenticate with SSO ("Boomi Developers" or "Boomi Admins" group) to access Page 5
+- Fresh Flow session for reviewer (separate from developer session)
 
 ## Accessibility
 
@@ -467,18 +469,18 @@ On "Submit for Approval" click:
    - Target Account Group: "Production"
    - Deployment Notes: "Deploy during maintenance window on Sunday 2am ET"
 
-4. **User clicks "Submit for Approval"**
+4. **User clicks "Submit for Peer Review"**
    - Form validates: All required fields filled
-   - Email sends to admin group
+   - Email sends to dev + admin groups
    - Confirmation message displays
    - Flow pauses at swimlane boundary
 
-5. **Admin receives email notification**
-   - Subject: "Promotion Approval Needed: Order Processing Main v1.2.3"
-   - Email includes all details and link to approval queue
+5. **Team receives email notification**
+   - Subject: "Peer Review Needed: Order Processing Main v1.2.3"
+   - Email includes all details and link to peer review queue
 
-6. **Admin clicks link in email**
+6. **Peer reviewer clicks link in email**
    - Opens Flow application
-   - Prompted to authenticate via SSO ("Boomi Admins" group)
-   - After auth: Arrives at Page 5 (Approval Queue)
-   - Sees pending approval request from developer
+   - Prompted to authenticate via SSO ("Boomi Developers" or "Boomi Admins" group)
+   - After auth: Arrives at Page 5 (Peer Review Queue)
+   - Sees pending review request (submitter's own submissions excluded)

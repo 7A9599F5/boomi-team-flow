@@ -13,7 +13,7 @@
 
 ## Message Actions
 
-The Flow Service exposes 7 message actions, each linked to a corresponding Integration process.
+The Flow Service exposes 9 message actions, each linked to a corresponding Integration process.
 
 ### 1. getDevAccounts
 
@@ -191,7 +191,7 @@ The Flow Service exposes 7 message actions, each linked to a corresponding Integ
 **Response Profile**: `PROMO - Profile - QueryStatusResponse`
 **Service Type**: Message Action
 
-**Description**: Queries the promotion history DataHub for a specific process or component to retrieve past promotion records.
+**Description**: Queries the promotion history DataHub for a specific process or component to retrieve past promotion records. Supports filtering by review stage for the 2-layer approval workflow.
 
 **Request Fields**:
 - `queryType` (string: "byProcess" | "byComponent")
@@ -199,6 +199,7 @@ The Flow Service exposes 7 message actions, each linked to a corresponding Integ
 - `componentId` (string, conditional)
 - `startDate` (datetime, optional)
 - `endDate` (datetime, optional)
+- `reviewStage` (string, optional: "PENDING_PEER_REVIEW" | "PENDING_ADMIN_REVIEW" | "ALL") — filters by approval workflow stage. When set, Process E filters DataHub queries by `peerReviewStatus` and/or `adminReviewStatus` fields. Default: "ALL" (no filtering)
 
 **Response Fields**:
 - `success` (boolean)
@@ -212,6 +213,14 @@ The Flow Service exposes 7 message actions, each linked to a corresponding Integ
   - `packageVersion` (string, optional)
   - `integrationPackId` (string, optional)
   - `prodPackageId` (string, optional) — Package ID of the prod PackagedComponent (populated after packageAndDeploy)
+  - `peerReviewStatus` (string, optional) — PENDING_PEER_REVIEW, PEER_APPROVED, PEER_REJECTED
+  - `peerReviewedBy` (string, optional) — email of peer reviewer
+  - `peerReviewedAt` (datetime, optional) — timestamp of peer review
+  - `peerReviewComments` (string, optional) — peer reviewer comments
+  - `adminReviewStatus` (string, optional) — PENDING_ADMIN_REVIEW, ADMIN_APPROVED, ADMIN_REJECTED
+  - `adminApprovedBy` (string, optional) — email of admin reviewer
+  - `adminApprovedAt` (datetime, optional) — timestamp of admin review
+  - `adminComments` (string, optional) — admin reviewer comments
 - `errorCode` (string, optional)
 - `errorMessage` (string, optional)
 
@@ -247,6 +256,72 @@ Connections are shared resources pre-configured in the parent account's `#Connec
   - `lastPromoted` (datetime)
 - `errorCode` (string, optional)
 - `errorMessage` (string, optional)
+
+---
+
+### 8. queryPeerReviewQueue
+
+**Action Name**: `queryPeerReviewQueue`
+**Linked Process**: Process E2 - Query Peer Review Queue
+**Flow Service Operation**: `PROMO - FSS Op - QueryPeerReviewQueue`
+**Request Profile**: `PROMO - Profile - QueryPeerReviewQueueRequest`
+**Response Profile**: `PROMO - Profile - QueryPeerReviewQueueResponse`
+**Service Type**: Message Action
+
+**Description**: Queries PromotionLog records that are in PENDING_PEER_REVIEW status, excluding promotions initiated by the requesting user (self-review prevention). Returns promotions ready for peer review along with deployment metadata.
+
+**Request Fields**:
+- `requesterEmail` (string, required) — the authenticated user's email; used to exclude their own submissions from the results
+
+**Response Fields**:
+- `success` (boolean)
+- `pendingReviews` (array)
+  - `promotionId` (string)
+  - `processName` (string)
+  - `devAccountId` (string)
+  - `initiatedBy` (string) — submitter email
+  - `initiatedAt` (datetime) — submission timestamp
+  - `componentsTotal` (integer)
+  - `componentsCreated` (integer)
+  - `componentsUpdated` (integer)
+  - `notes` (string) — deployment notes from submitter
+  - `packageVersion` (string)
+  - `devPackageId` (string)
+  - `resultDetail` (string) — JSON per-component results for review
+- `errorCode` (string, optional)
+- `errorMessage` (string, optional)
+
+---
+
+### 9. submitPeerReview
+
+**Action Name**: `submitPeerReview`
+**Linked Process**: Process E3 - Submit Peer Review
+**Flow Service Operation**: `PROMO - FSS Op - SubmitPeerReview`
+**Request Profile**: `PROMO - Profile - SubmitPeerReviewRequest`
+**Response Profile**: `PROMO - Profile - SubmitPeerReviewResponse`
+**Service Type**: Message Action
+
+**Description**: Records a peer review decision (approve or reject) against a PromotionLog record. Validates that the reviewer is not the submitter (self-review prevention), that the promotion is in the correct state, and that it hasn't already been reviewed. On approval, updates peerReviewStatus to PEER_APPROVED and adminReviewStatus to PENDING_ADMIN_REVIEW. On rejection, updates peerReviewStatus to PEER_REJECTED.
+
+**Request Fields**:
+- `promotionId` (string, required) — the promotion to review
+- `decision` (string, required: "APPROVED" | "REJECTED") — the peer review decision
+- `reviewerEmail` (string, required) — email of the peer reviewer
+- `reviewerName` (string, required) — display name of the peer reviewer
+- `comments` (string, optional) — reviewer comments (up to 500 characters)
+
+**Response Fields**:
+- `success` (boolean)
+- `promotionId` (string) — echoed back for confirmation
+- `newStatus` (string) — the resulting peerReviewStatus (PEER_APPROVED or PEER_REJECTED)
+- `errorCode` (string, optional)
+- `errorMessage` (string, optional)
+
+**Error Codes (specific to this action)**:
+- `SELF_REVIEW_NOT_ALLOWED` — reviewerEmail matches the promotion's initiatedBy field
+- `ALREADY_REVIEWED` — promotion has already been peer-reviewed (peerReviewStatus is not PENDING_PEER_REVIEW)
+- `INVALID_REVIEW_STATE` — promotion is not in PENDING_PEER_REVIEW state (may be IN_PROGRESS, FAILED, etc.)
 
 ---
 
@@ -287,7 +362,7 @@ The Flow Service requires one configuration value to be set at deployment:
 ### Step 3: Verify Deployment
 
 1. Navigate to "Runtime Management" → "Listeners"
-2. Verify all 7 processes are visible and running:
+2. Verify all 9 processes are visible and running:
    - `PROMO - FSS Op - GetDevAccounts`
    - `PROMO - FSS Op - ListDevPackages`
    - `PROMO - FSS Op - ResolveDependencies`
@@ -295,6 +370,8 @@ The Flow Service requires one configuration value to be set at deployment:
    - `PROMO - FSS Op - PackageAndDeploy`
    - `PROMO - FSS Op - QueryStatus`
    - `PROMO - FSS Op - ManageMappings`
+   - `PROMO - FSS Op - QueryPeerReviewQueue`
+   - `PROMO - FSS Op - SubmitPeerReview`
 3. Note the full service URL: `https://{cloud-base-url}/fs/PromotionService`
 
 ---
@@ -350,6 +427,10 @@ When you retrieve the connector configuration, Flow automatically generates requ
 12. `queryStatus RESPONSE - queryStatusResponse`
 13. `manageMappings REQUEST - manageMappingsRequest`
 14. `manageMappings RESPONSE - manageMappingsResponse`
+15. `queryPeerReviewQueue REQUEST - queryPeerReviewQueueRequest`
+16. `queryPeerReviewQueue RESPONSE - queryPeerReviewQueueResponse`
+17. `submitPeerReview REQUEST - submitPeerReviewRequest`
+18. `submitPeerReview RESPONSE - submitPeerReviewResponse`
 
 These types are used throughout the Flow application to ensure type safety when calling the Flow Service operations.
 
@@ -419,6 +500,9 @@ Decision: Check Success
 | `PROMOTION_FAILED` | Component promotion failed | Review error message for details |
 | `DEPLOYMENT_FAILED` | Environment deployment failed | Check target environment status |
 | `MISSING_CONNECTION_MAPPINGS` | One or more connection mappings not found in DataHub | Admin must seed missing mappings via Mapping Viewer |
+| `SELF_REVIEW_NOT_ALLOWED` | Reviewer attempted to review their own promotion submission | A different team member must perform the peer review |
+| `ALREADY_REVIEWED` | Promotion has already been peer-reviewed | No action needed; check current status |
+| `INVALID_REVIEW_STATE` | Promotion is not in the expected state for this review action | Verify the promotion status before retrying |
 
 **Error Handling Best Practices**:
 
