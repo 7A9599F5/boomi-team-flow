@@ -1,8 +1,8 @@
-# Page 5: Approval Queue (Admin Swimlane)
+# Page 7: Admin Approval Queue (Admin Swimlane)
 
 ## Overview
 
-The Approval Queue is the admin entry point for reviewing and approving/denying deployment requests submitted by developers. Admins authenticate via SSO, review promotion details, and execute deployment to the target account group.
+The Admin Approval Queue is the final approval gate in the 2-layer approval workflow. Only promotions that have passed peer review (peerReviewStatus = PEER_APPROVED) appear here. Admins authenticate via SSO, review promotion details including peer review information, and execute deployment to the target account group.
 
 ## Page Load Behavior
 
@@ -15,7 +15,8 @@ The Approval Queue is the admin entry point for reviewing and approving/denying 
    - Input:
      - `status` = "COMPLETED"
      - `deployed` = false
-   - Output: `pendingApprovals` array (promotions awaiting approval)
+     - `reviewStage` = "PENDING_ADMIN_REVIEW"
+   - Output: `pendingApprovals` array (promotions that have passed peer review and are awaiting admin approval)
 
 3. **Populate approval queue:**
    - Display pending approval requests in Data Grid
@@ -38,12 +39,13 @@ The Approval Queue is the admin entry point for reviewing and approving/denying 
 
 | Column | Field | Width | Sortable | Formatting |
 |--------|-------|-------|----------|------------|
-| Submitter | `initiatedBy` | 15% | Yes | Email or name |
-| Process Name | `processName` | 20% | Yes | Bold text |
-| Components | `componentsTotal` | 8% | Yes | Numeric |
-| Created/Updated | `componentsCreated` / `componentsUpdated` | 12% | Yes | "X new, Y updated" |
-| Submitted | `initiatedAt` | 15% | Yes | Date/time format |
-| Status | `status` | 10% | Yes | Badge |
+| Submitter | `initiatedBy` | 14% | Yes | Email or name |
+| Process Name | `processName` | 17% | Yes | Bold text |
+| Components | `componentsTotal` | 7% | Yes | Numeric |
+| Created/Updated | `componentsCreated` / `componentsUpdated` | 10% | Yes | "X new, Y updated" |
+| Peer Reviewed By | `peerReviewedBy` | 12% | Yes | Email or name |
+| Submitted | `initiatedAt` | 12% | Yes | Date/time format |
+| Status | `status` | 8% | Yes | Badge |
 | Notes | `notes` | 20% | No | Truncated, tooltip |
 
 **Column Details:**
@@ -140,7 +142,17 @@ The Approval Queue is the admin entry point for reviewing and approving/denying 
 
 ---
 
-#### Section 2: Promotion Results
+#### Section 2: Peer Review Information
+
+**Peer Review Status:**
+- **Reviewed by:** `{peerReviewedBy}` (email and name)
+- **Reviewed at:** `{peerReviewedAt}` (full timestamp)
+- **Decision:** `{peerReviewStatus}` (PEER_APPROVED badge — green)
+- **Comments:** `{peerReviewComments}` or "No comments provided"
+
+---
+
+#### Section 3: Promotion Results
 
 **Component Results Table:**
 - Smaller data grid showing individual component results
@@ -159,7 +171,7 @@ The Approval Queue is the admin entry point for reviewing and approving/denying 
 
 ---
 
-#### Section 3: Credential Warning (Conditional)
+#### Section 4: Credential Warning (Conditional)
 
 **Visibility:** Shown if any component has `configStripped = true`
 
@@ -177,7 +189,7 @@ The Approval Queue is the admin entry point for reviewing and approving/denying 
 
 ---
 
-#### Section 4: Source Account
+#### Section 5: Source Account
 
 **Dev Account Information:**
 - **Source Account:** `{devAccountName}`
@@ -264,12 +276,12 @@ The Approval Queue is the admin entry point for reviewing and approving/denying 
      - Show error message: "Deployment failed: {errorMessage}"
      - Display error details
 
-4. **Send email notification to submitter:**
-   - **To:** `{initiatedBy}` (submitter email)
-   - **Subject:** `"Approved: {processName} v{packageVersion}"`
+4. **Send email notification to submitter + peer reviewer:**
+   - **To:** `{initiatedBy}` (submitter email), `{peerReviewedBy}` (peer reviewer email)
+   - **Subject:** `"Approved & Deployed: {processName} v{packageVersion}"`
    - **Body:**
      ```
-     Your promotion request has been approved and deployed.
+     The promotion request has been approved and deployed.
 
      PROMOTION DETAILS:
      Promotion ID: {promotionId}
@@ -282,8 +294,11 @@ The Approval Queue is the admin entry point for reviewing and approving/denying 
      Deployment ID: {deploymentId}
      Prod Package ID: {prodPackageId}
 
-     APPROVED BY:
-     Admin: {adminUserName} ({adminUserEmail})
+     PEER REVIEW:
+     Reviewed by: {peerReviewerName} ({peerReviewedBy})
+
+     ADMIN APPROVAL:
+     Approved by: {adminUserName} ({adminUserEmail})
      Date: {approvedAt}
 
      ADMIN COMMENTS:
@@ -335,20 +350,23 @@ The Approval Queue is the admin entry point for reviewing and approving/denying 
    - Update promotion status to "DENIED"
    - Store denial reason and admin info
 
-3. **Send email notification to submitter:**
-   - **To:** `{initiatedBy}` (submitter email)
-   - **Subject:** `"Denied: {processName} v{packageVersion}"`
+3. **Send email notification to submitter + peer reviewer:**
+   - **To:** `{initiatedBy}` (submitter email), `{peerReviewedBy}` (peer reviewer email)
+   - **Subject:** `"Admin Denied: {processName} v{packageVersion}"`
    - **Body:**
      ```
-     Your promotion request has been denied.
+     The promotion request has been denied by admin review.
 
      PROMOTION DETAILS:
      Promotion ID: {promotionId}
      Process: {processName}
      Package Version: {packageVersion}
 
-     DENIED BY:
-     Admin: {adminUserName} ({adminUserEmail})
+     PEER REVIEW:
+     Reviewed by: {peerReviewerName} ({peerReviewedBy})
+
+     ADMIN DENIAL:
+     Denied by: {adminUserName} ({adminUserEmail})
      Date: {deniedAt}
 
      REASON FOR DENIAL:
@@ -382,7 +400,7 @@ The Approval Queue is the admin entry point for reviewing and approving/denying 
 - **Location:** Top right of page or in navigation menu
 
 **Behavior:**
-- **On click:** Navigate to Page 6 (Mapping Viewer)
+- **On click:** Navigate to Page 8 (Mapping Viewer)
 - Opens in same Flow application (not new tab)
 
 ---
@@ -495,7 +513,7 @@ The Approval Queue is the admin entry point for reviewing and approving/denying 
 
 2. **Admin authenticates via SSO**
    - "Boomi Admins" group membership validated
-   - Redirected to Page 5
+   - Redirected to Page 7
 
 3. **Admin sees approval queue**
    - Grid shows 3 pending approval requests

@@ -1,4 +1,4 @@
-# Page 6: Mapping Viewer (Admin Swimlane)
+# Page 8: Mapping Viewer (Admin Swimlane)
 
 ## Overview
 
@@ -390,12 +390,12 @@ canonical connection IDs. The same parent connection can be mapped from multiple
 **Component Type:** Navigation link or button
 
 **Configuration:**
-- **Label:** "Back to Approval Queue"
+- **Label:** "Back to Admin Approval Queue"
 - **Icon (optional):** Left arrow icon
 - **Location:** Top left or bottom left of page
 
 **Behavior:**
-- **On click:** Navigate back to Page 5 (Approval Queue)
+- **On click:** Navigate back to Page 7 (Admin Approval Queue)
 - Opens in same Flow application (not new tab)
 
 ---
@@ -407,7 +407,7 @@ canonical connection IDs. The same parent connection can be mapped from multiple
 ```
 +----------------------------------------------------------+
 | HEADER                                                    |
-| [← Back to Approval Queue]                               |
+| [← Back to Admin Approval Queue]                               |
 | "Component Mapping Viewer"                               |
 | Admin: {adminUserName}                                   |
 +----------------------------------------------------------+
@@ -460,10 +460,10 @@ canonical connection IDs. The same parent connection can be mapped from multiple
 ### Layout Details
 
 **Header:**
-- "Back to Approval Queue" link in top left
+- "Back to Admin Approval Queue" link in top left
 - Page title: "Component Mapping Viewer"
 - Admin user context: Display name
-- Breadcrumb (optional): "Approval Queue > Mapping Viewer"
+- Breadcrumb (optional): "Admin Approval Queue > Mapping Viewer"
 
 **Filter Bar:**
 - Horizontal arrangement on desktop
@@ -628,7 +628,7 @@ canonical connection IDs. The same parent connection can be mapped from multiple
 
 ## User Flow Example
 
-1. **Admin navigates to Page 6 from Page 5**
+1. **Admin navigates to Page 8 from Page 7**
    - Clicks "View Component Mappings" link
    - Page loads with "Loading mappings..." spinner
 
@@ -669,5 +669,5 @@ canonical connection IDs. The same parent connection can be mapped from multiple
    - Grid refreshes, new mapping appears at top
 
 8. **Admin returns to approvals**
-   - Clicks "Back to Approval Queue"
-   - Navigates to Page 5
+   - Clicks "Back to Admin Approval Queue"
+   - Navigates to Page 7
