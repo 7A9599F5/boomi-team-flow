@@ -13,7 +13,7 @@
 
 ## Message Actions
 
-The Flow Service exposes 9 message actions, each linked to a corresponding Integration process.
+The Flow Service exposes 11 message actions, each linked to a corresponding Integration process.
 
 ### 1. getDevAccounts
 
@@ -106,7 +106,7 @@ The Flow Service exposes 9 message actions, each linked to a corresponding Integ
 **Response Profile**: `PROMO - Profile - ExecutePromotionResponse`
 **Service Type**: Message Action
 
-**Description**: Promotes all components from dev to primary account. For each component: checks DataHub for existing prod mapping, strips credentials, rewrites references, creates/updates component, and stores mapping.
+**Description**: Creates a promotion branch in the primary account, then promotes all components from dev to the branch (not main) via tilde syntax. For each component: checks DataHub for existing prod mapping, strips credentials, rewrites references, creates/updates component on branch, and stores mapping. Returns branchId for downstream diff viewing and merge operations. On failure, cleans up the branch.
 
 **Request Fields**:
 - `devAccountId` (string, required)
@@ -130,6 +130,8 @@ The Flow Service exposes 9 message actions, each linked to a corresponding Integ
   - `action` (string: "created" | "updated")
   - `version` (integer)
 - `connectionsSkipped` (integer) — count of shared connections not promoted
+- `branchId` (string) — promotion branch ID for downstream diff/merge operations
+- `branchName` (string) — branch name (e.g., "promo-{promotionId}")
 - `missingConnectionMappings` (array, conditional) — present when errorCode=MISSING_CONNECTION_MAPPINGS
   - `devComponentId` (string)
   - `name` (string)
@@ -325,6 +327,65 @@ Connections are shared resources pre-configured in the parent account's `#Connec
 
 ---
 
+### 10. generateComponentDiff
+
+**Action Name**: `generateComponentDiff`
+**Linked Process**: Process G - Generate Component Diff
+**Flow Service Operation**: `PROMO - FSS Op - GenerateComponentDiff`
+**Request Profile**: `PROMO - Profile - GenerateComponentDiffRequest`
+**Response Profile**: `PROMO - Profile - GenerateComponentDiffResponse`
+**Service Type**: Message Action
+
+**Description**: Fetches component XML from both the promotion branch and main branch, normalizes both for consistent formatting, and returns them to the UI for client-side diff rendering. For UPDATE actions, fetches both versions; for CREATE actions, returns empty mainXml. Uses Boomi Branching tilde syntax (`Component/{id}~{branchId}`) to read from the promotion branch.
+
+**Request Fields**:
+- `branchId` (string, required) — promotion branch ID
+- `prodComponentId` (string, required) — production component ID to diff
+- `componentName` (string, required) — component name for display
+- `componentAction` (string, required: "CREATE" | "UPDATE") — determines whether to fetch main version
+
+**Response Fields**:
+- `success` (boolean)
+- `prodComponentId` (string) — echoed back
+- `componentName` (string) — echoed back
+- `componentAction` (string) — echoed back
+- `branchXml` (string) — normalized XML from promotion branch
+- `mainXml` (string) — normalized XML from main branch (empty string for CREATE)
+- `branchVersion` (integer) — component version on branch
+- `mainVersion` (integer) — component version on main (0 for CREATE)
+- `errorCode` (string, optional)
+- `errorMessage` (string, optional)
+
+---
+
+### 11. listIntegrationPacks
+
+**Action Name**: `listIntegrationPacks`
+**Linked Process**: Process J - List Integration Packs
+**Flow Service Operation**: `PROMO - FSS Op - ListIntegrationPacks`
+**Request Profile**: `PROMO - Profile - ListIntegrationPacksRequest`
+**Response Profile**: `PROMO - Profile - ListIntegrationPacksResponse`
+**Service Type**: Message Action
+
+**Description**: Queries the primary account for existing MULTI-type Integration Packs and returns them for the pack selector on Page 4. Optionally suggests the most recently used pack for a given process name by querying PromotionLog for the latest DEPLOYED record matching `processName`.
+
+**Request Fields**:
+- `suggestForProcess` (string, optional) — process name to look up suggestion for
+
+**Response Fields**:
+- `success` (boolean)
+- `integrationPacks` (array)
+  - `packId` (string)
+  - `packName` (string)
+  - `packDescription` (string)
+  - `installationType` (string)
+- `suggestedPackId` (string, optional) — most recently used pack ID for this process
+- `suggestedPackName` (string, optional) — name of the suggested pack
+- `errorCode` (string, optional)
+- `errorMessage` (string, optional)
+
+---
+
 ## Configuration Values
 
 The Flow Service requires one configuration value to be set at deployment:
@@ -362,7 +423,7 @@ The Flow Service requires one configuration value to be set at deployment:
 ### Step 3: Verify Deployment
 
 1. Navigate to "Runtime Management" → "Listeners"
-2. Verify all 9 processes are visible and running:
+2. Verify all 11 processes are visible and running:
    - `PROMO - FSS Op - GetDevAccounts`
    - `PROMO - FSS Op - ListDevPackages`
    - `PROMO - FSS Op - ResolveDependencies`
@@ -372,6 +433,8 @@ The Flow Service requires one configuration value to be set at deployment:
    - `PROMO - FSS Op - ManageMappings`
    - `PROMO - FSS Op - QueryPeerReviewQueue`
    - `PROMO - FSS Op - SubmitPeerReview`
+   - `PROMO - FSS Op - GenerateComponentDiff`
+   - `PROMO - FSS Op - ListIntegrationPacks`
 3. Note the full service URL: `https://{cloud-base-url}/fs/PromotionService`
 
 ---
@@ -394,7 +457,7 @@ After deploying the Flow Service, configure the Flow application to connect to i
 ### Step 2: Retrieve Connector Configuration
 
 1. Click "Retrieve Connector Configuration Data"
-2. Flow will automatically discover all 9 message actions
+2. Flow will automatically discover all 11 message actions
 3. Auto-generated Flow Types will be created (see below)
 
 ### Step 3: Set Configuration Value
@@ -431,6 +494,10 @@ When you retrieve the connector configuration, Flow automatically generates requ
 16. `queryPeerReviewQueue RESPONSE - queryPeerReviewQueueResponse`
 17. `submitPeerReview REQUEST - submitPeerReviewRequest`
 18. `submitPeerReview RESPONSE - submitPeerReviewResponse`
+19. `generateComponentDiff REQUEST - generateComponentDiffRequest`
+20. `generateComponentDiff RESPONSE - generateComponentDiffResponse`
+21. `listIntegrationPacks REQUEST - listIntegrationPacksRequest`
+22. `listIntegrationPacks RESPONSE - listIntegrationPacksResponse`
 
 These types are used throughout the Flow application to ensure type safety when calling the Flow Service operations.
 
@@ -461,6 +528,8 @@ The Flow Service leverages Boomi's built-in async processing for long-running op
 - `packageAndDeploy`: 20-60 seconds (depends on target environment count)
 - `queryStatus`: < 5 seconds
 - `manageMappings`: < 5 seconds
+- `generateComponentDiff`: 2-5 seconds (two API calls + Groovy normalization)
+- `listIntegrationPacks`: < 5 seconds
 
 ---
 
@@ -500,6 +569,7 @@ Decision: Check Success
 | `PROMOTION_FAILED` | Component promotion failed | Review error message for details |
 | `DEPLOYMENT_FAILED` | Environment deployment failed | Check target environment status |
 | `MISSING_CONNECTION_MAPPINGS` | One or more connection mappings not found in DataHub | Admin must seed missing mappings via Mapping Viewer |
+| `BRANCH_LIMIT_REACHED` | Too many active promotion branches (limit: 20 per account) | Wait for pending reviews to complete before starting new promotions |
 | `SELF_REVIEW_NOT_ALLOWED` | Reviewer attempted to review their own promotion submission | A different team member must perform the peer review |
 | `ALREADY_REVIEWED` | Promotion has already been peer-reviewed | No action needed; check current status |
 | `INVALID_REVIEW_STATE` | Promotion is not in the expected state for this review action | Verify the promotion status before retrying |
