@@ -72,6 +72,7 @@ The Promotion Status page displays the results of the promotion execution. It sh
 | Prod Version | `prodVersion` | 8% | Yes | Numeric |
 | Config Stripped | `configStripped` | 10% | Yes | Checkmark/X icon |
 | Error | `errorMessage` | 17% | No | Truncated, tooltip |
+| Changes | — | 10% | No | "View Diff" link (UPDATE rows); "View New" (CREATE rows); hidden for SKIPPED/FAILED |
 
 **Column Details:**
 
@@ -127,6 +128,20 @@ The Promotion Status page displays the results of the promotion execution. It sh
    - Empty: "-" if SUCCESS or SKIPPED
    - Not sortable
 
+8. **Changes**
+   - Display: Clickable link to view component diff
+   - Format:
+     - **UPDATE rows:** "View Diff" link (blue text, underline)
+     - **CREATE rows:** "View New" link (blue text, underline)
+     - **SKIPPED/FAILED rows:** Hidden (no link)
+   - **On click:** Calls `generateComponentDiff` message step with:
+     - `branchId`: from `{branchId}` Flow value (returned by executePromotion)
+     - `prodComponentId`: `{row.prodComponentId}`
+     - `componentName`: `{row.name}`
+     - `componentAction`: `{row.action}`
+   - Shows XmlDiffViewer panel below the grid row (expandable, max-height 500px, scrollable)
+   - Only one diff panel open at a time (clicking another row closes the previous)
+
 **Row Styling:**
 - **FAILED rows:** Red background color (light red, e.g., #ffebee)
 - **SKIPPED rows:** Gray background color (light gray, e.g., #f5f5f5)
@@ -177,6 +192,12 @@ The Promotion Status page displays the results of the promotion execution. It sh
    - Icon: X icon
    - Only shown if > 0
    - Prominent warning styling
+
+4b. **Branch Info**
+   - Text: `"Branch: {branchName}"`
+   - Format: Monospace font, small text
+   - Purpose: Shows which branch components were promoted to
+   - Only shown after successful promotion (when branchId is present)
 
 5. **Connections Skipped Count**
    - Text: `"Connections (Shared): {connectionsSkipped}"`
@@ -235,6 +256,34 @@ To reconfigure:
 - Background: Light orange/yellow (#fff4e5)
 - Icon: Warning triangle
 - Padding: 16px
+
+---
+
+### Component Diff Panel
+
+**Component Type:** Expandable panel (XmlDiffViewer custom component)
+
+**Trigger:** When user clicks "View Diff" or "View New" link in the Changes column
+
+**Location:** Below the Results Data Grid (or inline below the clicked row)
+
+**Behavior:**
+1. On click: Show loading spinner in panel area
+2. Call `generateComponentDiff` message step
+3. On response: Render `XmlDiffViewer` custom component with response data
+4. Panel is scrollable (max-height: 500px)
+5. "Close" button (X) in top-right corner of panel
+6. Only one panel open at a time
+
+**Data Binding:**
+- `branchXml`: from `generateComponentDiff` response
+- `mainXml`: from `generateComponentDiff` response
+- `componentName`: from response
+- `componentAction`: from response
+- `branchVersion`: from response
+- `mainVersion`: from response
+
+**Purpose:** Allows the developer to preview exactly what changed in each component before submitting for peer review. This helps catch issues early — before the peer reviewer even sees the promotion.
 
 ---
 
@@ -312,12 +361,20 @@ To reconfigure:
 |                                                          |
 |  Results Data Grid                                       |
 |  +----------------------------------------------------+  |
-|  | Component | Action | Status | Prod ID | Version | ...|  |
+|  | Component | Action | Status | Prod ID | Ver | Chg | ...|  |
 |  |--------------------------------------------------------|  |
-|  | Order Proc| UPDATE | ✓ SUC  | a1b2... | 6       | ...|  |
-|  | DB Conn   | UPDATE | ✓ SUC  | c3d4... | 4       | ⚠️ |  |
-|  | API Prof  | CREATE | ✓ SUC  | e5f6... | 1       | ...|  |
-|  | ...       | ...    | ...    | ...     | ...     | ...|  |
+|  | Order Proc| UPDATE | ✓ SUC  | a1b2... | 6  | Diff| ...|  |
+|  | DB Conn   | UPDATE | ✓ SUC  | c3d4... | 4  | Diff| ⚠️ |  |
+|  | API Prof  | CREATE | ✓ SUC  | e5f6... | 1  | New | ...|  |
+|  | ...       | ...    | ...    | ...     | ... | ... | ...|  |
+|  +----------------------------------------------------+  |
+|                                                          |
+|  COMPONENT DIFF PANEL (expandable, on "View Diff" click)  |
+|  +----------------------------------------------------+  |
+|  | XmlDiffViewer: side-by-side XML comparison          |  |
+|  | [Split | Unified] [Expand All] [Copy]               |  |
+|  | LEFT (main) | RIGHT (branch)                        |  |
+|  | max-height: 500px, scrollable                       |  |
 |  +----------------------------------------------------+  |
 |                                                          |
 +----------------------------------------------------------+
