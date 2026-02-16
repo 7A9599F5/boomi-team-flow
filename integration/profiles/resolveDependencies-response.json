@@ -13,7 +13,9 @@
       "prodStatus": "string",
       "prodComponentId": "string",
       "prodCurrentVersion": 0,
-      "hasEnvConfig": true
+      "hasEnvConfig": true,
+      "folderFullPath": "string",
+      "isSharedConnection": false
     }
   ]
 }

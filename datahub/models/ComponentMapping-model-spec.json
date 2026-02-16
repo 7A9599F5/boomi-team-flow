@@ -72,6 +72,13 @@
       "description": "SSO user email who triggered the last promotion",
       "required": true,
       "matchField": false
+    },
+    {
+      "name": "mappingSource",
+      "type": "String",
+      "description": "Indicates how this mapping was created: PROMOTION_ENGINE (automated) or ADMIN_SEEDING (manually seeded by admin for shared connections)",
+      "required": false,
+      "matchField": false
     }
   ],
   "matchRules": [
@@ -86,6 +93,11 @@
       "name": "PROMOTION_ENGINE",
       "type": "contribute-only",
       "description": "Updated by the automated promotion engine after each successful component deployment"
+    },
+    {
+      "name": "ADMIN_SEEDING",
+      "type": "contribute-only",
+      "description": "Used by admins to manually seed connection mappings that link dev account connection IDs to pre-configured parent account connections"
     }
   ],
   "dataQualitySteps": [],

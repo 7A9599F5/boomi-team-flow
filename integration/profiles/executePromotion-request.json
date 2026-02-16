@@ -5,7 +5,8 @@
     {
       "devComponentId": "string",
       "name": "string",
-      "type": "string"
+      "type": "string",
+      "folderFullPath": "string"
     }
   ],
   "initiatedBy": "string"

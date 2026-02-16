@@ -11,7 +11,8 @@
   Notes:
     - componentId MUST be the existing prod component ID from the DataHub mapping
     - API auto-increments the version number (no duplicate created)
-    - folderFullPath preserved from existing component
+    - folderFullPath: /Promoted{devFolderFullPath} - mirrors the dev account's folder hierarchy
+      Updated on each promotion to ensure folder structure stays in sync with dev
     - The <bns:object> contains the stripped and reference-rewritten XML from dev
     - Response returns the existing componentId with incremented version
 
@@ -23,7 +24,7 @@
       {1} = Dynamic Process Property: primaryAccountId
       {2} = Dynamic Process Property: prodComponentId
 -->
-<bns:Component xmlns:bns="http://api.platform.boomi.com/" componentId="{prodComponentId}" name="{componentName}" type="{componentType}" folderFullPath="/Promoted/{devAccountName}/{processName}/">
+<bns:Component xmlns:bns="http://api.platform.boomi.com/" componentId="{prodComponentId}" name="{componentName}" type="{componentType}" folderFullPath="/Promoted{devFolderFullPath}">
   <bns:object>
     <!-- Stripped and reference-rewritten component configuration XML -->
   </bns:object>

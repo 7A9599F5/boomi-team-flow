@@ -10,7 +10,9 @@
 
   Notes:
     - componentId should be EMPTY or omitted for creation (API assigns new ID)
-    - folderFullPath: /Promoted/{devAccountName}/{processName}/ - folders auto-created if they don't exist
+    - folderFullPath: /Promoted{devFolderFullPath} - mirrors the dev account's folder hierarchy under /Promoted/
+      (e.g., dev path /DevTeamARoot/Orders/MyProcess/ becomes /Promoted/DevTeamARoot/Orders/MyProcess/)
+      Folders are auto-created by the API if they don't exist
     - The <bns:object> contains the stripped and reference-rewritten XML from dev
     - Response returns the new componentId and version=1
 
@@ -21,7 +23,7 @@
     Request URL Parameters:
       {1} = Dynamic Process Property: primaryAccountId
 -->
-<bns:Component xmlns:bns="http://api.platform.boomi.com/" name="{componentName}" type="{componentType}" folderFullPath="/Promoted/{devAccountName}/{processName}/">
+<bns:Component xmlns:bns="http://api.platform.boomi.com/" name="{componentName}" type="{componentType}" folderFullPath="/Promoted{devFolderFullPath}">
   <bns:object>
     <!-- Stripped and reference-rewritten component configuration XML -->
   </bns:object>
