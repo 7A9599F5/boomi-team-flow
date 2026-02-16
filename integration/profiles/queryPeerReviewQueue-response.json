@@ -1,0 +1,21 @@
+{
+  "success": true,
+  "errorCode": "",
+  "errorMessage": "",
+  "pendingReviews": [
+    {
+      "promotionId": "string",
+      "processName": "string",
+      "devAccountId": "string",
+      "initiatedBy": "string",
+      "initiatedAt": "2026-01-01T00:00:00.000Z",
+      "componentsTotal": 0,
+      "componentsCreated": 0,
+      "componentsUpdated": 0,
+      "notes": "string",
+      "packageVersion": "string",
+      "devPackageId": "string",
+      "resultDetail": "string"
+    }
+  ]
+}

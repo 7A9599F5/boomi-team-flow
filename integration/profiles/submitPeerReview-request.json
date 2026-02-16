@@ -1,0 +1,7 @@
+{
+  "promotionId": "string",
+  "decision": "string",
+  "reviewerEmail": "string",
+  "reviewerName": "string",
+  "comments": "string"
+}

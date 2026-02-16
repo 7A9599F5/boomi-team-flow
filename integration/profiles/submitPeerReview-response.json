@@ -1,0 +1,7 @@
+{
+  "success": true,
+  "errorCode": "",
+  "errorMessage": "",
+  "promotionId": "string",
+  "newStatus": "string"
+}
