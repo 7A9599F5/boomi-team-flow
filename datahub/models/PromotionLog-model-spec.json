@@ -55,7 +55,7 @@
     {
       "name": "status",
       "type": "String",
-      "description": "Current status: IN_PROGRESS, COMPLETED, or FAILED",
+      "description": "Current status lifecycle: IN_PROGRESS → COMPLETED → PENDING_PEER_REVIEW → PEER_APPROVED → PENDING_ADMIN_REVIEW → ADMIN_APPROVED → DEPLOYED. Rejection branches: PENDING_PEER_REVIEW → PEER_REJECTED, PENDING_ADMIN_REVIEW → ADMIN_REJECTED. Legacy/error: FAILED",
       "required": true,
       "matchField": false
     },
@@ -100,6 +100,62 @@
       "description": "JSON string with per-component results and metadata (up to 5000 characters)",
       "required": false,
       "matchField": false
+    },
+    {
+      "name": "peerReviewStatus",
+      "type": "String",
+      "description": "Peer review gate status: PENDING_PEER_REVIEW, PEER_APPROVED, or PEER_REJECTED",
+      "required": false,
+      "matchField": false
+    },
+    {
+      "name": "peerReviewedBy",
+      "type": "String",
+      "description": "Email of the peer reviewer who approved or rejected",
+      "required": false,
+      "matchField": false
+    },
+    {
+      "name": "peerReviewedAt",
+      "type": "Date",
+      "description": "Timestamp when peer review action was taken (format: yyyy-MM-dd'T'HH:mm:ss.SSS'Z')",
+      "required": false,
+      "matchField": false
+    },
+    {
+      "name": "peerReviewComments",
+      "type": "String",
+      "description": "Peer reviewer comments (up to 500 characters)",
+      "required": false,
+      "matchField": false
+    },
+    {
+      "name": "adminReviewStatus",
+      "type": "String",
+      "description": "Admin review gate status: PENDING_ADMIN_REVIEW, ADMIN_APPROVED, or ADMIN_REJECTED",
+      "required": false,
+      "matchField": false
+    },
+    {
+      "name": "adminApprovedBy",
+      "type": "String",
+      "description": "Email of the admin who approved or rejected",
+      "required": false,
+      "matchField": false
+    },
+    {
+      "name": "adminApprovedAt",
+      "type": "Date",
+      "description": "Timestamp when admin review action was taken (format: yyyy-MM-dd'T'HH:mm:ss.SSS'Z')",
+      "required": false,
+      "matchField": false
+    },
+    {
+      "name": "adminComments",
+      "type": "String",
+      "description": "Admin reviewer comments (up to 500 characters)",
+      "required": false,
+      "matchField": false
     }
   ],
   "matchRules": [
@@ -113,9 +169,9 @@
     {
       "name": "PROMOTION_ENGINE",
       "type": "contribute-only",
-      "description": "Written by promotion engine at start (IN_PROGRESS) and updated at completion (COMPLETED/FAILED)"
+      "description": "Written by promotion engine at start (IN_PROGRESS), updated at completion (COMPLETED/FAILED), and updated by peer review (Process E2) and admin review (Process E3) during the 2-layer approval workflow"
     }
   ],
   "dataQualitySteps": [],
-  "notes": "This model provides complete audit trail for compliance and troubleshooting. The promotion engine creates a record at the start of each promotion (status=IN_PROGRESS) and updates it when complete. The resultDetail field stores structured JSON for detailed analysis of individual component outcomes."
+  "notes": "This model provides complete audit trail for compliance and troubleshooting. The promotion engine creates a record at the start of each promotion (status=IN_PROGRESS) and updates it when complete. After promotion completes, the record enters a 2-layer approval workflow: peer review (peerReviewStatus) followed by admin review (adminReviewStatus). Self-review prevention is enforced at the backend level (reviewer cannot equal initiatedBy). The resultDetail field stores structured JSON for detailed analysis of individual component outcomes."
 }
