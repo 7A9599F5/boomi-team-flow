@@ -1,0 +1,15 @@
+{
+  "success": true,
+  "errorCode": "",
+  "errorMessage": "",
+  "integrationPacks": [
+    {
+      "packId": "string",
+      "packName": "string",
+      "packDescription": "string",
+      "installationType": "string"
+    }
+  ],
+  "suggestedPackId": "string",
+  "suggestedPackName": "string"
+}

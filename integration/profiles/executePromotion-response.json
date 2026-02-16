@@ -3,6 +3,8 @@
   "errorCode": "",
   "errorMessage": "",
   "promotionId": "string",
+  "branchId": "string",
+  "branchName": "string",
   "componentsCreated": 0,
   "componentsUpdated": 0,
   "componentsFailed": 0,

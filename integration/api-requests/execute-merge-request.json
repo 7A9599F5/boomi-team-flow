@@ -1,0 +1,20 @@
+{
+  "_comment": "POST https://api.boomi.com/partner/api/rest/v1/{primaryAccountId}/MergeRequest/execute/{mergeRequestId}",
+  "_notes": [
+    "Executes a previously created merge request",
+    "Action: MERGE — performs the actual merge of branch into main",
+    "Poll GET /MergeRequest/{mergeRequestId} until stage=MERGED",
+    "After successful merge, package from main (components now on main branch)",
+    "Then DELETE /Branch/{branchId} for cleanup",
+    "If merge fails, branch remains — admin can retry or deny (which deletes branch)"
+  ],
+  "_http_operation": {
+    "method": "POST",
+    "url": "/partner/api/rest/v1/{primaryAccountId}/MergeRequest/execute/{mergeRequestId}",
+    "urlParameters": {
+      "{primaryAccountId}": "DPP: primaryAccountId",
+      "{mergeRequestId}": "DPP: mergeRequestId"
+    }
+  },
+  "action": "MERGE"
+}

@@ -1,0 +1,6 @@
+{
+  "branchId": "string",
+  "prodComponentId": "string",
+  "componentName": "string",
+  "componentAction": "string"
+}

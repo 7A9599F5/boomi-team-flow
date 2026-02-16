@@ -10,5 +10,6 @@
   "devAccountId": "string",
   "devPackageId": "string",
   "devPackageCreator": "string",
-  "devPackageVersion": "string"
+  "devPackageVersion": "string",
+  "branchId": "string"
 }

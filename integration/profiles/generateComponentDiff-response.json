@@ -1,0 +1,12 @@
+{
+  "success": true,
+  "errorCode": "",
+  "errorMessage": "",
+  "prodComponentId": "string",
+  "componentName": "string",
+  "componentAction": "string",
+  "branchXml": "string",
+  "mainXml": "string",
+  "branchVersion": 0,
+  "mainVersion": 0
+}

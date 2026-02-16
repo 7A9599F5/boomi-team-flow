@@ -1,0 +1,35 @@
+<!--
+  QUERY IntegrationPacks from Primary Account via Partner API
+
+  HTTP Method: POST
+  URL: https://api.boomi.com/partner/api/rest/v1/{primaryAccountId}/IntegrationPack/query
+
+  Headers:
+    Accept: application/xml
+    Content-Type: application/xml
+
+  Notes:
+    - Returns all MULTI-type Integration Packs in the primary account
+    - Used by Process J (listIntegrationPacks) to populate the pack selector on Page 4
+    - Results include: id, name, description, installationType
+    - If suggestForProcess is provided, Process J queries PromotionLog for the most recent
+      integrationPackId where processName matches and status=DEPLOYED
+
+  HTTP Client Operation Configuration:
+    Action: Send
+    HTTP Method: POST
+    Request URL: /partner/api/rest/v1/{1}/IntegrationPack/query
+    Request URL Parameters:
+      {1} = Dynamic Process Property: primaryAccountId
+
+  Request Body:
+-->
+<QueryFilter xmlns="http://api.platform.boomi.com/">
+  <expression operator="and">
+    <nestedExpression>
+      <argument>installationType</argument>
+      <operator>EQUALS</operator>
+      <property>MULTI</property>
+    </nestedExpression>
+  </expression>
+</QueryFilter>

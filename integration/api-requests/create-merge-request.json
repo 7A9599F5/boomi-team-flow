@@ -1,0 +1,14 @@
+{
+  "_comment": "POST https://api.boomi.com/partner/api/rest/v1/{primaryAccountId}/MergeRequest",
+  "_notes": [
+    "Creates a merge request to merge the promotion branch into main",
+    "Strategy: OVERRIDE — promotion branch components overwrite main (no conflict resolution needed)",
+    "priorityBranch: the promotion branch ID (ensures branch content wins)",
+    "Safe because Process C is the sole writer to the promotion branch",
+    "After creation, execute the merge via POST /MergeRequest/execute/{mergeRequestId}",
+    "Only called on admin approval path (not on reject/deny)"
+  ],
+  "source": "{branchId}",
+  "strategy": "OVERRIDE",
+  "priorityBranch": "{branchId}"
+}

@@ -156,6 +156,41 @@
       "description": "Admin reviewer comments (up to 500 characters)",
       "required": false,
       "matchField": false
+    },
+    {
+      "name": "branchId",
+      "type": "String",
+      "description": "Promotion branch ID — set on branch creation, cleared (null) after branch cleanup on any terminal path (approve, reject, deny)",
+      "required": false,
+      "matchField": false
+    },
+    {
+      "name": "branchName",
+      "type": "String",
+      "description": "Promotion branch name (e.g., promo-{promotionId})",
+      "required": false,
+      "matchField": false
+    },
+    {
+      "name": "integrationPackId",
+      "type": "String",
+      "description": "Integration Pack ID — populated after successful deploy (Process D)",
+      "required": false,
+      "matchField": false
+    },
+    {
+      "name": "integrationPackName",
+      "type": "String",
+      "description": "Human-readable Integration Pack name — populated after successful deploy",
+      "required": false,
+      "matchField": false
+    },
+    {
+      "name": "processName",
+      "type": "String",
+      "description": "Root process name — used for Integration Pack suggestions on future promotions of the same process",
+      "required": false,
+      "matchField": false
     }
   ],
   "matchRules": [
@@ -173,5 +208,5 @@
     }
   ],
   "dataQualitySteps": [],
-  "notes": "This model provides complete audit trail for compliance and troubleshooting. The promotion engine creates a record at the start of each promotion (status=IN_PROGRESS) and updates it when complete. After promotion completes, the record enters a 2-layer approval workflow: peer review (peerReviewStatus) followed by admin review (adminReviewStatus). Self-review prevention is enforced at the backend level (reviewer cannot equal initiatedBy). The resultDetail field stores structured JSON for detailed analysis of individual component outcomes."
+  "notes": "This model provides complete audit trail for compliance and troubleshooting. The promotion engine creates a record at the start of each promotion (status=IN_PROGRESS) and updates it when complete. After promotion completes, the record enters a 2-layer approval workflow: peer review (peerReviewStatus) followed by admin review (adminReviewStatus). Self-review prevention is enforced at the backend level (reviewer cannot equal initiatedBy). The resultDetail field stores structured JSON for detailed analysis of individual component outcomes. The branchId field tracks the Boomi Branching promotion branch lifecycle — set on creation, cleared after cleanup. The processName and integrationPackId fields enable smart Integration Pack suggestions for repeat promotions."
 }
