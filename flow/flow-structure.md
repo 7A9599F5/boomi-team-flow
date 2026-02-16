@@ -65,6 +65,13 @@ Flow values are used to maintain state across pages and message steps.
 | `peerReviewStatus` | String | Current peer review status (PENDING_PEER_REVIEW, PEER_APPROVED, PEER_REJECTED) |
 | `pendingPeerReviews` | List | Peer review queue data from queryPeerReviewQueue (excludes own submissions) |
 | `selectedPeerReview` | Object | Currently selected promotion in the peer review queue |
+| `branchId` | String | Promotion branch ID returned by executePromotion — used for diff API calls and branch cleanup |
+| `branchName` | String | Promotion branch name (e.g., "promo-{promotionId}") |
+| `diffBranchXml` | String | Normalized XML from promotion branch (from generateComponentDiff response) |
+| `diffMainXml` | String | Normalized XML from main branch (from generateComponentDiff response) |
+| `selectedDiffComponent` | Object | Currently selected component for diff viewing (prodComponentId, componentName, componentAction) |
+| `availableIntegrationPacks` | List | Integration Packs from listIntegrationPacks (Process J) for Page 4 combobox |
+| `suggestedPackId` | String | Suggested Integration Pack ID for current process (from listIntegrationPacks) |
 
 ## Flow Navigation (Step-by-Step)
 
@@ -79,13 +86,16 @@ Flow values are used to maintain state across pages and message steps.
    - Display dependency tree and summary
 
 3. **Page 2** → "Promote" button → Message step (`executePromotion`) → **Page 3 (Promotion Status)**
+   - Process C creates promotion branch, promotes components to branch (not main) via tilde syntax
    - Shows spinner during execution
-   - On completion: display results grid and summary
+   - On completion: display results grid, summary, and branchId/branchName
+   - "View Diff" links in each component row call `generateComponentDiff` on demand
 
 4. **Page 2** → "Cancel" button → **Page 1**
 
 5. **Page 3** → "Submit for Integration Pack Deployment" → **Page 4 (Deployment Submission)**
    - Only enabled if all components succeeded
+   - Carries forward `branchId` and `branchName` Flow values
 
 6. **Page 3** → "Done" → **End flow**
 
@@ -100,18 +110,23 @@ Flow values are used to maintain state across pages and message steps.
    - Decision step: compare `$User/Email` with `selectedPeerReview.initiatedBy` — if equal, block with error "You cannot review your own submission"
 
 9. **Page 6 (Peer Review Detail)** → "Approve" → Message step (`submitPeerReview` with decision=APPROVED) → Email to admins + submitter → **Admin Swimlane** → **Page 7**
+   - "View Diff" links call `generateComponentDiff` for branch-vs-main comparison
    - Flow pauses at swimlane boundary
    - Requires admin authentication to continue
 
-10. **Page 6** → "Reject" → Modal with required rejection reason → Message step (`submitPeerReview` with decision=REJECTED) → Email to submitter → **End flow**
+10. **Page 6** → "Reject" → Modal with required rejection reason → Message step (`submitPeerReview` with decision=REJECTED) → `DELETE /Branch/{branchId}` → Email to submitter → **End flow**
+    - Branch deleted — main remains untouched
 
 ### Admin Flow Path
 
-11. **Page 7 (Admin Approval Queue)** → "Approve" → Message step (`packageAndDeploy`) → Show results → **End**
+11. **Page 7 (Admin Approval Queue)** → "Approve" → Merge branch → main → Message step (`packageAndDeploy`) → Delete branch → Show results → **End**
     - On load: Message step → `queryStatus` with `adminReviewStatus` = "PENDING_ADMIN_REVIEW"
+    - "View Diff" links call `generateComponentDiff` for branch-vs-main comparison
+    - Approve workflow: `POST /MergeRequest` (OVERRIDE) → execute merge → `packageAndDeploy` (from main) → `DELETE /Branch/{branchId}`
     - Email notification sent to submitter + peer reviewer
 
-12. **Page 7** → "Deny" → Notification to submitter + peer reviewer → **End**
+12. **Page 7** → "Deny" → `DELETE /Branch/{branchId}` → Notification to submitter + peer reviewer → **End**
+    - Branch deleted — main remains untouched
 
 13. **Page 8 (Mapping Viewer)** accessible from Admin swimlane navigation
     - Independent page for viewing/managing component mappings
@@ -174,6 +189,8 @@ All Message steps use the Boomi Integration Service connector. Each generates Re
   - `componentsCreated`
   - `componentsUpdated`
   - `componentsFailed`
+  - `branchId` (promotion branch ID)
+  - `branchName` (branch name, e.g., "promo-{promotionId}")
 
 ### 5. Query Status
 - **Step name:** `Query Status`
@@ -242,6 +259,36 @@ All Message steps use the Boomi Integration Service connector. Each generates Re
   - `promotionId` (string)
   - `newStatus` (string — PEER_APPROVED or PEER_REJECTED)
 
+### 10. Generate Component Diff
+- **Step name:** `Generate Component Diff`
+- **Message Action:** `generateComponentDiff`
+- **Used in:** Pages 3, 6, 7 — on-demand per component click ("View Diff" link)
+- **Request Type:** `GenerateComponentDiffRequest` (auto-generated)
+- **Response Type:** `GenerateComponentDiffResponse` (auto-generated)
+- **Input values:**
+  - `branchId` (from `branchId` Flow value or promotion record)
+  - `prodComponentId` (from selected component row)
+  - `componentName` (from selected component row)
+  - `componentAction` ("CREATE" or "UPDATE")
+- **Output values:**
+  - `diffBranchXml` (normalized XML from promotion branch)
+  - `diffMainXml` (normalized XML from main branch; empty for CREATE)
+  - `branchVersion` (version on branch)
+  - `mainVersion` (version on main; 0 for CREATE)
+
+### 11. List Integration Packs
+- **Step name:** `List Integration Packs`
+- **Message Action:** `listIntegrationPacks`
+- **Used in:** Page 4 load (Deployment Submission)
+- **Request Type:** `ListIntegrationPacksRequest` (auto-generated)
+- **Response Type:** `ListIntegrationPacksResponse` (auto-generated)
+- **Input values:**
+  - `suggestForProcess` (from `processName` — the promoted process name)
+- **Output values:**
+  - `availableIntegrationPacks` (array of Integration Pack objects)
+  - `suggestedPackId` (most recently used pack for this process, if any)
+  - `suggestedPackName` (name of the suggested pack)
+
 ## Decision Steps
 
 After each Message step that can fail, add a Decision step to handle errors gracefully.
@@ -261,6 +308,8 @@ After each Message step that can fail, add a Decision step to handle errors grac
 - Query Status → Decision → (Success: Page 7 | Failure: Error Page)
 - Package and Deploy → Decision → (Success: Results display | Failure: Error Page)
 - Manage Mappings → Decision → (Success: Update grid | Failure: Error Page)
+- Generate Component Diff → Decision → (Success: Render XmlDiffViewer | Failure: Show error in panel)
+- List Integration Packs → Decision → (Success: Populate combobox | Failure: Show error, allow manual entry)
 
 ## Email Notifications
 
