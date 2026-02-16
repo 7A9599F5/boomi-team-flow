@@ -25,21 +25,21 @@ This guide walks through building every component of the Promotion System step b
 
 ## Bill of Materials
 
-The system comprises **51 components** across 6 phases:
+The system comprises **57 components** across 6 phases:
 
 | Phase | Category | Count | Components |
 |-------|----------|-------|------------|
-| 1 | DataHub Models | 3 | ComponentMapping, DevAccountAccess, PromotionLog |
+| 1 | DataHub Models | 3 | ComponentMapping, DevAccountAccess, PromotionLog (21 fields incl. peer/admin review) |
 | 2 | Connections | 2 | HTTP Client (Partner API), DataHub |
 | 2 | HTTP Client Operations | 9 | GET/POST/QUERY for Component, Reference, Metadata, Package, Deploy, IntegrationPack |
 | 2 | DataHub Operations | 6 | Query + Update for each of 3 models |
-| 3 | JSON Profiles | 14 | Request + Response for each of 7 processes |
-| 3 | Integration Processes | 7 | A0, A, B, C, D, E, F |
-| 4 | FSS Operations | 7 | One per process |
+| 3 | JSON Profiles | 18 | Request + Response for each of 9 processes |
+| 3 | Integration Processes | 9 | A0, A, B, C, D, E, E2, E3, F |
+| 4 | FSS Operations | 9 | One per process |
 | 4 | Flow Service | 1 | PROMO - Flow Service |
 | 5 | Flow Connector | 1 | Promotion Service Connector |
-| 5 | Flow Application | 1 | Promotion Dashboard |
-| | **Total** | **51** | |
+| 5 | Flow Application | 1 | Promotion Dashboard (3 swimlanes, 8 pages) |
+| | **Total** | **57** | |
 
 ---
 
@@ -77,7 +77,7 @@ Phase 1: DataHub Models
 Within Phase 3, build processes in this order (simplest → most complex):
 
 ```
-F (Mapping CRUD) → A0 (Get Dev Accounts) → E (Query Status) → A (List Packages) → B (Resolve Dependencies) → C (Execute Promotion) → D (Package & Deploy)
+F (Mapping CRUD) → A0 (Get Dev Accounts) → E (Query Status) → E2 (Query Peer Review Queue) → E3 (Submit Peer Review) → A (List Packages) → B (Resolve Dependencies) → C (Execute Promotion) → D (Package & Deploy)
 ```
 
 ---
@@ -88,11 +88,11 @@ F (Mapping CRUD) → A0 (Get Dev Accounts) → E (Query Status) → A (List Pack
 |-----------|----------|---------|
 | `/datahub/models/` | DataHub model specifications (3 JSON files) | Phase 1 |
 | `/datahub/api-requests/` | Test XML for DataHub CRUD validation (2 files) | Phase 1, 6 |
-| `/integration/profiles/` | JSON request/response profiles (14 files) | Phase 3 |
-| `/integration/scripts/` | Groovy scripts for XML manipulation (4 files) | Phase 3 |
+| `/integration/profiles/` | JSON request/response profiles (18 files) | Phase 3 |
+| `/integration/scripts/` | Groovy scripts for XML manipulation (5 files) | Phase 3 |
 | `/integration/api-requests/` | API request templates (9 files) | Phase 2, 3 |
 | `/integration/flow-service/` | Flow Service component specification | Phase 4 |
-| `/flow/` | Flow app structure and page layouts (7 files) | Phase 5 |
+| `/flow/` | Flow app structure and page layouts (9 files) | Phase 5 |
 | `/docs/` | This guide and architecture reference | All |
 
 ---
@@ -169,12 +169,20 @@ DataHub stores the three models that power the promotion engine: component mappi
 | `componentsFailed` | Number | Yes | No | Failed component count |
 | `errorMessage` | Long Text | No | No | Up to 5000 chars; present when status=FAILED |
 | `resultDetail` | Long Text | No | No | Up to 5000 chars; JSON per-component results |
+| `peerReviewStatus` | String | No | No | `PENDING_PEER_REVIEW`, `PEER_APPROVED`, `PEER_REJECTED` |
+| `peerReviewedBy` | String | No | No | Email of peer reviewer |
+| `peerReviewedAt` | Date | No | No | Timestamp of peer review action |
+| `peerReviewComments` | String | No | No | Peer reviewer comments (up to 500 chars) |
+| `adminReviewStatus` | String | No | No | `PENDING_ADMIN_REVIEW`, `ADMIN_APPROVED`, `ADMIN_REJECTED` |
+| `adminApprovedBy` | String | No | No | Email of admin reviewer |
+| `adminApprovedAt` | Date | No | No | Timestamp of admin review action |
+| `adminComments` | String | No | No | Admin reviewer comments (up to 500 chars) |
 
 4. Match rule: **Exact** on `promotionId` (single field).
 5. Source: `PROMOTION_ENGINE` (Contribute Only).
 6. Skip Data Quality. **Save --> Publish --> Deploy**.
 
-**Verify:** Model shows 13 fields, 1 match rule, source `PROMOTION_ENGINE`.
+**Verify:** Model shows 21 fields, 1 match rule, source `PROMOTION_ENGINE`.
 
 ### Step 1.4 -- Seed DevAccountAccess Data
 
@@ -1994,8 +2002,8 @@ A successful response contains `"success": true` and an `accounts` array. If you
    - **Authentication**: Basic
      - **Username**: the shared web server user (from **Shared Web Server User Management** in AtomSphere)
      - **Password**: the API token for that user
-4. Click **"Retrieve Connector Configuration Data"**. Flow contacts the deployed Flow Service and auto-discovers all 7 message actions. Wait for the operation to complete.
-5. Verify the auto-generated Flow Types. You should see exactly 14 types (one request and one response for each action):
+4. Click **"Retrieve Connector Configuration Data"**. Flow contacts the deployed Flow Service and auto-discovers all 9 message actions. Wait for the operation to complete.
+5. Verify the auto-generated Flow Types. You should see exactly 18 types (one request and one response for each action):
    1. `getDevAccounts REQUEST - getDevAccountsRequest`
    2. `getDevAccounts RESPONSE - getDevAccountsResponse`
    3. `listDevPackages REQUEST - listDevPackagesRequest`
@@ -2010,10 +2018,14 @@ A successful response contains `"success": true` and an `accounts` array. If you
    12. `queryStatus RESPONSE - queryStatusResponse`
    13. `manageMappings REQUEST - manageMappingsRequest`
    14. `manageMappings RESPONSE - manageMappingsResponse`
+   15. `queryPeerReviewQueue REQUEST - queryPeerReviewQueueRequest`
+   16. `queryPeerReviewQueue RESPONSE - queryPeerReviewQueueResponse`
+   17. `submitPeerReview REQUEST - submitPeerReviewRequest`
+   18. `submitPeerReview RESPONSE - submitPeerReviewResponse`
 6. Open the **Configuration Values** section of the connector. Set `primaryAccountId` to your primary Boomi account ID.
 7. Click **Install**, then **Save**.
 
-**Verify:** Open the connector and confirm all 14 types appear under **Types**. If any are missing, click "Retrieve Connector Configuration Data" again and check that the Flow Service is deployed and all 7 listeners are running.
+**Verify:** Open the connector and confirm all 18 types appear under **Types**. If any are missing, click "Retrieve Connector Configuration Data" again and check that the Flow Service is deployed and all 9 listeners are running.
 
 ### Step 5.2 -- Create Flow Application
 
@@ -2022,11 +2034,15 @@ A successful response contains `"success": true` and an `accounts` array. If you
 3. Add **Developer Swimlane**:
    - Authorization: SSO group `Boomi Developers`
    - This swimlane is the entry point for the application
-4. Add **Admin Swimlane**:
+4. Add **Peer Review Swimlane**:
+   - Authorization: SSO groups `Boomi Developers` OR `Boomi Admins` (any listed group grants access)
+   - This swimlane receives control after the developer submits for peer review
+   - Note: Boomi Flow supports multiple SSO groups per swimlane with OR logic
+5. Add **Admin Swimlane**:
    - Authorization: SSO group `Boomi Admins`
-   - This swimlane receives control after the developer submits for approval
+   - This swimlane receives control after peer review passes
 
-Build the 6 pages in order. Each page uses Message steps to call Flow Service actions and Decision steps to handle the `success` field in responses.
+Build the 8 pages in order. Each page uses Message steps to call Flow Service actions and Decision steps to handle the `success` field in responses.
 
 #### Page 1: Package Browser (Developer Swimlane)
 
@@ -2104,11 +2120,11 @@ Displays results after `executePromotion` completes. The Flow Service returns wa
    - On click: Navigate to Page 4
 5. **"Done"** button: End flow.
 
-#### Page 4: Deployment Submission (Developer to Admin Transition)
+#### Page 4: Deployment Submission (Developer to Peer Review Transition)
 
 Reference: `/flow/page-layouts/page4-deployment-submission.md` for full UI specification.
 
-The developer fills out deployment details and submits for admin approval. This page marks the transition between the Developer and Admin swimlanes.
+The developer fills out deployment details and submits for peer review. This page marks the transition between the Developer and Peer Review swimlanes — the first step of the 2-layer approval workflow.
 
 **Form components:**
 
@@ -2121,46 +2137,84 @@ The developer fills out deployment details and submits for admin approval. This 
 
 **Submit behavior:**
 
-7. **"Submit for Approval"** button:
+7. **"Submit for Peer Review"** button:
    - Validates all required fields
    - Builds the `deploymentRequest` object with `promotionId`, `packageVersion`, `integrationPackId` (or `createNewPack` + `newPackName`), `targetAccountGroupId`, `notes`, `submittedBy`, `processName`, `componentsTotal`
-   - Sends email notification to admin distribution list:
-     - **To**: admin group email (e.g., `boomi-admins@company.com`)
-     - **Subject**: `"Promotion Approval Needed: {processName} v{packageVersion}"`
-     - **Body**: Promotion ID, process name, package version, component counts, deployment details, submitter info, and a link to the approval queue
-   - Transitions to the **Admin swimlane** -- the flow pauses at the swimlane boundary
-   - Developer sees a confirmation message ("Submitted for approval!") with the Promotion ID, then the flow ends for them
+   - Sends email notification to dev + admin distribution lists:
+     - **To**: dev group + admin group emails (e.g., `boomi-developers@company.com`, `boomi-admins@company.com`)
+     - **Subject**: `"Peer Review Needed: {processName} v{packageVersion}"`
+     - **Body**: Promotion ID, process name, package version, component counts, deployment details, submitter info, and a link to the peer review queue
+   - Transitions to the **Peer Review swimlane** -- the flow pauses at the swimlane boundary
+   - Developer sees a confirmation message ("Submitted for peer review!") with the Promotion ID, then the flow ends for them
 8. **"Cancel"** button: Navigate back to Page 3.
 
-#### Page 5: Approval Queue (Admin Swimlane)
+#### Page 5: Peer Review Queue (Peer Review Swimlane)
 
-Reference: `/flow/page-layouts/page5-approval-queue.md` for full UI specification.
+Reference: `/flow/page-layouts/page5-peer-review-queue.md` for full UI specification.
 
-Admin authenticates via SSO ("Boomi Admins" group) and reviews pending deployment requests.
+Peer reviewer authenticates via SSO ("Boomi Developers" or "Boomi Admins" group) and sees promotions submitted by other users. Own submissions are excluded by the backend.
 
 **Page load:**
 
-1. Message step: action = `queryStatus`, inputs = `status` = "COMPLETED" and `deployed` = false, output = `pendingApprovals` array.
+1. Message step: action = `queryPeerReviewQueue`, input = `requesterEmail` (from `$User/Email`), output = `pendingPeerReviews` array.
 2. Decision step: check success.
 
 **UI components:**
 
-3. **Approval Queue Data Grid** bound to `pendingApprovals`. Columns: Submitter, Process Name, Components count, Created/Updated counts, Submitted date (default sort descending), Status badge, Notes (truncated).
-4. On row select: Expand **Promotion Detail Panel** below the grid. Panel sections: Submission Details (submitter, promotion ID, package version, integration pack, target account group, notes), Promotion Results (component results mini-table with summary badges), Credential Warning (conditional, lists components needing reconfiguration), Source Account info.
+3. **Peer Review Queue Data Grid** bound to `pendingPeerReviews`. Columns: Submitter, Process Name, Components count, Created/Updated counts, Submitted date (default sort descending), Status badge, Notes (truncated).
+4. On row select: Store selected promotion in `selectedPeerReview` Flow value, then navigate to Page 6.
+5. **Self-review guard (fallback):** Add a Decision step after row selection comparing `$User/Email` with `selectedPeerReview.initiatedBy`. If equal, show error banner: "You cannot review your own submission."
+
+#### Page 6: Peer Review Detail (Peer Review Swimlane)
+
+Reference: `/flow/page-layouts/page6-peer-review-detail.md` for full UI specification.
+
+Displays full promotion details and allows the peer reviewer to approve or reject.
+
+**UI components:**
+
+1. **Promotion Detail Panel**: Submission details, promotion results table, credential warning (conditional), source account info.
+2. **Peer Review Comments** textarea: Optional for approval, required for rejection. Max 500 characters.
+3. **"Approve — Send to Admin Review"** button (green):
+   - Confirmation modal summarizing the promotion
+   - On confirm: Message step with action = `submitPeerReview`, inputs = `promotionId` + `decision=APPROVED` + `reviewerEmail` + `reviewerName` + `comments`
+   - Decision step: check success; handle `SELF_REVIEW_NOT_ALLOWED`, `ALREADY_REVIEWED`, `INVALID_REVIEW_STATE` errors
+   - On success: Send email to admins + submitter, transition to Admin swimlane (Page 7)
+4. **"Reject"** button (red):
+   - Rejection reason modal (required textarea)
+   - On confirm: Message step with action = `submitPeerReview`, inputs = `promotionId` + `decision=REJECTED` + `reviewerEmail` + `reviewerName` + `comments`
+   - On success: Send rejection email to submitter, end flow
+5. **"Back to Peer Review Queue"** link: Navigate to Page 5.
+
+#### Page 7: Admin Approval Queue (Admin Swimlane)
+
+Reference: `/flow/page-layouts/page7-admin-approval-queue.md` for full UI specification.
+
+Admin authenticates via SSO ("Boomi Admins" group) and reviews promotions that have passed peer review.
+
+**Page load:**
+
+1. Message step: action = `queryStatus`, inputs = `status` = "COMPLETED", `deployed` = false, `reviewStage` = "PENDING_ADMIN_REVIEW", output = `pendingApprovals` array (only promotions that passed peer review).
+2. Decision step: check success.
+
+**UI components:**
+
+3. **Approval Queue Data Grid** bound to `pendingApprovals`. Columns: Submitter, Process Name, Components count, Created/Updated counts, **Peer Reviewed By**, Submitted date (default sort descending), Status badge, Notes (truncated).
+4. On row select: Expand **Promotion Detail Panel** below the grid. Panel sections: Submission Details (submitter, promotion ID, package version, integration pack, target account group, notes), **Peer Review Information** (reviewed by, reviewed at, decision, comments), Promotion Results (component results mini-table with summary badges), Credential Warning (conditional), Source Account info.
 5. **Admin Comments** textarea below the detail panel. Optional, max 500 characters.
 6. **"Approve and Deploy"** button (green, enabled when a row is selected):
    - Confirmation modal summarizing process name, version, target, component count
    - On confirm: Message step with action = `packageAndDeploy`, inputs = `promotionId` + `deploymentRequest` + `adminComments` + `approvedBy`, outputs = `deploymentResults` + `deploymentId`
    - Decision step: check success; display results or error
-   - On success: Send approval email to submitter (subject: `"Approved: {processName} v{packageVersion}"`), refresh the approval queue
+   - On success: Send approval email to **submitter + peer reviewer** (subject: `"Approved & Deployed: {processName} v{packageVersion}"`), refresh the approval queue
 7. **"Deny"** button (red, enabled when a row is selected):
    - Denial reason modal with required textarea
-   - On confirm: Update promotion status to DENIED, send denial email to submitter (subject: `"Denied: {processName} v{packageVersion}"`, body includes denial reason and admin comments), refresh the queue
-8. **"View Component Mappings"** link in the page header: Navigate to Page 6.
+   - On confirm: Update promotion status to ADMIN_REJECTED, send denial email to **submitter + peer reviewer** (subject: `"Admin Denied: {processName} v{packageVersion}"`, body includes denial reason and admin comments), refresh the queue
+8. **"View Component Mappings"** link in the page header: Navigate to Page 8.
 
-#### Page 6: Mapping Viewer (Admin Swimlane)
+#### Page 8: Mapping Viewer (Admin Swimlane)
 
-Reference: `/flow/page-layouts/page6-mapping-viewer.md` for full UI specification.
+Reference: `/flow/page-layouts/page8-mapping-viewer.md` for full UI specification.
 
 Admin views and manages dev-to-prod component ID mappings stored in the DataHub.
 
@@ -2183,7 +2237,7 @@ Admin views and manages dev-to-prod component ID mappings stored in the DataHub.
    - Update: `operation` = "update" with mapping ID and changed fields
    - Delete: `operation` = "delete" with mapping ID
    - Each operation followed by a Decision step checking success. On success, refresh the grid and collapse the form. On failure, display the error and keep the form open.
-7. **"Back to Approval Queue"** link: Navigate to Page 5.
+7. **"Back to Admin Approval Queue"** link: Navigate to Page 7.
 
 ### Step 5.3 -- Configure SSO
 
@@ -2191,9 +2245,10 @@ Admin views and manages dev-to-prod component ID mappings stored in the DataHub.
    - `Boomi Developers` -- contains all developer users who will browse packages and submit promotions
    - `Boomi Admins` -- contains administrators who approve or deny deployment requests
 2. In Boomi Flow, open the Identity connector (Azure AD / Entra).
-3. Map each group to the corresponding swimlane:
-   - `Boomi Developers` -> Developer Swimlane
-   - `Boomi Admins` -> Admin Swimlane
+3. Map each group to the corresponding swimlane(s):
+   - `Boomi Developers` -> Developer Swimlane, Peer Review Swimlane
+   - `Boomi Admins` -> Peer Review Swimlane, Admin Swimlane
+   - **Note**: The Peer Review Swimlane accepts both groups (OR logic). Any developer or admin can peer-review, but self-review is prevented at the backend level.
 4. Save the Identity connector configuration.
 
 ### Step 5.4 -- Wire Navigation
@@ -2206,21 +2261,27 @@ Connect all pages via Outcome elements on the Flow canvas.
 4. **Page 2** "Cancel" button outcome -> Page 1.
 5. **Page 3** "Submit for Integration Pack Deployment" button outcome -> Page 4 (Deployment Submission).
 6. **Page 3** "Done" button outcome -> End flow.
-7. **Page 4** "Submit for Approval" button outcome -> Swimlane transition (Developer -> Admin) -> Page 5 (Approval Queue).
+7. **Page 4** "Submit for Peer Review" button outcome -> Swimlane transition (Developer -> Peer Review) -> Page 5 (Peer Review Queue).
 8. **Page 4** "Cancel" button outcome -> Page 3.
-9. **Page 5** "Approve and Deploy" (after `packageAndDeploy` success) -> Refresh queue / End flow.
-10. **Page 5** "Deny" (after denial confirmation) -> Refresh queue / End flow.
-11. **Page 5** "View Component Mappings" link outcome -> Page 6 (Mapping Viewer).
-12. **Page 6** "Back to Approval Queue" link outcome -> Page 5.
+9. **Page 5** Row select -> Decision (self-review check) -> Page 6 (Peer Review Detail).
+10. **Page 6** "Approve" (after `submitPeerReview` success with decision=APPROVED) -> Swimlane transition (Peer Review -> Admin) -> Page 7 (Admin Approval Queue).
+11. **Page 6** "Reject" (after `submitPeerReview` success with decision=REJECTED) -> Email to submitter -> End flow.
+12. **Page 6** "Back to Peer Review Queue" link outcome -> Page 5.
+13. **Page 7** "Approve and Deploy" (after `packageAndDeploy` success) -> Refresh queue / End flow.
+14. **Page 7** "Deny" (after denial confirmation) -> Refresh queue / End flow.
+15. **Page 7** "View Component Mappings" link outcome -> Page 8 (Mapping Viewer).
+16. **Page 8** "Back to Admin Approval Queue" link outcome -> Page 7.
 
 For every Decision step, wire the **failure outcome** to a shared Error Page that displays `{responseObject.errorMessage}` with Back, Retry, and Home buttons.
 
 **Verify:**
 
 1. Open the published Flow application URL in a browser.
-2. **Developer flow**: Authenticate as a user in the `Boomi Developers` SSO group. Select a dev account, browse packages, select a package, click "Review for Promotion", review the dependency tree, click "Promote to Primary Account", confirm, wait for results on the status page, and click "Submit for Integration Pack Deployment". Fill out the deployment form and submit. Confirm you see the "Submitted for approval!" message and receive a confirmation email.
-3. **Admin flow**: Authenticate as a user in the `Boomi Admins` SSO group (or follow the link from the notification email). Verify the pending request appears in the Approval Queue. Select it, review the detail panel, add admin comments, and click "Approve and Deploy". Confirm the deployment succeeds and the submitter receives an approval email. Repeat with a denial to verify the denial flow and email.
-4. **Mapping Viewer**: From the Approval Queue, click "View Component Mappings". Verify mappings load in the grid, filters work, CSV export downloads, and manual mapping create/update/delete operations succeed.
+2. **Developer flow**: Authenticate as a user in the `Boomi Developers` SSO group. Select a dev account, browse packages, select a package, click "Review for Promotion", review the dependency tree, click "Promote to Primary Account", confirm, wait for results on the status page, and click "Submit for Integration Pack Deployment". Fill out the deployment form and submit. Confirm you see the "Submitted for peer review!" message and receive a confirmation email.
+3. **Peer review flow**: Authenticate as a **different** user in the `Boomi Developers` or `Boomi Admins` SSO group (or follow the link from the notification email). Verify the pending review appears in the Peer Review Queue (Page 5). Confirm the submitter's own submissions do NOT appear. Select the review, examine the detail page (Page 6), add comments, and click "Approve — Send to Admin Review". Confirm the success message and that both the admin group and submitter receive emails. Also test rejection: select a different review, reject with a reason, and verify the submitter receives the rejection email.
+4. **Self-review prevention**: Authenticate as the **same user who submitted**. Verify their own promotion does NOT appear in the Peer Review Queue.
+5. **Admin flow**: Authenticate as a user in the `Boomi Admins` SSO group (or follow the link from the peer approval email). Verify the peer-approved request appears in the Admin Approval Queue (Page 7) with the "Peer Reviewed By" column populated. Select it, review the detail panel including peer review information, add admin comments, and click "Approve and Deploy". Confirm the deployment succeeds and both the submitter and peer reviewer receive approval emails. Repeat with a denial to verify the denial flow and email.
+6. **Mapping Viewer**: From the Admin Approval Queue, click "View Component Mappings". Verify mappings load in the grid, filters work, CSV export downloads, and manual mapping create/update/delete operations succeed.
 
 ---
 
