@@ -29,17 +29,18 @@ The system comprises **57 components** across 6 phases:
 
 | Phase | Category | Count | Components |
 |-------|----------|-------|------------|
-| 1 | DataHub Models | 3 | ComponentMapping, DevAccountAccess, PromotionLog (21 fields incl. peer/admin review) |
+| 1 | DataHub Models | 3 | ComponentMapping, DevAccountAccess, PromotionLog (26 fields incl. peer/admin review + branching) |
 | 2 | Connections | 2 | HTTP Client (Partner API), DataHub |
-| 2 | HTTP Client Operations | 9 | GET/POST/QUERY for Component, Reference, Metadata, Package, Deploy, IntegrationPack |
+| 2 | HTTP Client Operations | 12 | GET/POST/QUERY for Component, Reference, Metadata, Package, Deploy, IntegrationPack; Branch (create, query), MergeRequest (create, execute) |
 | 2 | DataHub Operations | 6 | Query + Update for each of 3 models |
-| 3 | JSON Profiles | 18 | Request + Response for each of 9 processes |
-| 3 | Integration Processes | 9 | A0, A, B, C, D, E, E2, E3, F |
-| 4 | FSS Operations | 9 | One per process |
+| 3 | JSON Profiles | 22 | Request + Response for each of 11 processes |
+| 3 | Integration Processes | 11 | A0, A, B, C, D, E, E2, E3, F, G, J |
+| 4 | FSS Operations | 11 | One per process |
 | 4 | Flow Service | 1 | PROMO - Flow Service |
+| 5 | Custom Component | 1 | XmlDiffViewer (React diff viewer for Flow custom player) |
 | 5 | Flow Connector | 1 | Promotion Service Connector |
 | 5 | Flow Application | 1 | Promotion Dashboard (3 swimlanes, 8 pages) |
-| | **Total** | **57** | |
+| | **Total** | **64** | |
 
 ---
 
@@ -77,7 +78,7 @@ Phase 1: DataHub Models
 Within Phase 3, build processes in this order (simplest → most complex):
 
 ```
-F (Mapping CRUD) → A0 (Get Dev Accounts) → E (Query Status) → E2 (Query Peer Review Queue) → E3 (Submit Peer Review) → A (List Packages) → B (Resolve Dependencies) → C (Execute Promotion) → D (Package & Deploy)
+F (Mapping CRUD) → A0 (Get Dev Accounts) → E (Query Status) → E2 (Query Peer Review Queue) → E3 (Submit Peer Review) → J (List Integration Packs) → G (Generate Component Diff) → A (List Packages) → B (Resolve Dependencies) → C (Execute Promotion) → D (Package & Deploy)
 ```
 
 ---
@@ -88,9 +89,9 @@ F (Mapping CRUD) → A0 (Get Dev Accounts) → E (Query Status) → E2 (Query Pe
 |-----------|----------|---------|
 | `/datahub/models/` | DataHub model specifications (3 JSON files) | Phase 1 |
 | `/datahub/api-requests/` | Test XML for DataHub CRUD validation (2 files) | Phase 1, 6 |
-| `/integration/profiles/` | JSON request/response profiles (18 files) | Phase 3 |
-| `/integration/scripts/` | Groovy scripts for XML manipulation (5 files) | Phase 3 |
-| `/integration/api-requests/` | API request templates (9 files) | Phase 2, 3 |
+| `/integration/profiles/` | JSON request/response profiles (22 files, 11 processes × 2) | Phase 3 |
+| `/integration/scripts/` | Groovy scripts for XML manipulation (6 files) | Phase 3 |
+| `/integration/api-requests/` | API request templates (13 files) | Phase 2, 3 |
 | `/integration/flow-service/` | Flow Service component specification | Phase 4 |
 | `/flow/` | Flow app structure and page layouts (9 files) | Phase 5 |
 | `/docs/` | This guide and architecture reference | All |
@@ -328,7 +329,7 @@ This phase creates the connection and operation components that all integration 
 
 ### Step 2.2 -- Create HTTP Client Operations
 
-Create 9 HTTP Client operations. Each uses the `PROMO - Partner API Connection` from Step 2.1.
+Create 12 HTTP Client operations. Each uses the `PROMO - Partner API Connection` from Step 2.1.
 
 #### Quick Reference Table
 
@@ -343,6 +344,9 @@ Create 9 HTTP Client operations. Each uses the `PROMO - Partner API Connection` 
 | 7 | PROMO - HTTP Op - POST PackagedComponent | POST | `/partner/api/rest/v1/{1}/PackagedComponent` | `application/json` | `create-packaged-component.json` |
 | 8 | PROMO - HTTP Op - POST DeployedPackage | POST | `/partner/api/rest/v1/{1}/DeployedPackage` | `application/json` | `create-deployed-package.json` |
 | 9 | PROMO - HTTP Op - POST IntegrationPack | POST | `/partner/api/rest/v1/{1}/IntegrationPack` | `application/json` | `create-integration-pack.json` |
+| 10 | PROMO - HTTP Op - POST Branch | POST | `/partner/api/rest/v1/{1}/Branch` | `application/json` | `create-branch.json` |
+| 11 | PROMO - HTTP Op - QUERY Branch | POST | `/partner/api/rest/v1/{1}/Branch/query` | `application/json` | `query-branch.json` |
+| 12 | PROMO - HTTP Op - POST MergeRequest | POST | `/partner/api/rest/v1/{1}/MergeRequest` | `application/json` | `create-merge-request.json` |
 
 > Operations 1-6 use `application/xml` for both Content-Type and Accept headers (Platform API XML endpoints). Operations 7-9 use `application/json` for both headers (JSON-based endpoints).
 
@@ -564,6 +568,78 @@ Creates a new Integration Pack when `createNewPack=true` in the deployment reque
 | **Timeout (ms)** | `120000` |
 
 5. After creation, add the PackagedComponent to the pack, then release via `POST /ReleaseIntegrationPack`. Set `installationType: "MULTI"` for multi-install packs. See `/integration/api-requests/create-integration-pack.json` for the template.
+6. **Save**.
+
+#### Step 2.2.10 -- PROMO - HTTP Op - POST Branch
+
+Creates a promotion branch for isolated component changes before merging to main.
+
+1. **Build --> New Component --> Connector --> Operation --> HTTP Client**.
+2. Name: `PROMO - HTTP Op - POST Branch`.
+3. Connection: `PROMO - Partner API Connection`.
+4. Configure:
+
+| Tab / Setting | Value |
+|---------------|-------|
+| **Action** | Send |
+| **HTTP Method** | POST |
+| **Request URL** | `/partner/api/rest/v1/{1}/Branch` |
+| **Request URL Parameters** | `{1}` = DPP `primaryAccountId` |
+| **Query Parameters** | (none) |
+| **Request Headers** | `Accept: application/json`, `Content-Type: application/json` |
+| **Response Codes - Success** | `200` |
+| **Response Codes - Error** | `400`, `429`, `503` |
+| **Timeout (ms)** | `120000` |
+
+5. Request body requires `name` and `description` fields. Response includes `branchId`.
+6. **Save**.
+
+#### Step 2.2.11 -- PROMO - HTTP Op - QUERY Branch
+
+Queries existing branches to enforce the 10-branch limit and check for existing promotion branches.
+
+1. **Build --> New Component --> Connector --> Operation --> HTTP Client**.
+2. Name: `PROMO - HTTP Op - QUERY Branch`.
+3. Connection: `PROMO - Partner API Connection`.
+4. Configure:
+
+| Tab / Setting | Value |
+|---------------|-------|
+| **Action** | Send |
+| **HTTP Method** | POST |
+| **Request URL** | `/partner/api/rest/v1/{1}/Branch/query` |
+| **Request URL Parameters** | `{1}` = DPP `primaryAccountId` |
+| **Query Parameters** | (none) |
+| **Request Headers** | `Accept: application/json`, `Content-Type: application/json` |
+| **Response Codes - Success** | `200` |
+| **Response Codes - Error** | `400`, `429`, `503` |
+| **Timeout (ms)** | `120000` |
+
+5. Supports filter expressions (e.g., `name LIKE 'promo-%'`). Returns paginated results.
+6. **Save**.
+
+#### Step 2.2.12 -- PROMO - HTTP Op - POST MergeRequest
+
+Creates a merge request to merge promotion branch changes back to main after admin approval.
+
+1. **Build --> New Component --> Connector --> Operation --> HTTP Client**.
+2. Name: `PROMO - HTTP Op - POST MergeRequest`.
+3. Connection: `PROMO - Partner API Connection`.
+4. Configure:
+
+| Tab / Setting | Value |
+|---------------|-------|
+| **Action** | Send |
+| **HTTP Method** | POST |
+| **Request URL** | `/partner/api/rest/v1/{1}/MergeRequest` |
+| **Request URL Parameters** | `{1}` = DPP `primaryAccountId` |
+| **Query Parameters** | (none) |
+| **Request Headers** | `Accept: application/json`, `Content-Type: application/json` |
+| **Response Codes - Success** | `200` |
+| **Response Codes - Error** | `400`, `409` (Conflict), `429`, `503` |
+| **Timeout (ms)** | `120000` |
+
+5. Request body requires `sourceBranchId` and `targetBranchId` (usually main). Automatically merges if no conflicts exist.
 6. **Save**.
 
 ### Step 2.3 -- Create DataHub Connection
@@ -1864,6 +1940,185 @@ Wrap the entire process (steps 3-8) in a **Try/Catch**:
 
 ---
 
+### Process J: List Integration Packs (`PROMO - List Integration Packs`)
+
+**Purpose:** Query existing MULTI-type Integration Packs from primary account and suggest the most recently used pack for a given process.
+
+**Components Used:**
+- HTTP Client Connection: `PROMO - Partner API Connection`
+- HTTP Client Operation: `PROMO - HTTP Op - QUERY IntegrationPack`
+- DataHub Operation: `PROMO - DH Op - Query PromotionLog`
+- JSON Profile: `PROMO - Profile - ListIntegrationPacksRequest`
+- JSON Profile: `PROMO - Profile - ListIntegrationPacksResponse`
+
+**Process Flow:**
+
+1. **Start Shape**
+   - Receives JSON request from Flow Service with:
+     - `primaryAccountId` (string, required)
+     - `suggestForProcess` (string, optional) — process name to suggest pack for
+
+2. **HTTP Client Send — QUERY IntegrationPack**
+   - Connector: `PROMO - Partner API Connection`
+   - Operation: `PROMO - HTTP Op - QUERY IntegrationPack`
+   - URL parameter `{1}` = DPP `primaryAccountId`
+   - Request body: JSON with filter `installationType = "MULTI"`
+   - Response returns array of Integration Packs
+
+3. **Map — Parse IntegrationPack Results**
+   - Transform API response into array of pack objects
+   - Each pack includes: `id`, `name`, `version`, `installationType`
+   - Set DPP `packList` (array)
+
+4. **Decision — Suggest for Process?**
+   - Condition: DPP `suggestForProcess` IS NOT EMPTY
+   - **YES** branch: query PromotionLog for suggestion
+   - **NO** branch: skip to response
+
+5. **YES Branch — DataHub Query — Query PromotionLog**
+   - Connector: `PROMO - DataHub Connection`
+   - Operation: `PROMO - DH Op - Query PromotionLog`
+   - Filter: `processName = DPP.suggestForProcess AND status = "DEPLOYED"`
+   - Order: `promotionTimestamp DESC`
+   - Limit: 1
+   - Response returns most recent deployed promotion for that process
+   - Set DPP `suggestedPackId` and `suggestedPackName` from result
+   - If no result, leave suggestion fields empty
+
+6. **Map — Build Response**
+   - Combine `packList` array with optional suggestion fields
+   - Response structure:
+     ```json
+     {
+       "success": true,
+       "packs": [...],
+       "suggestedPackId": "...",
+       "suggestedPackName": "..."
+     }
+     ```
+
+7. **Return Document**
+   - Returns JSON response to Flow Service
+
+**Error Handling:**
+
+Wrap HTTP Client and DataHub steps in a **Try/Catch**:
+- **HTTP failure**: return error with `errorCode = "API_ERROR"`, `errorMessage = "Failed to query Integration Packs"`
+- **DataHub failure** (suggestion query): log warning but continue — return pack list without suggestion
+
+**Verify:**
+
+- Test with empty primary account (no packs) → returns `success: true`, empty `packs` array
+- Test with existing packs → returns full list with correct `installationType = "MULTI"`
+- Test with `suggestForProcess` matching a deployed promotion → returns `suggestedPackId` and `suggestedPackName`
+- Test with `suggestForProcess` with no matching promotions → returns pack list without suggestion fields
+
+---
+
+### Process G: Generate Component Diff (`PROMO - Generate Component Diff`)
+
+**Purpose:** Fetch component XML from promotion branch and main branch, normalize both for consistent formatting, return to UI for client-side diff rendering.
+
+**Components Used:**
+- HTTP Client Connection: `PROMO - Partner API Connection`
+- HTTP Client Operation: `PROMO - HTTP Op - GET Component` (reused — URL parameterized)
+- Groovy Script: `normalize-xml.groovy`
+- JSON Profile: `PROMO - Profile - GenerateComponentDiffRequest`
+- JSON Profile: `PROMO - Profile - GenerateComponentDiffResponse`
+
+**Process Flow:**
+
+1. **Start Shape**
+   - Receives JSON request from Flow Service with:
+     - `primaryAccountId` (string, required)
+     - `branchId` (string, required) — promotion branch ID
+     - `prodComponentId` (string, required) — component ID in primary account
+     - `componentAction` (string, required) — "CREATE" or "UPDATE"
+
+2. **HTTP Client Send — GET Component (Branch)**
+   - Connector: `PROMO - Partner API Connection`
+   - Operation: `PROMO - HTTP Op - GET Component`
+   - URL: `/partner/api/rest/v1/{1}/Component/{2}~{3}`
+   - URL parameters:
+     - `{1}` = DPP `primaryAccountId`
+     - `{2}` = DPP `prodComponentId`
+     - `{3}` = DPP `branchId` (tilde syntax for branch-specific component)
+   - Response returns component XML from branch
+   - Set DPP `branchXml` from response
+   - Set DPP `branchVersion` from response `<version>` element
+
+3. **Data Process — Normalize Branch XML**
+   - Script: `normalize-xml.groovy`
+   - Input: DPP `branchXml`
+   - Output: normalized XML with consistent indentation, attribute ordering, whitespace
+   - Set DPP `branchXmlNormalized`
+
+4. **Decision — Component Action**
+   - Condition: DPP `componentAction` EQUALS `"UPDATE"`
+   - **UPDATE** branch: fetch main version
+   - **CREATE** branch: skip main fetch
+
+5. **UPDATE Branch — HTTP Client Send — GET Component (Main)**
+   - Connector: `PROMO - Partner API Connection`
+   - Operation: `PROMO - HTTP Op - GET Component`
+   - URL: `/partner/api/rest/v1/{1}/Component/{2}`
+   - URL parameters:
+     - `{1}` = DPP `primaryAccountId`
+     - `{2}` = DPP `prodComponentId`
+   - Response returns component XML from main branch
+   - Set DPP `mainXml` from response
+   - Set DPP `mainVersion` from response `<version>` element
+
+6. **UPDATE Branch — Data Process — Normalize Main XML**
+   - Script: `normalize-xml.groovy`
+   - Input: DPP `mainXml`
+   - Output: normalized XML
+   - Set DPP `mainXmlNormalized`
+
+7. **CREATE Branch — Set Empty Main**
+   - Set DPP `mainXmlNormalized` = empty string
+   - Set DPP `mainVersion` = 0
+
+8. **Map — Build Response**
+   - Response structure:
+     ```json
+     {
+       "success": true,
+       "branchXml": "...",
+       "mainXml": "...",
+       "branchVersion": 5,
+       "mainVersion": 4,
+       "componentId": "...",
+       "componentName": "..."
+     }
+     ```
+
+9. **Return Document**
+   - Returns JSON response to Flow Service
+
+**Key Implementation Notes:**
+
+- **Tilde syntax** `~{branchId}` in the URL is how Boomi Branching addresses branch-specific component versions
+- The same HTTP Client Operation can be reused — just parameterize the URL with or without tilde
+- `normalize-xml.groovy` ensures consistent formatting so diffs only show real content changes (not whitespace/attribute order differences)
+- For CREATE actions, skip the main fetch entirely — there's no existing version to compare
+
+**Error Handling:**
+
+Wrap HTTP Client steps in a **Try/Catch**:
+- **Branch fetch failure**: return error with `errorCode = "COMPONENT_NOT_FOUND"`, `errorMessage = "Component not found in branch"`
+- **Main fetch failure** (UPDATE only): return error with `errorCode = "COMPONENT_NOT_FOUND"`, `errorMessage = "Component not found in main"`
+- **Normalization failure**: return error with `errorCode = "XML_PARSE_ERROR"`, `errorMessage = "Failed to normalize XML"`
+
+**Verify:**
+
+- Test with a component that exists on both branch and main → returns both XMLs, correctly normalized
+- Test with a CREATE (new component) → returns `branchXml` and empty `mainXml`, `mainVersion = 0`
+- Verify normalized XML has consistent indentation (e.g., 2 spaces per level)
+- Verify attributes are alphabetically sorted within each element
+
+---
+
 ### Summary: Process Build Order Checklist
 
 Use this checklist to track your progress. Build and verify each process before moving to the next.
@@ -1873,12 +2128,16 @@ Use this checklist to track your progress. Build and verify each process before 
 | 1 | F | `PROMO - Mapping CRUD` | `PROMO - FSS Op - ManageMappings` | [ ] |
 | 2 | A0 | `PROMO - Get Dev Accounts` | `PROMO - FSS Op - GetDevAccounts` | [ ] |
 | 3 | E | `PROMO - Query Status` | `PROMO - FSS Op - QueryStatus` | [ ] |
-| 4 | A | `PROMO - List Dev Packages` | `PROMO - FSS Op - ListDevPackages` | [ ] |
-| 5 | B | `PROMO - Resolve Dependencies` | `PROMO - FSS Op - ResolveDependencies` | [ ] |
-| 6 | C | `PROMO - Execute Promotion` | `PROMO - FSS Op - ExecutePromotion` | [ ] |
-| 7 | D | `PROMO - Package and Deploy` | `PROMO - FSS Op - PackageAndDeploy` | [ ] |
+| 4 | E2 | `PROMO - Query Peer Review Queue` | `PROMO - FSS Op - QueryPeerReviewQueue` | [ ] |
+| 5 | E3 | `PROMO - Submit Peer Review` | `PROMO - FSS Op - SubmitPeerReview` | [ ] |
+| 6 | J | `PROMO - List Integration Packs` | `PROMO - FSS Op - ListIntegrationPacks` | [ ] |
+| 7 | G | `PROMO - Generate Component Diff` | `PROMO - FSS Op - GenerateComponentDiff` | [ ] |
+| 8 | A | `PROMO - List Dev Packages` | `PROMO - FSS Op - ListDevPackages` | [ ] |
+| 9 | B | `PROMO - Resolve Dependencies` | `PROMO - FSS Op - ResolveDependencies` | [ ] |
+| 10 | C | `PROMO - Execute Promotion` | `PROMO - FSS Op - ExecutePromotion` | [ ] |
+| 11 | D | `PROMO - Package and Deploy` | `PROMO - FSS Op - PackageAndDeploy` | [ ] |
 
-After completing all seven processes, proceed to Phase 4 to create the Flow Service component that ties them together.
+After completing all eleven processes, proceed to Phase 4 to create the Flow Service component that ties them together.
 
 ---
 
@@ -1893,7 +2152,7 @@ Reference: `/integration/flow-service/flow-service-spec.md`
 3. On the **General** tab, configure:
    - **Path to Service**: `/fs/PromotionService`
    - **External Name**: `PromotionService`
-4. Open the **Message Actions** tab. Add 7 actions, linking each to its FSS Operation, Request Profile, and Response Profile:
+4. Open the **Message Actions** tab. Add 11 actions, linking each to its FSS Operation, Request Profile, and Response Profile:
 
 | # | Action Name | FSS Operation | Request Profile | Response Profile |
 |---|-------------|---------------|-----------------|------------------|
@@ -1904,6 +2163,10 @@ Reference: `/integration/flow-service/flow-service-spec.md`
 | 5 | `packageAndDeploy` | `PROMO - FSS Op - PackageAndDeploy` | `PROMO - Profile - PackageAndDeployRequest` | `PROMO - Profile - PackageAndDeployResponse` |
 | 6 | `queryStatus` | `PROMO - FSS Op - QueryStatus` | `PROMO - Profile - QueryStatusRequest` | `PROMO - Profile - QueryStatusResponse` |
 | 7 | `manageMappings` | `PROMO - FSS Op - ManageMappings` | `PROMO - Profile - ManageMappingsRequest` | `PROMO - Profile - ManageMappingsResponse` |
+| 8 | `queryPeerReviewQueue` | `PROMO - FSS Op - QueryPeerReviewQueue` | `PROMO - Profile - QueryPeerReviewQueueRequest` | `PROMO - Profile - QueryPeerReviewQueueResponse` |
+| 9 | `submitPeerReview` | `PROMO - FSS Op - SubmitPeerReview` | `PROMO - Profile - SubmitPeerReviewRequest` | `PROMO - Profile - SubmitPeerReviewResponse` |
+| 10 | `listIntegrationPacks` | `PROMO - FSS Op - ListIntegrationPacks` | `PROMO - Profile - ListIntegrationPacksRequest` | `PROMO - Profile - ListIntegrationPacksResponse` |
+| 11 | `generateComponentDiff` | `PROMO - FSS Op - GenerateComponentDiff` | `PROMO - Profile - GenerateComponentDiffRequest` | `PROMO - Profile - GenerateComponentDiffResponse` |
 
 5. Open the **Configuration Values** tab. Add a configuration value:
    - **Name**: `primaryAccountId`
@@ -1926,7 +2189,7 @@ Reference: `/integration/flow-service/flow-service-spec.md`
    - Open **Properties -> Configuration Values**.
    - Set `primaryAccountId` to your primary Boomi account ID.
    - Save.
-9. Navigate to **Runtime Management -> Listeners**. All 7 FSS Operations should appear and show a running status:
+9. Navigate to **Runtime Management -> Listeners**. All 11 FSS Operations should appear and show a running status:
    - `PROMO - FSS Op - GetDevAccounts`
    - `PROMO - FSS Op - ListDevPackages`
    - `PROMO - FSS Op - ResolveDependencies`
@@ -1934,6 +2197,10 @@ Reference: `/integration/flow-service/flow-service-spec.md`
    - `PROMO - FSS Op - PackageAndDeploy`
    - `PROMO - FSS Op - QueryStatus`
    - `PROMO - FSS Op - ManageMappings`
+   - `PROMO - FSS Op - QueryPeerReviewQueue`
+   - `PROMO - FSS Op - SubmitPeerReview`
+   - `PROMO - FSS Op - ListIntegrationPacks`
+   - `PROMO - FSS Op - GenerateComponentDiff`
 10. Note the full service URL: `https://{cloud-base-url}/fs/PromotionService`
 
 ### Phase 4 Troubleshooting
@@ -2002,8 +2269,8 @@ A successful response contains `"success": true` and an `accounts` array. If you
    - **Authentication**: Basic
      - **Username**: the shared web server user (from **Shared Web Server User Management** in AtomSphere)
      - **Password**: the API token for that user
-4. Click **"Retrieve Connector Configuration Data"**. Flow contacts the deployed Flow Service and auto-discovers all 9 message actions. Wait for the operation to complete.
-5. Verify the auto-generated Flow Types. You should see exactly 18 types (one request and one response for each action):
+4. Click **"Retrieve Connector Configuration Data"**. Flow contacts the deployed Flow Service and auto-discovers all 11 message actions. Wait for the operation to complete.
+5. Verify the auto-generated Flow Types. You should see exactly 22 types (one request and one response for each action):
    1. `getDevAccounts REQUEST - getDevAccountsRequest`
    2. `getDevAccounts RESPONSE - getDevAccountsResponse`
    3. `listDevPackages REQUEST - listDevPackagesRequest`
@@ -2022,10 +2289,14 @@ A successful response contains `"success": true` and an `accounts` array. If you
    16. `queryPeerReviewQueue RESPONSE - queryPeerReviewQueueResponse`
    17. `submitPeerReview REQUEST - submitPeerReviewRequest`
    18. `submitPeerReview RESPONSE - submitPeerReviewResponse`
+   19. `listIntegrationPacks REQUEST - listIntegrationPacksRequest`
+   20. `listIntegrationPacks RESPONSE - listIntegrationPacksResponse`
+   21. `generateComponentDiff REQUEST - generateComponentDiffRequest`
+   22. `generateComponentDiff RESPONSE - generateComponentDiffResponse`
 6. Open the **Configuration Values** section of the connector. Set `primaryAccountId` to your primary Boomi account ID.
 7. Click **Install**, then **Save**.
 
-**Verify:** Open the connector and confirm all 18 types appear under **Types**. If any are missing, click "Retrieve Connector Configuration Data" again and check that the Flow Service is deployed and all 9 listeners are running.
+**Verify:** Open the connector and confirm all 22 types appear under **Types**. If any are missing, click "Retrieve Connector Configuration Data" again and check that the Flow Service is deployed and all 11 listeners are running.
 
 ### Step 5.2 -- Create Flow Application
 
@@ -2282,6 +2553,57 @@ For every Decision step, wire the **failure outcome** to a shared Error Page tha
 4. **Self-review prevention**: Authenticate as the **same user who submitted**. Verify their own promotion does NOT appear in the Peer Review Queue.
 5. **Admin flow**: Authenticate as a user in the `Boomi Admins` SSO group (or follow the link from the peer approval email). Verify the peer-approved request appears in the Admin Approval Queue (Page 7) with the "Peer Reviewed By" column populated. Select it, review the detail panel including peer review information, add admin comments, and click "Approve and Deploy". Confirm the deployment succeeds and both the submitter and peer reviewer receive approval emails. Repeat with a denial to verify the denial flow and email.
 6. **Mapping Viewer**: From the Admin Approval Queue, click "View Component Mappings". Verify mappings load in the grid, filters work, CSV export downloads, and manual mapping create/update/delete operations succeed.
+
+---
+
+### Step 5.5 -- Build and Deploy XmlDiffViewer Custom Component
+
+**Purpose:** Build the React-based XML diff viewer and register it with the Flow custom player.
+
+**Prerequisites:**
+- Node.js 18+ and npm
+- Flow custom player configured for the tenant
+
+**Build Steps:**
+
+1. **Create React project:**
+   - Initialize with webpack or vite
+   - Install dependencies: `diff`, `react-diff-view`, `prismjs`
+
+2. **Implement XmlDiffViewer component:**
+   - Reference: `flow/custom-components/xml-diff-viewer.md` for full spec
+   - Register with `manywho.component.register('XmlDiffViewer', ...)`
+   - Support: split/unified toggle, syntax highlighting, context collapse, copy buttons
+
+3. **Build production bundle:**
+   - Output: `xml-diff-viewer.js` (< 150KB gzipped) + `xml-diff-viewer.css` (< 10KB)
+
+4. **Upload to Flow tenant:**
+   - Navigate to Flow tenant asset management
+   - Upload both JS and CSS files
+   - Note the asset URLs
+
+5. **Register in custom player:**
+   ```javascript
+   manywho.initialize({
+     tenantId: '{tenant-id}',
+     flowId: '{flow-id}',
+     customResources: [
+       'https://{asset-host}/xml-diff-viewer.js',
+       'https://{asset-host}/xml-diff-viewer.css'
+     ]
+   });
+   ```
+
+6. **Add to Flow pages:**
+   - On Pages 3, 6, and 7: Add Custom Component element
+   - Set component name: `XmlDiffViewer`
+   - Bind object data to `generateComponentDiff` response values
+
+**Verify:**
+- Load Page 3 after a promotion → click "View Diff" → see side-by-side XML comparison
+- Verify syntax highlighting, line numbers, and context collapse work
+- Test responsive behavior on tablet/mobile
 
 ---
 
@@ -2765,12 +3087,12 @@ The `strip-env-config.groovy` script strips these elements by clearing their tex
 Three conditions must be met: (1) The atom must be running (check Runtime Management, Atom Status). (2) The `PROMO - Flow Service` must be deployed as a Packaged Component to the atom. (3) The atom must be a public Boomi cloud atom (not a private cloud or local atom). Private atoms cannot receive inbound Flow Service requests.
 
 **"Operation not found in Flow Service"**
-Each FSS Operation must be linked in the Message Actions tab of the `PROMO - Flow Service` component. Verify all 7 operations are listed: `PROMO - FSS Op - GetDevAccounts`, `PROMO - FSS Op - ListDevPackages`, `PROMO - FSS Op - ResolveDependencies`, `PROMO - FSS Op - ExecutePromotion`, `PROMO - FSS Op - PackageAndDeploy`, `PROMO - FSS Op - QueryStatus`, `PROMO - FSS Op - ManageMappings`. If an operation is missing from the list, add it, re-save, re-package, and re-deploy.
+Each FSS Operation must be linked in the Message Actions tab of the `PROMO - Flow Service` component. Verify all 11 operations are listed: `PROMO - FSS Op - GetDevAccounts`, `PROMO - FSS Op - ListDevPackages`, `PROMO - FSS Op - ResolveDependencies`, `PROMO - FSS Op - ExecutePromotion`, `PROMO - FSS Op - PackageAndDeploy`, `PROMO - FSS Op - QueryStatus`, `PROMO - FSS Op - ManageMappings`, `PROMO - FSS Op - QueryPeerReviewQueue`, `PROMO - FSS Op - SubmitPeerReview`, `PROMO - FSS Op - ListIntegrationPacks`, `PROMO - FSS Op - GenerateComponentDiff`. If an operation is missing from the list, add it, re-save, re-package, and re-deploy.
 
 **"Configuration value not set"**
 The `primaryAccountId` configuration value must be set after deployment via component configuration (Manage, Deployed Components, select the Flow Service, Configuration tab). This value is NOT set at build time -- it is set per deployment. If this value is empty, all HTTP operations using `{1}` in their URL will fail.
 
-**Diagnostic:** Check Runtime Management, Listeners tab. All 9 processes should appear as active listeners. If fewer than 9 appear, verify each FSS Operation is correctly linked and the deployment is current.
+**Diagnostic:** Check Runtime Management, Listeners tab. All 11 processes should appear as active listeners. If fewer than 11 appear, verify each FSS Operation is correctly linked and the deployment is current.
 
 ---
 
@@ -2780,7 +3102,7 @@ The `primaryAccountId` configuration value must be set after deployment via comp
 Verify all of the following: (1) The atom is running. (2) The `PROMO - Flow Service` is deployed to the atom. (3) The Path to Service is exactly `/fs/PromotionService` (case-sensitive, no trailing slash). (4) Basic Auth credentials match the Shared Web Server User Management settings on the atom. If any of these are wrong, the retrieval will fail silently or return an error.
 
 **"Flow Types not generated (fewer than 14)"**
-After a successful "Retrieve Connector Configuration Data," Flow should auto-generate 18 types (2 per message action: request and response). If fewer than 18 appear, the Flow Service may have fewer than 9 message actions linked. Fix the Flow Service (Phase 4), re-deploy, then re-retrieve connector configuration data in Flow.
+After a successful "Retrieve Connector Configuration Data," Flow should auto-generate 22 types (2 per message action: request and response). If fewer than 22 appear, the Flow Service may have fewer than 11 message actions linked. Fix the Flow Service (Phase 4), re-deploy, then re-retrieve connector configuration data in Flow.
 
 **"Message step returns empty response"**
 Check the Flow value bindings on the Message step. Both input values (request type) and output values (response type) must be bound. The connector action name must match the message action name exactly (e.g., `executePromotion`, not `ExecutePromotion`). Verify the Flow Value type matches the auto-generated type name (e.g., `executePromotion REQUEST - executePromotionRequest`).
@@ -2846,7 +3168,7 @@ Phase 2 -- Connections (2):
 [ ] 4. PROMO - Partner API Connection
 [ ] 5. PROMO - DataHub Connection
 
-Phase 2 -- HTTP Client Operations (9):
+Phase 2 -- HTTP Client Operations (12):
 [ ] 6.  PROMO - HTTP Op - GET Component
 [ ] 7.  PROMO - HTTP Op - POST Component Create
 [ ] 8.  PROMO - HTTP Op - POST Component Update
@@ -2856,53 +3178,73 @@ Phase 2 -- HTTP Client Operations (9):
 [ ] 12. PROMO - HTTP Op - POST PackagedComponent
 [ ] 13. PROMO - HTTP Op - POST DeployedPackage
 [ ] 14. PROMO - HTTP Op - POST IntegrationPack
+[ ] 15. PROMO - HTTP Op - POST Branch
+[ ] 16. PROMO - HTTP Op - QUERY Branch
+[ ] 17. PROMO - HTTP Op - POST MergeRequest
 
 Phase 2 -- DataHub Operations (6):
-[ ] 15. PROMO - DH Op - Query ComponentMapping
-[ ] 16. PROMO - DH Op - Update ComponentMapping
-[ ] 17. PROMO - DH Op - Query DevAccountAccess
-[ ] 18. PROMO - DH Op - Update DevAccountAccess
-[ ] 19. PROMO - DH Op - Query PromotionLog
-[ ] 20. PROMO - DH Op - Update PromotionLog
+[ ] 18. PROMO - DH Op - Query ComponentMapping
+[ ] 19. PROMO - DH Op - Update ComponentMapping
+[ ] 20. PROMO - DH Op - Query DevAccountAccess
+[ ] 21. PROMO - DH Op - Update DevAccountAccess
+[ ] 22. PROMO - DH Op - Query PromotionLog
+[ ] 23. PROMO - DH Op - Update PromotionLog
 
-Phase 3 -- JSON Profiles (14):
-[ ] 21. PROMO - Profile - GetDevAccountsRequest
-[ ] 22. PROMO - Profile - GetDevAccountsResponse
-[ ] 23. PROMO - Profile - ListDevPackagesRequest
-[ ] 24. PROMO - Profile - ListDevPackagesResponse
-[ ] 25. PROMO - Profile - ResolveDependenciesRequest
-[ ] 26. PROMO - Profile - ResolveDependenciesResponse
-[ ] 27. PROMO - Profile - ExecutePromotionRequest
-[ ] 28. PROMO - Profile - ExecutePromotionResponse
-[ ] 29. PROMO - Profile - PackageAndDeployRequest
-[ ] 30. PROMO - Profile - PackageAndDeployResponse
-[ ] 31. PROMO - Profile - QueryStatusRequest
-[ ] 32. PROMO - Profile - QueryStatusResponse
-[ ] 33. PROMO - Profile - ManageMappingsRequest
-[ ] 34. PROMO - Profile - ManageMappingsResponse
+Phase 3 -- JSON Profiles (22):
+[ ] 24. PROMO - Profile - GetDevAccountsRequest
+[ ] 25. PROMO - Profile - GetDevAccountsResponse
+[ ] 26. PROMO - Profile - ListDevPackagesRequest
+[ ] 27. PROMO - Profile - ListDevPackagesResponse
+[ ] 28. PROMO - Profile - ResolveDependenciesRequest
+[ ] 29. PROMO - Profile - ResolveDependenciesResponse
+[ ] 30. PROMO - Profile - ExecutePromotionRequest
+[ ] 31. PROMO - Profile - ExecutePromotionResponse
+[ ] 32. PROMO - Profile - PackageAndDeployRequest
+[ ] 33. PROMO - Profile - PackageAndDeployResponse
+[ ] 34. PROMO - Profile - QueryStatusRequest
+[ ] 35. PROMO - Profile - QueryStatusResponse
+[ ] 36. PROMO - Profile - ManageMappingsRequest
+[ ] 37. PROMO - Profile - ManageMappingsResponse
+[ ] 38. PROMO - Profile - QueryPeerReviewQueueRequest
+[ ] 39. PROMO - Profile - QueryPeerReviewQueueResponse
+[ ] 40. PROMO - Profile - SubmitPeerReviewRequest
+[ ] 41. PROMO - Profile - SubmitPeerReviewResponse
+[ ] 42. PROMO - Profile - ListIntegrationPacksRequest
+[ ] 43. PROMO - Profile - ListIntegrationPacksResponse
+[ ] 44. PROMO - Profile - GenerateComponentDiffRequest
+[ ] 45. PROMO - Profile - GenerateComponentDiffResponse
 
-Phase 3 -- Integration Processes (7):
-[ ] 35. PROMO - Get Dev Accounts
-[ ] 36. PROMO - List Dev Packages
-[ ] 37. PROMO - Resolve Dependencies
-[ ] 38. PROMO - Execute Promotion
-[ ] 39. PROMO - Package and Deploy
-[ ] 40. PROMO - Query Status
-[ ] 41. PROMO - Mapping CRUD
+Phase 3 -- Integration Processes (11):
+[ ] 46. PROMO - Get Dev Accounts
+[ ] 47. PROMO - List Dev Packages
+[ ] 48. PROMO - Resolve Dependencies
+[ ] 49. PROMO - Execute Promotion
+[ ] 50. PROMO - Package and Deploy
+[ ] 51. PROMO - Query Status
+[ ] 52. PROMO - Mapping CRUD
+[ ] 53. PROMO - Query Peer Review Queue
+[ ] 54. PROMO - Submit Peer Review
+[ ] 55. PROMO - List Integration Packs
+[ ] 56. PROMO - Generate Component Diff
 
-Phase 4 -- Flow Service Components (8):
-[ ] 42. PROMO - FSS Op - GetDevAccounts
-[ ] 43. PROMO - FSS Op - ListDevPackages
-[ ] 44. PROMO - FSS Op - ResolveDependencies
-[ ] 45. PROMO - FSS Op - ExecutePromotion
-[ ] 46. PROMO - FSS Op - PackageAndDeploy
-[ ] 47. PROMO - FSS Op - QueryStatus
-[ ] 48. PROMO - FSS Op - ManageMappings
-[ ] 49. PROMO - Flow Service
+Phase 4 -- Flow Service Components (12):
+[ ] 57. PROMO - FSS Op - GetDevAccounts
+[ ] 58. PROMO - FSS Op - ListDevPackages
+[ ] 59. PROMO - FSS Op - ResolveDependencies
+[ ] 60. PROMO - FSS Op - ExecutePromotion
+[ ] 61. PROMO - FSS Op - PackageAndDeploy
+[ ] 62. PROMO - FSS Op - QueryStatus
+[ ] 63. PROMO - FSS Op - ManageMappings
+[ ] 64. PROMO - FSS Op - QueryPeerReviewQueue
+[ ] 65. PROMO - FSS Op - SubmitPeerReview
+[ ] 66. PROMO - FSS Op - ListIntegrationPacks
+[ ] 67. PROMO - FSS Op - GenerateComponentDiff
+[ ] 68. PROMO - Flow Service
 
-Phase 5 -- Flow Dashboard (2):
-[ ] 50. Promotion Service Connector
-[ ] 51. Promotion Dashboard
+Phase 5 -- Flow Dashboard (3):
+[ ] 69. XmlDiffViewer (Custom Component)
+[ ] 70. Promotion Service Connector
+[ ] 71. Promotion Dashboard
 ```
 
 ---
