@@ -1,0 +1,30 @@
+<!--
+  UPDATE Component in Primary Account via Partner API
+
+  HTTP Method: POST
+  URL: https://api.boomi.com/partner/api/rest/v1/{primaryAccountId}/Component/{prodComponentId}
+
+  Headers:
+    Accept: application/xml
+    Content-Type: application/xml
+
+  Notes:
+    - componentId MUST be the existing prod component ID from the DataHub mapping
+    - API auto-increments the version number (no duplicate created)
+    - folderFullPath preserved from existing component
+    - The <bns:object> contains the stripped and reference-rewritten XML from dev
+    - Response returns the existing componentId with incremented version
+
+  HTTP Client Operation Configuration:
+    Action: Send
+    HTTP Method: POST
+    Request URL: /partner/api/rest/v1/{1}/Component/{2}
+    Request URL Parameters:
+      {1} = Dynamic Process Property: primaryAccountId
+      {2} = Dynamic Process Property: prodComponentId
+-->
+<bns:Component xmlns:bns="http://api.platform.boomi.com/" componentId="{prodComponentId}" name="{componentName}" type="{componentType}" folderFullPath="/Promoted/{devAccountName}/{processName}/">
+  <bns:object>
+    <!-- Stripped and reference-rewritten component configuration XML -->
+  </bns:object>
+</bns:Component>

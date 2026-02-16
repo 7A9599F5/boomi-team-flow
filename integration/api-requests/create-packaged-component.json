@@ -1,0 +1,16 @@
+{
+  "_comment": "POST https://api.boomi.com/partner/api/rest/v1/{primaryAccountId}/PackagedComponent",
+  "_notes": [
+    "Creates a new PackagedComponent for the promoted process",
+    "shareable: true is REQUIRED for Integration Pack inclusion",
+    "componentId: the prod component ID from the promotion results",
+    "componentType: typically 'process' for the root component",
+    "packageVersion: version string provided by the user (e.g., '1.0.0')",
+    "notes: deployment notes from the submission form"
+  ],
+  "componentId": "{prodComponentId}",
+  "componentType": "process",
+  "packageVersion": "{packageVersion}",
+  "notes": "{deploymentNotes}",
+  "shareable": true
+}

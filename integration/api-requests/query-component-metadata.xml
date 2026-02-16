@@ -1,0 +1,36 @@
+<!--
+  GET Component Metadata via Partner API
+
+  HTTP Method: GET
+  URL: https://api.boomi.com/partner/api/rest/v1/{primaryAccountId}/ComponentMetadata/{componentId}?overrideAccount={devAccountId}
+
+  Headers:
+    Accept: application/xml
+
+  Notes:
+    - Returns lightweight metadata (no full configuration XML)
+    - Fields: componentId, name, type, version, currentVersion, modifiedDate, modifiedBy
+    - Used in Process A (package listing) and Process B (dependency resolution)
+    - Much faster than GET /Component since it doesn't include the <bns:object> config
+
+  HTTP Client Operation Configuration:
+    Action: Send
+    HTTP Method: GET
+    Request URL: /partner/api/rest/v1/{1}/ComponentMetadata/{2}
+    Request URL Parameters:
+      {1} = Dynamic Process Property: primaryAccountId
+      {2} = Dynamic Process Property: currentComponentId
+    Query Parameters:
+      overrideAccount = Dynamic Process Property: devAccountId
+
+  Sample Response:
+-->
+<bns:ComponentMetadata xmlns:bns="http://api.platform.boomi.com/"
+    componentId="{componentId}"
+    name="{componentName}"
+    type="{componentType}"
+    version="{currentVersion}"
+    currentVersion="{currentVersion}"
+    modifiedDate="{modifiedDate}"
+    modifiedBy="{modifiedBy}"
+    folderFullPath="{folderPath}" />

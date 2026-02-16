@@ -1,0 +1,28 @@
+<!--
+  CREATE Component in Primary Account via Partner API
+
+  HTTP Method: POST
+  URL: https://api.boomi.com/partner/api/rest/v1/{primaryAccountId}/Component
+
+  Headers:
+    Accept: application/xml
+    Content-Type: application/xml
+
+  Notes:
+    - componentId should be EMPTY or omitted for creation (API assigns new ID)
+    - folderFullPath: /Promoted/{devAccountName}/{processName}/ - folders auto-created if they don't exist
+    - The <bns:object> contains the stripped and reference-rewritten XML from dev
+    - Response returns the new componentId and version=1
+
+  HTTP Client Operation Configuration:
+    Action: Send
+    HTTP Method: POST
+    Request URL: /partner/api/rest/v1/{1}/Component
+    Request URL Parameters:
+      {1} = Dynamic Process Property: primaryAccountId
+-->
+<bns:Component xmlns:bns="http://api.platform.boomi.com/" name="{componentName}" type="{componentType}" folderFullPath="/Promoted/{devAccountName}/{processName}/">
+  <bns:object>
+    <!-- Stripped and reference-rewritten component configuration XML -->
+  </bns:object>
+</bns:Component>

@@ -1,0 +1,33 @@
+<!--
+  GET Component References (Dependencies) via Partner API
+
+  HTTP Method: GET
+  URL: https://api.boomi.com/partner/api/rest/v1/{primaryAccountId}/ComponentReference/{componentId}?overrideAccount={devAccountId}
+
+  Headers:
+    Accept: application/xml
+
+  Notes:
+    - Returns ONE level of references (not recursive - caller must recurse)
+    - Each reference has: componentId, type (DEPENDENT/INDEPENDENT), name
+    - DEPENDENT = child must exist for parent to function (connections, profiles)
+    - INDEPENDENT = soft reference (typically process routes)
+    - Recursive traversal managed by build-visited-set.groovy script
+    - Typical depth: 2-3 levels (process -> connectors/maps -> profiles)
+
+  HTTP Client Operation Configuration:
+    Action: Send
+    HTTP Method: GET
+    Request URL: /partner/api/rest/v1/{1}/ComponentReference/{2}
+    Request URL Parameters:
+      {1} = Dynamic Process Property: primaryAccountId
+      {2} = Dynamic Process Property: currentComponentId
+    Query Parameters:
+      overrideAccount = Dynamic Process Property: devAccountId
+
+  Sample Response:
+-->
+<bns:References xmlns:bns="http://api.platform.boomi.com/" componentId="{parentComponentId}">
+  <bns:Reference componentId="{childComponentId}" type="DEPENDENT" name="{childComponentName}" componentType="{childType}" />
+  <bns:Reference componentId="{childComponentId2}" type="INDEPENDENT" name="{childComponentName2}" componentType="{childType2}" />
+</bns:References>

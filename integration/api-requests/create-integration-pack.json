@@ -1,0 +1,11 @@
+{
+  "_comment": "POST https://api.boomi.com/partner/api/rest/v1/{primaryAccountId}/IntegrationPack",
+  "_notes": [
+    "Creates a new Integration Pack when createNewPack=true",
+    "After creation, add the PackagedComponent to the pack",
+    "Then release via POST /ReleaseIntegrationPack"
+  ],
+  "name": "{newPackName}",
+  "description": "{newPackDescription}",
+  "installationType": "MULTI"
+}

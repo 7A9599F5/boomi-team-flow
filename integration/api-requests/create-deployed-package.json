@@ -1,0 +1,13 @@
+{
+  "_comment": "POST https://api.boomi.com/partner/api/rest/v1/{primaryAccountId}/DeployedPackage",
+  "_notes": [
+    "Deploys a released Integration Pack component to a target environment",
+    "Called after IntegrationPack release for each target environment",
+    "environmentId: from the target account group",
+    "packageId: the released package ID from ReleaseIntegrationPack response"
+  ],
+  "environmentId": "{targetEnvironmentId}",
+  "packageId": "{releasedPackageId}",
+  "componentType": "process",
+  "notes": "{deploymentNotes}"
+}

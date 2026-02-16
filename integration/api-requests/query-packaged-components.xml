@@ -1,0 +1,36 @@
+<!--
+  QUERY PackagedComponents from Dev Account via Partner API
+
+  HTTP Method: POST
+  URL: https://api.boomi.com/partner/api/rest/v1/{primaryAccountId}/PackagedComponent/query?overrideAccount={devAccountId}
+
+  Headers:
+    Accept: application/xml
+    Content-Type: application/xml
+
+  Notes:
+    - Returns paginated results (100 per page)
+    - Use queryToken from response for pagination via /PackagedComponent/queryMore
+    - 120ms gap between pages to respect rate limits
+    - Results include: packageId, packageVersion, componentId, componentType, createdDate, notes
+
+  HTTP Client Operation Configuration:
+    Action: Send
+    HTTP Method: POST
+    Request URL: /partner/api/rest/v1/{1}/PackagedComponent/query
+    Request URL Parameters:
+      {1} = Dynamic Process Property: primaryAccountId
+    Query Parameters:
+      overrideAccount = Dynamic Process Property: devAccountId
+
+  Request Body:
+-->
+<QueryFilter xmlns="http://api.platform.boomi.com/">
+  <expression operator="and">
+    <nestedExpression>
+      <argument>componentType</argument>
+      <operator>EQUALS</operator>
+      <property>process</property>
+    </nestedExpression>
+  </expression>
+</QueryFilter>

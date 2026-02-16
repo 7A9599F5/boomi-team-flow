@@ -1,0 +1,39 @@
+<!--
+  GET Component from Dev Account via Partner API
+
+  HTTP Method: GET
+  URL: https://api.boomi.com/partner/api/rest/v1/{primaryAccountId}/Component/{componentId}?overrideAccount={devAccountId}
+
+  Headers:
+    Accept: application/xml
+    Content-Type: application/xml
+
+  Authentication: Basic Auth (BOOMI_TOKEN.user@domain.com:api-token)
+
+  URL Parameters:
+    {primaryAccountId} - Your primary Boomi account ID (from Flow Service config value)
+    {componentId}      - The component ID to retrieve (from request payload)
+    {devAccountId}     - The dev sub-account to read from (overrideAccount parameter)
+
+  HTTP Client Operation Configuration:
+    Action: Send
+    HTTP Method: GET
+    Request URL: /partner/api/rest/v1/{1}/Component/{2}
+    Request URL Parameters:
+      {1} = Dynamic Process Property: primaryAccountId
+      {2} = Dynamic Process Property: currentComponentId
+    Query Parameters:
+      overrideAccount = Dynamic Process Property: devAccountId
+
+  Response: Full component XML including <bns:Component> with <bns:object> configuration
+
+  Notes:
+    - The overrideAccount parameter allows reading from sub-accounts using the primary account API token
+    - Response includes all component settings, references, and configuration
+    - Connection components will contain encrypted credential values (stripped in next step)
+-->
+<bns:Component xmlns:bns="http://api.platform.boomi.com/" componentId="{componentId}" version="{version}" name="{componentName}" type="{componentType}" folderFullPath="{folderPath}">
+  <bns:object>
+    <!-- Component configuration XML varies by type -->
+  </bns:object>
+</bns:Component>
