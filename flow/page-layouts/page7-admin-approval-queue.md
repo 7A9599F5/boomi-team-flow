@@ -161,6 +161,7 @@ The Admin Approval Queue is the final approval gate in the 2-layer approval work
   - Action (CREATE/UPDATE)
   - Status (SUCCESS/FAILED)
   - Config Stripped (Yes/No)
+  - Changes ("View Diff" link for UPDATE; "View New" for CREATE)
 - Rows: All components from `promotionResults` array
 
 **Summary:**
@@ -186,6 +187,26 @@ The Admin Approval Queue is the final approval gate in the 2-layer approval work
 • DB Connection - MySQL Prod
 • API Profile - Salesforce
 ```
+
+---
+
+#### Component Diff Panel
+
+**Component Type:** Expandable panel (XmlDiffViewer custom component)
+
+**Trigger:** When admin clicks "View Diff" or "View New" link in the component results table
+
+**Location:** Expands inline below Section 3 table
+
+**Behavior:**
+1. On click: Show loading spinner
+2. Call `generateComponentDiff` message step with `branchId` from promotion data
+3. On response: Render `XmlDiffViewer` with branch vs main XML
+4. Max-height: 500px, scrollable
+5. Close button (X) in top-right
+6. Only one panel open at a time
+
+**Purpose:** Enables admins to review the actual XML-level changes before merging to main and deploying. This is the final safety gate.
 
 ---
 
@@ -255,65 +276,42 @@ The Admin Approval Queue is the final approval gate in the 2-layer approval work
 
 1. **Close modal**
 
-2. **Trigger Message step:** `packageAndDeploy`
-   - Input:
-     - `promotionId`: `{selectedPromotion.promotionId}`
-     - `deploymentRequest`: `{selectedPromotion.deploymentRequest}`
-     - `adminComments`: `{adminComments}`
-     - `approvedBy`: `{adminUserEmail}`
-     - `approvedAt`: `{timestamp}`
-   - Output:
-     - `deploymentResults`: Success/failure status
-     - `deploymentId`: UUID of deployment
+2. **Create merge request:**
+   - `POST /MergeRequest` with body:
+     - `source`: `{selectedPromotion.branchId}`
+     - `strategy`: "OVERRIDE"
+     - `priorityBranch`: `{selectedPromotion.branchId}`
+   - Store `mergeRequestId` from response
 
-3. **Show deployment results:**
+3. **Execute merge:**
+   - `POST /MergeRequest/execute/{mergeRequestId}` with action: "MERGE"
+   - Poll `GET /MergeRequest/{mergeRequestId}` until `stage` = "MERGED"
+   - Show "Merging branch to main..." spinner
+
+4. **Trigger Message step:** `packageAndDeploy`
+   - Input includes `branchId` for post-deploy cleanup
+   - Packages from **main** (components now merged to main)
+   - Standard packageAndDeploy flow (create PackagedComponent, Integration Pack, deploy)
+
+5. **Delete promotion branch:**
+   - `DELETE /Branch/{branchId}`
+   - Update PromotionLog: set `branchId` = null
+
+6. **Show deployment results:**
    - If success:
-     - Show success message: "Deployment approved and completed successfully!"
-     - Display deployment ID: `{deploymentId}`
-     - Display prod package ID: `{prodPackageId}`
-     - Show component deployment details (if available)
+     - Show success message: "Branch merged, packaged, and deployed successfully!"
+     - Display deployment ID and prod package ID
    - If failure:
-     - Show error message: "Deployment failed: {errorMessage}"
-     - Display error details
+     - Show error message with details
+     - Branch may still exist (admin can retry)
 
-4. **Send email notification to submitter + peer reviewer:**
-   - **To:** `{initiatedBy}` (submitter email), `{peerReviewedBy}` (peer reviewer email)
-   - **Subject:** `"Approved & Deployed: {processName} v{packageVersion}"`
-   - **Body:**
-     ```
-     The promotion request has been approved and deployed.
+7. **Send email notification to submitter + peer reviewer:**
+   - Same email as before but add: "Branch merged to main before packaging."
 
-     PROMOTION DETAILS:
-     Promotion ID: {promotionId}
-     Process: {processName}
-     Package Version: {packageVersion}
-
-     DEPLOYMENT DETAILS:
-     Integration Pack: {integrationPackName}
-     Target Account Group: {targetAccountGroupName}
-     Deployment ID: {deploymentId}
-     Prod Package ID: {prodPackageId}
-
-     PEER REVIEW:
-     Reviewed by: {peerReviewerName} ({peerReviewedBy})
-
-     ADMIN APPROVAL:
-     Approved by: {adminUserName} ({adminUserEmail})
-     Date: {approvedAt}
-
-     ADMIN COMMENTS:
-     {adminComments or "No comments provided."}
-
-     Status: Successfully deployed
-     ```
-
-5. **Refresh approval queue:**
+8. **Refresh approval queue:**
    - Re-run `queryStatus` to update pending approvals list
    - Clear selected promotion
-   - Collapse Promotion Detail Panel
-
-6. **End flow or return to queue:**
-   - Show "Back to Queue" button to return to approval list
+   - Collapse detail panel
 
 ---
 
@@ -383,6 +381,12 @@ The Admin Approval Queue is the final approval gate in the 2-layer approval work
    - Remove denied request from queue
    - Clear selected promotion
    - Collapse Promotion Detail Panel
+
+4b. **Delete promotion branch:**
+   - Call `DELETE /Branch/{branchId}` to clean up
+   - `branchId` from `selectedPromotion.branchId`
+   - Main branch remains untouched
+   - Update PromotionLog: set `branchId` = null
 
 5. **Show confirmation:**
    - "Deployment request denied. Submitter has been notified."
