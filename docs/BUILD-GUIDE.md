@@ -119,13 +119,14 @@ DataHub stores the three models that power the promotion engine: component mappi
 | `prodLatestVersion` | Number | Yes | No | Latest version number in primary account |
 | `lastPromotedAt` | Date | Yes | No | Format: `yyyy-MM-dd'T'HH:mm:ss.SSS'Z'` |
 | `lastPromotedBy` | String | Yes | No | SSO user email of promoter |
+| `mappingSource` | String | No | No | `"PROMOTION_ENGINE"` or `"ADMIN_SEEDING"` |
 
 5. Navigate to **Match Rules** tab. Add a compound **Exact** match on both `devComponentId` AND `devAccountId`.
-6. Navigate to **Sources** tab. Click **Add Source** --> name: `PROMOTION_ENGINE`, type: **Contribute Only**.
+6. Navigate to **Sources** tab. Click **Add Source** --> name: `PROMOTION_ENGINE`, type: **Contribute Only**. Add a second source --> name: `ADMIN_SEEDING`, type: **Contribute Only** (used by admins to seed connection mappings).
 7. Skip the **Data Quality** tab (data quality is controlled by the integration processes).
 8. Click **Save**, then **Publish**, then **Deploy** to the repository.
 
-**Verify:** Confirm the model appears under **DataHub --> Repositories --> [your repo] --> Models** with status "Deployed". The model should show 9 fields and 1 match rule in the summary.
+**Verify:** Confirm the model appears under **DataHub --> Repositories --> [your repo] --> Models** with status "Deployed". The model should show 10 fields, 1 match rule, and 2 sources in the summary.
 
 ### Step 1.2 -- Create DevAccountAccess Model
 
@@ -384,7 +385,7 @@ Creates a new component in the primary (production) account. Used when no existi
 | **Response Codes - Error** | `400`, `429`, `503` |
 | **Timeout (ms)** | `120000` |
 
-5. The request body is the stripped and reference-rewritten component XML. See `/integration/api-requests/create-component.xml` for the template structure. Note: `componentId` must be omitted or empty for creation (the API assigns a new ID). The `folderFullPath` follows the convention `/Promoted/{devAccountName}/{processName}/`.
+5. The request body is the stripped and reference-rewritten component XML. See `/integration/api-requests/create-component.xml` for the template structure. Note: `componentId` must be omitted or empty for creation (the API assigns a new ID). The `folderFullPath` follows the convention `/Promoted{devFolderFullPath}` — mirroring the dev account's folder hierarchy under `/Promoted/`.
 6. **Save**.
 
 #### Step 2.2.3 -- PROMO - HTTP Op - POST Component Update
@@ -1264,7 +1265,7 @@ The response JSON contains:
 - `success`, `errorCode`, `errorMessage` (standard error contract)
 - `rootProcessName` (string): name of the root component
 - `totalComponents` (number): total count of resolved components
-- `components` (array): each entry has `devComponentId`, `name`, `type`, `devVersion`, `prodStatus` (`"NEW"` or `"UPDATE"`), `prodComponentId`, `prodCurrentVersion`, `hasEnvConfig`
+- `components` (array): each entry has `devComponentId`, `name`, `type`, `devVersion`, `prodStatus` (`"NEW"` or `"UPDATE"`), `prodComponentId`, `prodCurrentVersion`, `hasEnvConfig`, `folderFullPath` (string, the component's folder path in dev), `isSharedConnection` (boolean, `true` if type is `connection`)
 
 #### FSS Operation
 
@@ -1349,6 +1350,7 @@ This process uses the following DPPs. Initialize them in a Set Properties shape 
    - URL parameter `{2}` = DPP `currentComponentId`
    - Query parameter: `overrideAccount` = DPP `devAccountId`
    - Returns component `name`, `type`, `version`, and other metadata
+   - Extract `folderFullPath` from the metadata response and include it in the accumulated results JSON for each component. This path is passed through to Process C to construct the mirrored promotion target folder.
 
 10. **DataHub Query — Check Existing Mapping**
     - Connector: `PROMO - DataHub Connection`
@@ -1406,7 +1408,7 @@ This is the core engine of the system. It promotes components from a dev sub-acc
 The request JSON contains:
 - `devAccountId` (string): source dev sub-account
 - `prodAccountId` (string): target primary account (usually same as `primaryAccountId`)
-- `components` (array): list of components to promote, each with `devComponentId`, `name`, `type`
+- `components` (array): list of components to promote, each with `devComponentId`, `name`, `type`, `folderFullPath`
 - `initiatedBy` (string): username of the person initiating
 
 The response JSON contains:
@@ -1414,6 +1416,8 @@ The response JSON contains:
 - `promotionId` (string): unique ID for this promotion run
 - `componentsCreated` (number), `componentsUpdated` (number), `componentsFailed` (number)
 - `results` (array): each entry has `devComponentId`, `name`, `action` (`"CREATED"`, `"UPDATED"`, `"FAILED"`, `"SKIPPED"`), `prodComponentId`, `prodVersion`, `status`, `errorMessage`, `configStripped`
+- `connectionsSkipped` (number): count of shared connections not promoted (filtered out)
+- `missingConnectionMappings` (array, conditional): present when errorCode=MISSING_CONNECTION_MAPPINGS; each entry has `devComponentId`, `name`, `type`, `devAccountId`
 
 #### FSS Operation
 
@@ -1432,6 +1436,11 @@ Create `PROMO - FSS Op - ExecutePromotion` per Section 3.B, using `PROMO - Profi
 | `configStripped` | `"false"` | Set by `strip-env-config.groovy` |
 | `strippedElements` | `""` | Set by `strip-env-config.groovy` |
 | `referencesRewritten` | `"0"` | Set by `rewrite-references.groovy` |
+| `connectionMappingCache` | `{}` | JSON object of connection mappings batch-queried from DataHub |
+| `missingConnectionMappings` | `[]` | JSON array of missing connection mapping objects |
+| `missingConnectionCount` | `"0"` | Count of missing connection mappings |
+| `connectionMappingsValid` | `"true"` | Whether all connection mappings exist |
+| `currentFolderFullPath` | (set per loop iteration) | Dev folder path for mirrored promotion target |
 
 #### Canvas — Shape by Shape
 
@@ -1476,6 +1485,34 @@ Create `PROMO - FSS Op - ExecutePromotion` per Section 3.B, using `PROMO - Profi
      6. `process` — root process (priority 6 — promoted last)
    - **Why bottom-up order matters**: each component's XML may reference other components by their IDs. Profiles and connections have no internal references. Operations reference connections. Maps reference profiles. Processes reference operations, maps, connections, and sub-processes. By promoting dependencies first, `rewrite-references.groovy` has all necessary dev-to-prod ID mappings in the cache when it processes each component.
 
+5.5. **DataHub Batch Query — Load Connection Mappings**
+    - Connector: `PROMO - DataHub Connection`
+    - Operation: `PROMO - DH Op - Query ComponentMapping`
+    - Filter: `componentType EQUALS "connection" AND devAccountId EQUALS` DPP `devAccountId`
+    - Store the results in DPP `connectionMappingCache` as a JSON object (keys = dev connection IDs, values = prod connection IDs)
+    - This single batch query replaces per-connection lookups during the promotion loop
+
+5.6. **Data Process — `validate-connection-mappings.groovy`**
+    - Paste contents of `/integration/scripts/validate-connection-mappings.groovy`
+    - Input: the sorted components array from step 5
+    - Reads DPPs: `connectionMappingCache`, `componentMappingCache`, `devAccountId`
+    - Writes DPPs: `missingConnectionMappings`, `missingConnectionCount`, `connectionMappingsValid`, `componentMappingCache` (updated with found connection mappings)
+    - Output: JSON array of NON-connection components only (connections filtered out)
+
+5.7. **Decision — Connection Mappings Valid?**
+    - Condition: DPP `connectionMappingsValid` **EQUALS** `"true"`
+    - **YES** branch: continue to step 6 (Initialize Mapping Cache — now only needs non-connection mappings since connection mappings are pre-loaded)
+    - **NO** branch: proceed to step 5.8
+
+5.8. **Error Response — Missing Connection Mappings (NO branch)**
+    - Build error response with:
+      - `success` = `false`
+      - `errorCode` = `"MISSING_CONNECTION_MAPPINGS"`
+      - `errorMessage` = `"One or more connection mappings not found in DataHub. Admin must seed missing mappings via Mapping Viewer."`
+      - `missingConnectionMappings` = DPP `missingConnectionMappings`
+    - Update PromotionLog to `FAILED` with error details
+    - **Return Documents** — skip the entire promotion loop
+
 6. **Set Properties — Initialize Mapping Cache**
    - DPP `componentMappingCache` = `{}`
 
@@ -1489,6 +1526,7 @@ Create `PROMO - FSS Op - ExecutePromotion` per Section 3.B, using `PROMO - Profi
    - DPP `currentComponentId` = the `devComponentId` of the current component from the document
    - DPP `currentComponentName` = the `name` field
    - DPP `currentComponentType` = the `type` field
+   - DPP `currentFolderFullPath` = the `folderFullPath` field from the current component
    - Reset per-iteration DPPs: `configStripped` = `"false"`, `strippedElements` = `""`, `referencesRewritten` = `"0"`
 
 10. **HTTP Client Send — GET Component XML from Dev**
@@ -1565,6 +1603,7 @@ Create `PROMO - FSS Op - ExecutePromotion` per Section 3.B, using `PROMO - Profi
        - URL parameter `{1}` = DPP `primaryAccountId`
        - URL parameter `{2}` = DPP `prodComponentId`
        - Request body: the rewritten component XML
+       - The request XML uses `folderFullPath="/Promoted{currentFolderFullPath}"` per the updated template in `/integration/api-requests/update-component.xml`
        - Response returns the updated component with its new version number
 
     3. Extract `prodVersion` from the API response; set action = `"UPDATED"`
@@ -1578,6 +1617,7 @@ Create `PROMO - FSS Op - ExecutePromotion` per Section 3.B, using `PROMO - Profi
        - Operation: `PROMO - HTTP Op - POST Component Create`
        - URL parameter `{1}` = DPP `primaryAccountId`
        - Request body: the rewritten component XML
+       - The request XML uses `folderFullPath="/Promoted{currentFolderFullPath}"` per the updated template in `/integration/api-requests/create-component.xml`
        - The Platform API creates a new component in the primary account and returns the new `prodComponentId` and `version = 1`
 
     3. Extract `prodComponentId` from the API response; set DPP `prodComponentId`, set action = `"CREATED"`, `prodVersion = 1`
@@ -2316,7 +2356,7 @@ Invoke-RestMethod -Uri "https://api.boomi.com/partner/api/rest/v1/{primaryAccoun
 <bns:Component xmlns:bns="http://api.platform.boomi.com/"
     componentId="{prodComponentId}" version="1"
     name="{componentName}" type="{componentType}"
-    folderFullPath="/Promoted/{devAccountName}/{processName}/">
+    folderFullPath="/Promoted{devFolderFullPath}">
   <bns:object>...</bns:object>
 </bns:Component>
 ```
@@ -2837,6 +2877,11 @@ These properties are used across multiple integration processes.
 | `referencesRewritten` | String | Write | `"0"` | Count of component references rewritten by `rewrite-references.groovy` |
 | `prodComponentId` | String | Read/Write | (from DataHub query) | Prod component ID for the current component; empty if component is new |
 | `promotionId` | String | Read/Write | (UUID generated at start) | Unique ID for this promotion run; written to PromotionLog |
+| `connectionMappingCache` | String (JSON object) | Read/Write | `{}` | Connection mappings batch-queried from DataHub; keys are dev connection IDs, values are prod connection IDs |
+| `missingConnectionMappings` | String (JSON array) | Write | `[]` | JSON array of objects for connections without mappings; each has devComponentId, name, type, devAccountId |
+| `missingConnectionCount` | String | Write | `"0"` | Count of connections without mappings |
+| `connectionMappingsValid` | String | Write | `"true"` | `"true"` if all connections have mappings, `"false"` otherwise |
+| `currentFolderFullPath` | String | Read/Write | (from component) | Dev account folder path for current component; used to construct `/Promoted{currentFolderFullPath}` target path |
 
 ### Groovy Script to DPP Cross-Reference
 
@@ -2846,6 +2891,7 @@ These properties are used across multiple integration processes.
 | Sort by Dependency | `integration/scripts/sort-by-dependency.groovy` | C (Execute Promotion) | `rootComponentId` | (none -- sorts document in-place) |
 | Strip Env Config | `integration/scripts/strip-env-config.groovy` | C (Execute Promotion) | (none -- reads XML from document stream) | `configStripped`, `strippedElements` |
 | Rewrite References | `integration/scripts/rewrite-references.groovy` | C (Execute Promotion) | `componentMappingCache` | `referencesRewritten` |
+| Validate Connection Mappings | `integration/scripts/validate-connection-mappings.groovy` | C (Execute Promotion) | `connectionMappingCache`, `componentMappingCache`, `devAccountId` | `missingConnectionMappings`, `missingConnectionCount`, `connectionMappingsValid`, `componentMappingCache` |
 
 ### Type Priority Order (sort-by-dependency.groovy)
 
@@ -2955,7 +3001,7 @@ curl -s -u "BOOMI_TOKEN.user@company.com:your-api-token" \
   -H "Content-Type: application/xml" \
   -H "Accept: application/xml" \
   -X POST "https://api.boomi.com/partner/api/rest/v1/{accountId}/Component" \
-  -d '<bns:Component xmlns:bns="http://api.platform.boomi.com/" name="{componentName}" type="{componentType}" folderFullPath="/Promoted/{devAccountName}/{processName}/">
+  -d '<bns:Component xmlns:bns="http://api.platform.boomi.com/" name="{componentName}" type="{componentType}" folderFullPath="/Promoted{devFolderFullPath}">
   <bns:object><!-- component XML --></bns:object>
 </bns:Component>'
 ```
@@ -2965,7 +3011,7 @@ curl -s -u "BOOMI_TOKEN.user@company.com:your-api-token" \
 $cred = [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes("BOOMI_TOKEN.user@company.com:your-api-token"))
 $headers = @{ Authorization = "Basic $cred"; "Content-Type" = "application/xml"; Accept = "application/xml" }
 $body = @"
-<bns:Component xmlns:bns="http://api.platform.boomi.com/" name="{componentName}" type="{componentType}" folderFullPath="/Promoted/{devAccountName}/{processName}/">
+<bns:Component xmlns:bns="http://api.platform.boomi.com/" name="{componentName}" type="{componentType}" folderFullPath="/Promoted{devFolderFullPath}">
   <bns:object><!-- component XML --></bns:object>
 </bns:Component>
 "@
@@ -2981,7 +3027,7 @@ curl -s -u "BOOMI_TOKEN.user@company.com:your-api-token" \
   -H "Content-Type: application/xml" \
   -H "Accept: application/xml" \
   -X POST "https://api.boomi.com/partner/api/rest/v1/{accountId}/Component/{prodComponentId}" \
-  -d '<bns:Component xmlns:bns="http://api.platform.boomi.com/" componentId="{prodComponentId}" name="{componentName}" type="{componentType}" folderFullPath="/Promoted/{devAccountName}/{processName}/">
+  -d '<bns:Component xmlns:bns="http://api.platform.boomi.com/" componentId="{prodComponentId}" name="{componentName}" type="{componentType}" folderFullPath="/Promoted{devFolderFullPath}">
   <bns:object><!-- stripped, reference-rewritten component XML --></bns:object>
 </bns:Component>'
 ```
@@ -2991,7 +3037,7 @@ curl -s -u "BOOMI_TOKEN.user@company.com:your-api-token" \
 $cred = [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes("BOOMI_TOKEN.user@company.com:your-api-token"))
 $headers = @{ Authorization = "Basic $cred"; "Content-Type" = "application/xml"; Accept = "application/xml" }
 $body = @"
-<bns:Component xmlns:bns="http://api.platform.boomi.com/" componentId="{prodComponentId}" name="{componentName}" type="{componentType}" folderFullPath="/Promoted/{devAccountName}/{processName}/">
+<bns:Component xmlns:bns="http://api.platform.boomi.com/" componentId="{prodComponentId}" name="{componentName}" type="{componentType}" folderFullPath="/Promoted{devFolderFullPath}">
   <bns:object><!-- stripped, reference-rewritten component XML --></bns:object>
 </bns:Component>
 "@

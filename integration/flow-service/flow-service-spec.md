@@ -113,6 +113,7 @@ The Flow Service exposes 7 message actions, each linked to a corresponding Integ
   - `componentId` (string)
   - `componentName` (string)
   - `componentType` (string)
+  - `folderFullPath` (string)
 - `promotionMetadata` (object)
   - `processName` (string)
   - `requestedBy` (string)
@@ -127,6 +128,12 @@ The Flow Service exposes 7 message actions, each linked to a corresponding Integ
   - `componentType` (string)
   - `action` (string: "created" | "updated")
   - `version` (integer)
+- `connectionsSkipped` (integer) — count of shared connections not promoted
+- `missingConnectionMappings` (array, conditional) — present when errorCode=MISSING_CONNECTION_MAPPINGS
+  - `devComponentId` (string)
+  - `name` (string)
+  - `type` (string)
+  - `devAccountId` (string)
 - `errorCode` (string, optional)
 - `errorMessage` (string, optional)
 
@@ -213,6 +220,9 @@ The Flow Service exposes 7 message actions, each linked to a corresponding Integ
 **Service Type**: Message Action
 
 **Description**: Allows querying and manual editing of dev-to-prod component ID mappings stored in the DataHub (admin/troubleshooting feature).
+
+**Connection Seeding Workflow:**
+Connections are shared resources pre-configured in the parent account's `#Connections` folder. Admins use the `manageMappings` action with `operation = "create"` to seed ComponentMapping records that link each dev account's connection IDs to the parent's canonical connection IDs. The same parent connection can be mapped from multiple dev accounts (each dev account has its own connection component IDs, but they all map to the same parent `#Connections` component).
 
 **Request Fields**:
 - `action` (string: "query" | "update" | "delete")
@@ -401,6 +411,7 @@ Decision: Check Success
 | `INVALID_REQUEST` | Request validation failed | Check required fields |
 | `PROMOTION_FAILED` | Component promotion failed | Review error message for details |
 | `DEPLOYMENT_FAILED` | Environment deployment failed | Check target environment status |
+| `MISSING_CONNECTION_MAPPINGS` | One or more connection mappings not found in DataHub | Admin must seed missing mappings via Mapping Viewer |
 
 **Error Handling Best Practices**:
 

@@ -77,7 +77,8 @@ Built-in Flow authorization containers. Dev swimlane for submission, Admin swiml
 - Existing private cloud atom handles current work; new public cloud atom for Flow Services
 - Azure AD/Entra SSO already configured in Flow
 - Partner API enabled on primary account
-- Promoted components go to `/Promoted/{DevTeamName}/{ProcessName}/`
+- Promoted components mirror the dev account's folder structure under `/Promoted/` (e.g., dev path `/DevTeamARoot/Orders/MyProcess/` becomes `/Promoted/DevTeamARoot/Orders/MyProcess/` in primary)
+- Connection components are NOT promoted — they are pre-configured once in the parent account under `#Connections` folder and shared across all dev accounts
 - Integration Packs: some exist already, system must also create new ones
 
 ## DataHub Models
@@ -85,7 +86,7 @@ Built-in Flow authorization containers. Dev swimlane for submission, Admin swiml
 ### ComponentMapping
 - Purpose: Dev→prod component ID mapping (core persistent data)
 - Match: Exact on `devComponentId` AND `devAccountId`
-- Source: PROMOTION_ENGINE (contribute-only)
+- Sources: PROMOTION_ENGINE (contribute-only), ADMIN_SEEDING (contribute-only, for admin-seeded connection mappings)
 
 ### DevAccountAccess
 - Purpose: Maps SSO groups to dev account IDs
@@ -113,15 +114,23 @@ Built-in Flow authorization containers. Dev swimlane for submission, Admin swiml
 
 1. Create PromotionLog (IN_PROGRESS)
 2. Sort components bottom-up by type hierarchy (profiles → connections → operations → maps → processes)
-3. For each component:
+3. **Connection Validation Phase:**
+   a. Batch query DataHub for all connection mappings for this devAccountId
+   b. For each connection in dependency tree, check mapping exists
+   c. Collect ALL missing mappings (do not stop on first)
+   d. If ANY missing → FAIL with full error report (MISSING_CONNECTION_MAPPINGS)
+   e. If ALL found → pre-load into componentMappingCache
+4. Filter connections OUT of promotion list
+5. For each remaining non-connection component:
    a. GET component XML from dev (with overrideAccount)
-   b. Strip environment-specific values (passwords, hosts, URLs, encrypted values)
-   c. Rewrite internal references (dev IDs → prod IDs using in-memory mapping cache)
-   d. Check DataHub mapping → CREATE (no mapping) or UPDATE (mapping exists)
-   e. POST to primary account → write/update DataHub mapping
-   f. On error: mark dependents as SKIPPED
-4. Update PromotionLog (COMPLETED/FAILED)
-5. Return results
+   b. Extract folderFullPath from response
+   c. Strip environment-specific values (passwords, hosts, URLs, encrypted values)
+   d. Rewrite internal references (dev IDs → prod IDs using cache — includes pre-loaded connection mappings)
+   e. Construct target path: /Promoted{devFolderFullPath}
+   f. CREATE or UPDATE in primary account
+   g. On error: mark dependents as SKIPPED
+6. Update PromotionLog (COMPLETED/FAILED)
+7. Return results (including connectionsSkipped count and any missingConnectionMappings)
 
 ## Error Handling
 - Per-component failure isolation
