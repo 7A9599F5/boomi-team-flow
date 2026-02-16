@@ -13,22 +13,24 @@ This is **not a traditional software codebase** — there is no build system, pa
 ```
 Flow Dashboard (3 swimlanes: Dev + Peer Review + Admin, 8 pages)
   ↓ Message Actions (Flow Service)
-Integration Engine (9 processes A0–F + E2, E3 on Public Boomi Cloud Atom)
+Integration Engine (11 processes A0–G + E2, E3, J on Public Boomi Cloud Atom)
   ↓                    ↓
 Platform API        DataHub
 (Partner API)       (ComponentMapping, DevAccountAccess, PromotionLog)
 ```
 
-**9 Integration Processes:**
+**11 Integration Processes:**
 - **A0** getDevAccounts — SSO group → dev account access lookup
 - **A** listDevPackages — query dev account's PackagedComponents
 - **B** resolveDependencies — recursive dependency traversal + mapping lookup
-- **C** executePromotion — read → strip env config → rewrite refs → create/update in prod
-- **D** packageAndDeploy — create PackagedComponent, Integration Pack, deploy
+- **C** executePromotion — create branch → promote to branch (tilde syntax) → strip env config → rewrite refs
+- **D** packageAndDeploy — merge branch → main, create PackagedComponent, Integration Pack, deploy, delete branch
 - **E** queryStatus — read PromotionLog from DataHub (supports reviewStage filter)
 - **E2** queryPeerReviewQueue — query PENDING_PEER_REVIEW promotions, exclude own
 - **E3** submitPeerReview — record peer approve/reject with self-review prevention
 - **F** manageMappings — CRUD on ComponentMapping records
+- **G** generateComponentDiff — fetch branch vs main component XML for diff rendering
+- **J** listIntegrationPacks — query Integration Packs with smart suggestion from history
 
 **Key design decisions** (see `docs/architecture.md`):
 - Message Actions over Data Actions (complex logic requires full process control)
@@ -44,13 +46,14 @@ datahub/
   models/              3 DataHub model specs (JSON) — ComponentMapping, DevAccountAccess, PromotionLog
   api-requests/        Golden record test XML templates
 integration/
-  profiles/            18 JSON request/response profiles (9 message actions × 2)
-  scripts/             5 Groovy scripts (dependency traversal, sorting, stripping, validation, rewriting)
-  api-requests/        9 XML/JSON Platform API templates
+  profiles/            22 JSON request/response profiles (11 message actions × 2)
+  scripts/             6 Groovy scripts (dependency traversal, sorting, stripping, validation, rewriting, XML normalization)
+  api-requests/        13 XML/JSON Platform API templates (Component CRUD, PackagedComponent, DeployedPackage, IntegrationPack, Branch, MergeRequest)
   flow-service/        Flow Service specification (message actions, config, error codes)
 flow/
   flow-structure.md    App structure — 3 swimlanes, 8 pages, Flow values, navigation
   page-layouts/        8 page specs (Package Browser, Promotion Review, Status, Deployment, Peer Review Queue, Peer Review Detail, Admin Approval Queue, Mapping Viewer)
+  custom-components/   Custom React component specs (XmlDiffViewer)
 docs/
   architecture.md      System design, decisions, constraints, error handling
   BUILD-GUIDE.md       6-phase step-by-step implementation guide (primary reference for building)
@@ -60,7 +63,7 @@ docs/
 
 1. `docs/architecture.md` — system design and key decisions
 2. `docs/BUILD-GUIDE.md` — the implementation playbook (6 phases, 3000+ lines)
-3. `integration/flow-service/flow-service-spec.md` — complete API contract for all 9 message actions
+3. `integration/flow-service/flow-service-spec.md` — complete API contract for all 11 message actions
 4. `flow/flow-structure.md` — dashboard navigation, Flow values, swimlanes
 
 ## Groovy Scripts
@@ -74,6 +77,7 @@ Located in `integration/scripts/`, these run as Data Process steps inside Integr
 | `strip-env-config.groovy` | Process C | Remove passwords, hosts, URLs, encrypted values from component XML |
 | `validate-connection-mappings.groovy` | Process C | Pre-promotion batch validation that all connection mappings exist |
 | `rewrite-references.groovy` | Process C | Replace dev component IDs with prod IDs using mapping cache |
+| `normalize-xml.groovy` | Process G | Pretty-print component XML for consistent line-by-line diff comparison |
 
 ## DataHub Models
 
@@ -85,5 +89,5 @@ Located in `integration/scripts/`, these run as Data Process steps inside Integr
 
 - **Commit messages**: conventional commits — `feat(scope):`, `fix(scope):`, `docs:`, etc.
 - **Spec files**: Markdown for documentation, JSON for data models/profiles, XML for API request templates, Groovy for scripts
-- **Naming**: processes use letter codes (A0, A–F); message actions use camelCase (`getDevAccounts`, `executePromotion`)
-- **Error codes**: uppercase snake_case (`MISSING_CONNECTION_MAPPINGS`, `COMPONENT_NOT_FOUND`)
+- **Naming**: processes use letter codes (A0, A–G, J); message actions use camelCase (`getDevAccounts`, `executePromotion`)
+- **Error codes**: uppercase snake_case (`MISSING_CONNECTION_MAPPINGS`, `COMPONENT_NOT_FOUND`, `BRANCH_LIMIT_REACHED`)
