@@ -14,10 +14,16 @@ The Deployment Submission page is where the developer fills out deployment detai
    - `componentsTotal`: From `totalComponents` Flow value
    - `promotionId`: From previous step
 
-3. **Load integration pack options (optional):**
-   - Message step → API to get list of existing Integration Packs (if available)
-   - Populate Combobox with pack names
-   - Store in `availableIntegrationPacks` Flow value
+3. **Load integration pack options:**
+   - Message step → `listIntegrationPacks` (Process J)
+   - Input: `suggestForProcess` = `{processName}` (from promotion results)
+   - Output:
+     - `availableIntegrationPacks` — array of existing MULTI-type Integration Packs
+     - `suggestedPackId` — most recently used pack ID for this process (optional)
+     - `suggestedPackName` — name of the suggested pack (optional)
+   - Populate Integration Pack Combobox with pack names
+   - If `suggestedPackId` is returned: Pre-select the suggested pack in the combobox
+   - Store results in Flow values: `availableIntegrationPacks`, `suggestedPackId`
 
 4. **Load account group options (optional):**
    - Message step → API to get list of account groups (if available)
@@ -64,11 +70,19 @@ The Deployment Submission page is where the developer fills out deployment detai
    - Icon: Plus icon (+)
    - Positioned at top of dropdown
 
-2. **Existing packs:**
-   - Populated from `availableIntegrationPacks` API response
+2. **Suggested pack (conditional):**
+   - Shown when `suggestedPackId` is returned from `listIntegrationPacks`
+   - Display: `"{suggestedPackName}"` with hint badge: *"Last used for this process"*
+   - Value: `{suggestedPackId}`
+   - Auto-selected on page load (pre-filled)
+   - Visual indicator: Star icon or "Suggested" tag next to pack name
+
+3. **Existing packs:**
+   - Populated from `availableIntegrationPacks` array (from `listIntegrationPacks` response)
    - Display field: `packName`
    - Value field: `packId`
    - Example: "Order Management v2", "Customer Sync v1"
+   - Suggested pack appears in normal list position too (but marked as suggested)
 
 **Behavior:**
 - **On select "Create New Integration Pack":**
@@ -81,6 +95,14 @@ The Deployment Submission page is where the developer fills out deployment detai
   2. Store selected `packId` → `deploymentRequest.integrationPackId`
   3. Store selected `packName` → `deploymentRequest.integrationPackName`
   4. Set `deploymentRequest.createNewPack = false`
+
+- **Auto-suggestion on load:**
+  1. If `suggestedPackId` is returned by `listIntegrationPacks`:
+     - Auto-select the suggested pack in the combobox
+     - Show hint below combobox: *"Suggested: Last used for '{processName}'"*
+     - User can change selection (suggestion is not mandatory)
+  2. If no suggestion returned:
+     - Combobox remains empty with placeholder text
 
 **Validation:**
 - "Integration Pack selection is required" (if empty on submit)
@@ -309,7 +331,7 @@ The Deployment Submission page is where the developer fills out deployment detai
 |  [1.2.3_____________________]                            |
 |                                                          |
 |  Integration Pack                                        |
-|  [Create New Integration Pack ▼]                         |
+|  [Order Management v3 ▼]  ★ Last used for this process  |
 |                                                          |
 |    New Pack Name (conditional)                           |
 |    [Order Management v3_________]                        |
