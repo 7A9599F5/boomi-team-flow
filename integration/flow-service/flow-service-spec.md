@@ -62,6 +62,7 @@ The Flow Service exposes 7 message actions, each linked to a corresponding Integ
   - `componentName` (string)
   - `componentType` (string)
   - `createdDate` (datetime)
+  - `createdBy` (string) — Boomi user who created the package
   - `notes` (string)
 - `errorCode` (string, optional)
 - `errorMessage` (string, optional)
@@ -161,10 +162,15 @@ The Flow Service exposes 7 message actions, each linked to a corresponding Integ
 - `targetEnvironments` (array)
   - `environmentId` (string)
   - `environmentName` (string)
+- `devAccountId` (string, required) — Source dev account ID
+- `devPackageId` (string, required) — Source dev package ID
+- `devPackageCreator` (string) — Boomi user who created the dev package
+- `devPackageVersion` (string) — Version of the dev package
 
 **Response Fields**:
 - `success` (boolean)
 - `packageId` (string)
+- `prodPackageId` (string) — Package ID of the created prod PackagedComponent
 - `integrationPackId` (string)
 - `deploymentResults` (array)
   - `environmentId` (string)
@@ -205,6 +211,7 @@ The Flow Service exposes 7 message actions, each linked to a corresponding Integ
   - `componentCount` (integer)
   - `packageVersion` (string, optional)
   - `integrationPackId` (string, optional)
+  - `prodPackageId` (string, optional) — Package ID of the prod PackagedComponent (populated after packageAndDeploy)
 - `errorCode` (string, optional)
 - `errorMessage` (string, optional)
 

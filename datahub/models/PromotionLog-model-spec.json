@@ -32,6 +32,13 @@
       "matchField": false
     },
     {
+      "name": "prodPackageId",
+      "type": "String",
+      "description": "PackagedComponent packageId created in production account during packaging step",
+      "required": false,
+      "matchField": false
+    },
+    {
       "name": "initiatedBy",
       "type": "String",
       "description": "SSO user email who initiated the promotion",

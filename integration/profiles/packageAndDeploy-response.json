@@ -3,6 +3,7 @@
   "errorCode": "",
   "errorMessage": "",
   "packagedComponentId": "string",
+  "prodPackageId": "string",
   "integrationPackId": "string",
   "integrationPackName": "string",
   "releaseVersion": "string",

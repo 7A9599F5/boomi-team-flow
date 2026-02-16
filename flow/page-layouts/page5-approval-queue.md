@@ -258,6 +258,7 @@ The Approval Queue is the admin entry point for reviewing and approving/denying 
    - If success:
      - Show success message: "Deployment approved and completed successfully!"
      - Display deployment ID: `{deploymentId}`
+     - Display prod package ID: `{prodPackageId}`
      - Show component deployment details (if available)
    - If failure:
      - Show error message: "Deployment failed: {errorMessage}"
@@ -279,6 +280,7 @@ The Approval Queue is the admin entry point for reviewing and approving/denying 
      Integration Pack: {integrationPackName}
      Target Account Group: {targetAccountGroupName}
      Deployment ID: {deploymentId}
+     Prod Package ID: {prodPackageId}
 
      APPROVED BY:
      Admin: {adminUserName} ({adminUserEmail})

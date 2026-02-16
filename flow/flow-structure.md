@@ -37,11 +37,11 @@ Flow values are used to maintain state across pages and message steps.
 |--------------|------|---------|
 | `selectedDevAccountId` | String | Currently selected developer account ID |
 | `selectedDevAccountName` | String | Display name for selected developer account |
-| `selectedPackage` | Object | Selected package from browser (includes componentId, packageId, componentName, packageVersion) |
+| `selectedPackage` | Object | Selected package from browser (includes componentId, packageId, componentName, packageVersion, createdBy) |
 | `dependencyTree` | List | Resolved dependency tree from resolveDependencies API call |
 | `promotionResults` | Object | Results from executePromotion API call |
 | `promotionId` | String | UUID of current promotion run (for audit trail) |
-| `deploymentRequest` | Object | Deployment submission data (version, pack, notes, etc.) |
+| `deploymentRequest` | Object | Deployment submission data (version, pack, notes, devAccountId, devPackageId, devPackageCreator, devPackageVersion, etc.) |
 | `userSsoGroups` | List | User's Azure AD group memberships (from SSO context) |
 | `accessibleAccounts` | List | Dev accounts user can access based on SSO groups |
 | `componentsCreated` | Integer | Count of components created in promotion |

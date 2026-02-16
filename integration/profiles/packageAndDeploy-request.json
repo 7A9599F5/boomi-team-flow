@@ -6,5 +6,9 @@
   "createNewPack": false,
   "newPackName": "string",
   "newPackDescription": "string",
-  "targetAccountGroupId": "string"
+  "targetAccountGroupId": "string",
+  "devAccountId": "string",
+  "devPackageId": "string",
+  "devPackageCreator": "string",
+  "devPackageVersion": "string"
 }

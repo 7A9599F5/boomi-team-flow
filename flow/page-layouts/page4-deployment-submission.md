@@ -214,7 +214,11 @@ The Deployment Submission page is where the developer fills out deployment detai
      "submittedBy": "{userEmail}",
      "submittedAt": "{timestamp}",
      "processName": "{processName}",
-     "componentsTotal": {componentsTotal}
+     "componentsTotal": {componentsTotal},
+     "devAccountId": "{selectedDevAccountId}",
+     "devPackageId": "{selectedPackage.packageId}",
+     "devPackageCreator": "{selectedPackage.createdBy}",
+     "devPackageVersion": "{selectedPackage.packageVersion}"
    }
    ```
 

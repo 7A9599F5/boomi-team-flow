@@ -6,11 +6,11 @@
     "componentId: the prod component ID from the promotion results",
     "componentType: typically 'process' for the root component",
     "packageVersion: version string provided by the user (e.g., '1.0.0')",
-    "notes: deployment notes from the submission form"
+    "notes: deployment notes + dev metadata block appended by Process D"
   ],
   "componentId": "{prodComponentId}",
   "componentType": "process",
   "packageVersion": "{packageVersion}",
-  "notes": "{deploymentNotes}",
+  "notes": "{deploymentNotes}\n\n--- Source Package Info ---\nDev Account ID: {devAccountId}\nDev Package ID: {devPackageId}\nDev Package Creator: {devPackageCreator}\nDev Package Version: {devPackageVersion}",
   "shareable": true
 }
