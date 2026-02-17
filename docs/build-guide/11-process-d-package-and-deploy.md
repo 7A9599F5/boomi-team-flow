@@ -58,6 +58,8 @@ Create `PROMO - FSS Op - PackageAndDeploy` per Section 3.B, using `PROMO - Profi
 | `isHotfix` | (from request) | Emergency hotfix flag |
 | `hotfixJustification` | (from request) | Hotfix justification text |
 | `testPromotionId` | (from request) | Links production to preceding test deployment |
+| `cacheRefreshFailed` | "false" | Tracks whether ExtensionAccessMapping cache refresh succeeded |
+| `extensionAccessMappingCount` | "0" | Count of ExtensionAccessMapping records created/updated |
 
 #### Canvas — Shape by Shape
 
@@ -186,6 +188,53 @@ Create `PROMO - FSS Op - PackageAndDeploy` per Section 3.B, using `PROMO - Profi
      - Request body: JSON with `packageId`, `environmentId`, and deployment parameters
    - Accumulate deployment results for each environment (success/failure per environment)
    - Add 120ms gap between deployment calls
+
+8.3. **ExtensionAccessMapping Cache Refresh (Post-Deployment)**
+   - After successful deployment to target environments, refresh the extension access mapping cache for each deployed environment
+   - This step enables the Extension Editor feature to provide fast, process-level access control for extension editing
+
+   **Sub-steps for each deployed environment:**
+   1. **HTTP Client Send — GET EnvironmentExtensions**
+      - Connector: `PROMO - Partner API Connection`
+      - Operation: `PROMO - HTTP Op - GET EnvironmentExtensions`
+      - URL parameter `{1}` = DPP `primaryAccountId`
+      - Query: `environmentId = {targetEnvironmentId}` (from deployment results)
+      - Response: Full EnvironmentExtensions object with all extension components
+
+   2. **DataHub Query — ComponentMapping Lookup**
+      - For each component found in the EnvironmentExtensions response (connections, operations, processProperties, etc.):
+        - Query ComponentMapping: `prodComponentId = {componentId}` to find the originating `devAccountId`(s)
+        - If multiple devAccountIds map to the same prodComponentId → component is shared
+
+   3. **DataHub Query — DevAccountAccess Lookup**
+      - For each unique `devAccountId` found:
+        - Query DevAccountAccess: `devAccountId = {devAccountId}` AND `isActive = "true"`
+        - Collect authorized SSO group IDs
+
+   4. **Groovy Script — Build Extension Access Cache**
+      - Script: `build-extension-access-cache.groovy` (from `/integration/scripts/`)
+      - Input: Combined JSON containing extensions, componentMappings, and devAccountAccessRecords
+      - For each extension component:
+        - Determine `isConnectionExtension` (component is in `connections` section → "true")
+        - Determine `isSharedComponent` (multiple devAccountIds → "true")
+        - Compute `authorizedSsoGroups` as union of all matching SSO groups
+        - Set `ownerProcessId` and `ownerProcessName` from deployment context
+      - Output: Array of ExtensionAccessMapping records
+
+   5. **DataHub Upsert — Store ExtensionAccessMapping Records**
+      - Operation: `PROMO - DH Op - Upsert ExtensionAccessMapping`
+      - Upsert each record to DataHub (match on `environmentId` + `prodComponentId`)
+      - Records that already exist are updated; new records are created
+
+   **Error Handling:** Cache refresh failures MUST NOT fail the overall deployment. If the cache refresh fails:
+   - Log the error with `logger.warning("ExtensionAccessMapping cache refresh failed for environment {environmentId}: {error}")`
+   - Set DPP `cacheRefreshFailed` = `"true"` for downstream reporting
+   - Continue to step 8.5 (branch deletion) — the deployment was successful even if the cache refresh failed
+   - Admin can trigger a manual cache refresh later via the Extension Editor's refresh action
+
+   **DPP additions:**
+   - `cacheRefreshFailed` (set in step 8.3 error handler) — `"true"` if any environment's cache refresh failed, `"false"` otherwise
+   - `extensionAccessMappingCount` (set by Groovy script) — total records upserted across all environments
 
 8.5. **Decision — Delete or Preserve Branch**
    - **TEST mode** (`deploymentTarget = "TEST"`): **SKIP branch deletion** — branch is preserved for future production promotion and diff review
