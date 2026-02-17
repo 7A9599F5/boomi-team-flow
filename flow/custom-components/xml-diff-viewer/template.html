@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>XmlDiffViewer — Local Dev</title>
+
+    <!-- Flow player provides React globally -->
+    <script crossorigin src="https://unpkg.com/react@16.12.0/umd/react.development.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@16.12.0/umd/react-dom.development.js"></script>
+
+    <!-- Minimal manywho stub for local testing -->
+    <script>
+        window.manywho = window.manywho || {};
+        window.manywho.component = window.manywho.component || {};
+        window.manywho.component.register = function (name, component) {
+            console.log('[Flow stub] Registered component:', name);
+            window.__registeredComponents = window.__registeredComponents || {};
+            window.__registeredComponents[name] = component;
+        };
+        window.manywho.model = window.manywho.model || {
+            getComponent: function () { return {}; },
+        };
+        window.manywho.state = window.manywho.state || {
+            getComponent: function () { return {}; },
+        };
+        window.manywho.styling = window.manywho.styling || {
+            getClasses: function () { return []; },
+        };
+    </script>
+</head>
+<body>
+    <div id="root" style="max-width: 1200px; margin: 0 auto; padding: 20px;">
+        <h2>XmlDiffViewer — Local Development</h2>
+        <p>Component registered via <code>manywho.component.register()</code>. Check console for registration.</p>
+        <div id="xml-diff-viewer-mount"></div>
+    </div>
+
+    <script>
+        // After bundle loads, render a test instance
+        document.addEventListener('DOMContentLoaded', function () {
+            var sampleBranchXml = [
+                '<?xml version="1.0" encoding="UTF-8"?>',
+                '<bns:Component xmlns:bns="http://api.platform.boomi.com/" id="abc-123" version="4">',
+                '  <bns:Name>OrderProcess</bns:Name>',
+                '  <bns:Type>process</bns:Type>',
+                '  <bns:Description>Updated order processing flow</bns:Description>',
+                '  <bns:Configuration>',
+                '    <bns:Timeout>60</bns:Timeout>',
+                '    <bns:RetryCount>3</bns:RetryCount>',
+                '  </bns:Configuration>',
+                '</bns:Component>'
+            ].join('\n');
+
+            var sampleMainXml = [
+                '<?xml version="1.0" encoding="UTF-8"?>',
+                '<bns:Component xmlns:bns="http://api.platform.boomi.com/" id="abc-123" version="3">',
+                '  <bns:Name>OrderProcess</bns:Name>',
+                '  <bns:Type>process</bns:Type>',
+                '  <bns:Description>Order processing flow</bns:Description>',
+                '  <bns:Configuration>',
+                '    <bns:Timeout>30</bns:Timeout>',
+                '  </bns:Configuration>',
+                '</bns:Component>'
+            ].join('\n');
+
+            if (window.__registeredComponents && window.__registeredComponents['XmlDiffViewer']) {
+                var Component = window.__registeredComponents['XmlDiffViewer'];
+                var mockProps = {
+                    id: 'test-diff-viewer',
+                    flowKey: 'test-flow-key',
+                    objectData: [
+                        {
+                            properties: [
+                                { developerName: 'branchXml', contentValue: sampleBranchXml },
+                                { developerName: 'mainXml', contentValue: sampleMainXml },
+                                { developerName: 'componentName', contentValue: 'OrderProcess' },
+                                { developerName: 'componentAction', contentValue: 'UPDATE' },
+                                { developerName: 'branchVersion', contentValue: '4' },
+                                { developerName: 'mainVersion', contentValue: '3' }
+                            ]
+                        }
+                    ]
+                };
+                ReactDOM.render(
+                    React.createElement(Component, mockProps),
+                    document.getElementById('xml-diff-viewer-mount')
+                );
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,64 @@
+{
+  "name": "xml-diff-viewer",
+  "version": "1.0.0",
+  "description": "Boomi Flow custom component for XML diff visualization",
+  "main": "build/xml-diff-viewer.js",
+  "scripts": {
+    "start": "webpack serve --config webpack.config.js --mode development",
+    "build": "webpack --config webpack.production.config.js --mode production",
+    "analyze": "ANALYZE=true webpack --config webpack.production.config.js --mode production",
+    "test": "jest --coverage",
+    "test:watch": "jest --watch",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "react-diff-viewer-continued": "^4.0.0",
+    "prismjs": "^1.29.0"
+  },
+  "devDependencies": {
+    "@types/react": "^16.14.0",
+    "@types/react-dom": "^16.9.0",
+    "@types/prismjs": "^1.26.0",
+    "css-loader": "^6.8.0",
+    "css-minimizer-webpack-plugin": "^5.0.0",
+    "html-webpack-plugin": "^5.5.0",
+    "jest": "^29.7.0",
+    "@jest/globals": "^29.7.0",
+    "jest-environment-jsdom": "^29.7.0",
+    "mini-css-extract-plugin": "^2.7.0",
+    "react": "^16.12.0",
+    "react-dom": "^16.12.0",
+    "style-loader": "^3.3.0",
+    "ts-jest": "^29.1.0",
+    "ts-loader": "^9.5.0",
+    "typescript": "^5.3.0",
+    "webpack": "^5.89.0",
+    "webpack-bundle-analyzer": "^4.10.0",
+    "webpack-cli": "^5.1.0",
+    "webpack-dev-server": "^4.15.0",
+    "@testing-library/react": "^12.1.5",
+    "@testing-library/jest-dom": "^5.17.0"
+  },
+  "peerDependencies": {
+    "react": ">=16.8.0",
+    "react-dom": ">=16.8.0"
+  },
+  "jest": {
+    "testEnvironment": "jsdom",
+    "transform": {
+      "^.+\\.tsx?$": "ts-jest"
+    },
+    "moduleFileExtensions": ["ts", "tsx", "js", "jsx"],
+    "setupFiles": ["./mocks/manywho.js"],
+    "moduleNameMapper": {
+      "\\.(css)$": "<rootDir>/mocks/styles.js"
+    },
+    "testMatch": ["<rootDir>/src/__tests__/**/*.test.{ts,tsx}"],
+    "collectCoverageFrom": [
+      "src/**/*.{ts,tsx}",
+      "!src/__tests__/**",
+      "!src/index.tsx",
+      "!src/types/**"
+    ]
+  }
+}
