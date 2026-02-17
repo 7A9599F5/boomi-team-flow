@@ -9,6 +9,8 @@
 **Deployment Target**: Public Boomi Cloud Atom
 **Purpose**: Backend API for Boomi Team Promotion Flow application
 
+> **Diagram:** See the [Promotion Sequence Diagram](../../docs/diagrams/promotion-sequence.md) for a visual end-to-end flow of all message actions.
+
 ---
 
 ## Message Actions
