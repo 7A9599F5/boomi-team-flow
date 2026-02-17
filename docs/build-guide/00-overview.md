@@ -13,7 +13,7 @@ For components with complex internal XML (Integration Processes, Maps), the guid
 
 ## How to Use This Guide
 
-- **Linear build**: Follow Phases 1-6 sequentially for a first-time build
+- **Linear build**: Follow Phases 1-7 sequentially for a first-time build
 - **Reference lookup**: Jump to a specific phase/step using the table of contents
 - **Validation**: Every major step ends with a "**Verify:**" checkpoint — do not skip these
 - **API examples**: All commands are shown in both `curl` (Linux/macOS) and PowerShell (Windows) formats
@@ -35,7 +35,7 @@ For components with complex internal XML (Integration Processes, Maps), the guid
 
 ## Bill of Materials
 
-The system comprises **89 components** across 6 phases:
+The system comprises **124 components** across 7 phases:
 
 | Phase | Category | Count | Components |
 |-------|----------|-------|------------|
@@ -50,7 +50,14 @@ The system comprises **89 components** across 6 phases:
 | 5 | Custom Component | 1 | XmlDiffViewer (React diff viewer for Flow custom player) |
 | 5 | Flow Connector | 1 | Promotion Service Connector |
 | 5 | Flow Application | 1 | Promotion Dashboard (3 swimlanes, 9 pages) |
-| | **Total** | **89** | |
+| 7 | DataHub Models | 2 | ExtensionAccessMapping, ClientAccountConfig |
+| 7 | HTTP Client Operations | 8 | Account, Environment, Extensions CRUD, MapExtension, ComponentReference |
+| 7 | DataHub Operations | 4 | Query + Upsert for ExtensionAccessMapping and ClientAccountConfig |
+| 7 | JSON Profiles | 10 | Request + Response for 5 new message actions (K-O) |
+| 7 | Integration Processes | 5 | K (listClientAccounts), L (getExtensions), M (updateExtensions), N (copyExtensionsTestToProd), O (updateMapExtension) |
+| 7 | FSS Operations | 5 | One per new message action |
+| 7 | Custom Component | 1 | ExtensionEditor (React custom component for env extension editing) |
+| | **Total** | **124** | |
 
 ---
 
@@ -83,6 +90,7 @@ Phase 1: DataHub Models
                     └── Phase 4: Flow Service (links processes to message actions)
                             └── Phase 5: Flow Dashboard (calls Flow Service via connector)
                                     └── Phase 6: Testing (validates entire stack)
+                                            └── Phase 7: Extension Editor (extends processes, Flow Service, dashboard)
 ```
 
 Within Phase 3, build processes in this order (simplest → most complex):
@@ -97,13 +105,13 @@ F (Mapping CRUD) → A0 (Get Dev Accounts) → E (Query Status) → E2 (Query Pe
 
 | Directory | Contents | Used In |
 |-----------|----------|---------|
-| `/datahub/models/` | DataHub model specifications (3 JSON files) | Phase 1 |
-| `/datahub/api-requests/` | Test XML for DataHub CRUD validation (3 files) | Phase 1, 6 |
-| `/integration/profiles/` | JSON request/response profiles (28 files, 14 message actions × 2) | Phase 3 |
-| `/integration/scripts/` | Groovy scripts for XML manipulation (7 files) | Phase 3 |
-| `/integration/api-requests/` | API request templates (20 files) | Phase 2, 3 |
+| `/datahub/models/` | DataHub model specifications (5 JSON files) | Phase 1, 7 |
+| `/datahub/api-requests/` | Test XML for DataHub CRUD validation (5 files) | Phase 1, 6, 7 |
+| `/integration/profiles/` | JSON request/response profiles (38 files, 19 message actions × 2) | Phase 3, 7 |
+| `/integration/scripts/` | Groovy scripts for XML manipulation (10 files) | Phase 3, 7 |
+| `/integration/api-requests/` | API request templates (28 files) | Phase 2, 3, 7 |
 | `/integration/flow-service/` | Flow Service component specification | Phase 4 |
-| `/flow/` | Flow app structure and page layouts (9 files) | Phase 5 |
+| `/flow/` | Flow app structure and page layouts (11 files) | Phase 5, 7 |
 | `/docs/` | This guide and architecture reference | All |
 
 ---

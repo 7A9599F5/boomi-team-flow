@@ -10,8 +10,8 @@
    - **Authentication**: Basic
      - **Username**: the shared web server user (from **Shared Web Server User Management** in AtomSphere)
      - **Password**: the API token for that user
-4. Click **"Retrieve Connector Configuration Data"**. Flow contacts the deployed Flow Service and auto-discovers all 14 message actions. Wait for the operation to complete.
-5. Verify the auto-generated Flow Types. You should see exactly 28 types (one request and one response for each action):
+4. Click **"Retrieve Connector Configuration Data"**. Flow contacts the deployed Flow Service and auto-discovers all 19 message actions. Wait for the operation to complete.
+5. Verify the auto-generated Flow Types. You should see exactly 38 types (one request and one response for each action):
    1. `getDevAccounts REQUEST - getDevAccountsRequest`
    2. `getDevAccounts RESPONSE - getDevAccountsResponse`
    3. `listDevPackages REQUEST - listDevPackagesRequest`
@@ -40,10 +40,20 @@
    26. `cancelTestDeployment RESPONSE - cancelTestDeploymentResponse`
    27. `withdrawPromotion REQUEST - withdrawPromotionRequest`
    28. `withdrawPromotion RESPONSE - withdrawPromotionResponse`
+   29. `listClientAccounts REQUEST - listClientAccountsRequest`
+   30. `listClientAccounts RESPONSE - listClientAccountsResponse`
+   31. `getExtensions REQUEST - getExtensionsRequest`
+   32. `getExtensions RESPONSE - getExtensionsResponse`
+   33. `updateExtensions REQUEST - updateExtensionsRequest`
+   34. `updateExtensions RESPONSE - updateExtensionsResponse`
+   35. `copyExtensionsTestToProd REQUEST - copyExtensionsTestToProdRequest`
+   36. `copyExtensionsTestToProd RESPONSE - copyExtensionsTestToProdResponse`
+   37. `updateMapExtension REQUEST - updateMapExtensionRequest`
+   38. `updateMapExtension RESPONSE - updateMapExtensionResponse`
 6. Open the **Configuration Values** section of the connector. Set `primaryAccountId` to your primary Boomi account ID.
 7. Click **Install**, then **Save**.
 
-**Verify:** Open the connector and confirm all 28 types appear under **Types**. If any are missing, click "Retrieve Connector Configuration Data" again and check that the Flow Service is deployed and all 14 listeners are running.
+**Verify:** Open the connector and confirm all 38 types appear under **Types**. If any are missing, click "Retrieve Connector Configuration Data" again and check that the Flow Service is deployed and all 19 listeners are running.
 
 ### Step 5.2 -- Create Flow Application
 
@@ -60,7 +70,7 @@
    - Authorization: SSO group `ABC_BOOMI_FLOW_ADMIN`
    - This swimlane receives control after peer review passes
 
-Build the 9 pages in order. Each page uses Message steps to call Flow Service actions and Decision steps to handle the `success` field in responses.
+Build the 11 pages in order. Each page uses Message steps to call Flow Service actions and Decision steps to handle the `success` field in responses.
 
 #### Page 1: Package Browser (Developer Swimlane)
 
