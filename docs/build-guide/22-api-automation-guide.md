@@ -435,14 +435,14 @@ Invoke-RestMethod -Uri "https://api.boomi.com/partner/api/rest/v1/$env:BOOMI_ACC
 | 17 | `PROMO - HTTP Op - POST Add To IntegrationPack` | POST | `/partner/api/rest/v1/{1}/IntegrationPack/{2}/PackagedComponent/{3}` | `application/json` |
 | 18 | `PROMO - HTTP Op - POST ReleaseIntegrationPack` | POST | `/partner/api/rest/v1/{1}/ReleaseIntegrationPack` | `application/json` |
 | 19 | `PROMO - HTTP Op - GET MergeRequest` | GET | `/partner/api/rest/v1/{1}/MergeRequest/{2}` | `application/json` |
-| 20 | `PROMO - HTTP Op - GET EnvironmentExtensions` | GET | `/partner/api/rest/v1/{1}/EnvironmentExtensions/{2}` | `application/json` |
-| 21 | `PROMO - HTTP Op - POST EnvironmentExtensions Update` | POST | `/partner/api/rest/v1/{1}/EnvironmentExtensions/{2}/update` | `application/json` |
-| 22 | `PROMO - HTTP Op - QUERY DeployedPackage` | POST | `/partner/api/rest/v1/{1}/DeployedPackage/query` | `application/json` |
-| 23 | `PROMO - HTTP Op - QUERY Environment` | POST | `/partner/api/rest/v1/{1}/Environment/query` | `application/json` |
-| 24 | `PROMO - HTTP Op - GET MapExtensions` | GET | `/partner/api/rest/v1/{1}/MapExtensions/{2}/{3}` | `application/json` |
-| 25 | `PROMO - HTTP Op - POST MapExtensions Update` | POST | `/partner/api/rest/v1/{1}/MapExtensions/{2}/{3}/update` | `application/json` |
-| 26 | `PROMO - HTTP Op - DELETE DeployedPackage` | DELETE | `/partner/api/rest/v1/{1}/DeployedPackage/{2}` | `application/json` |
-| 27 | `PROMO - HTTP Op - QUERY IntegrationPackInstance` | POST | `/partner/api/rest/v1/{1}/IntegrationPackInstance/query` | `application/json` |
+| 20 | `PROMO - HTTP Op - QUERY Account` | POST | `/partner/api/rest/v1/{1}/Account/query` | `application/json` |
+| 21 | `PROMO - HTTP Op - QUERY Environment` | POST | `/partner/api/rest/v1/{1}/Environment/query` | `application/json` |
+| 22 | `PROMO - HTTP Op - GET EnvironmentExtensions` | GET | `/partner/api/rest/v1/{1}/EnvironmentExtensions/{2}` | `application/json` |
+| 23 | `PROMO - HTTP Op - UPDATE EnvironmentExtensions` | POST | `/partner/api/rest/v1/{1}/EnvironmentExtensions/{2}/update` | `application/json` |
+| 24 | `PROMO - HTTP Op - QUERY EnvironmentMapExtensionsSummary` | POST | `/partner/api/rest/v1/{1}/EnvironmentMapExtensions/{2}/query` | `application/json` |
+| 25 | `PROMO - HTTP Op - GET EnvironmentMapExtension` | GET | `/partner/api/rest/v1/{1}/EnvironmentMapExtension/{2}` | `application/json` |
+| 26 | `PROMO - HTTP Op - UPDATE EnvironmentMapExtension` | POST | `/partner/api/rest/v1/{1}/EnvironmentMapExtension/{2}/update` | `application/json` |
+| 27 | `PROMO - HTTP Op - QUERY ComponentReference` | POST | `/partner/api/rest/v1/{1}/ComponentReference/query` | `application/json` |
 
 > **Recommended workflow:** Create operation #1 (`GET Component`) manually in the UI, then export via `GET /Component/{id}` to capture the internal XML. Use that as a template, modifying the name, method, URL, and headers for each subsequent operation. The internal XML structure for connector-action components is not publicly documented, making the export-first approach essential.
 
@@ -518,16 +518,16 @@ Invoke-RestMethod -Uri "https://api.boomi.com/partner/api/rest/v1/$env:BOOMI_ACC
 
 | # | Component Name | Model | Action |
 |---|---------------|-------|--------|
-| 1 | `PROMO - DH Op - Query ComponentMapping` | ComponentMapping | Query Golden Records |
-| 2 | `PROMO - DH Op - Update ComponentMapping` | ComponentMapping | Update Golden Records |
-| 3 | `PROMO - DH Op - Query DevAccountAccess` | DevAccountAccess | Query Golden Records |
-| 4 | `PROMO - DH Op - Update DevAccountAccess` | DevAccountAccess | Update Golden Records |
-| 5 | `PROMO - DH Op - Query PromotionLog` | PromotionLog | Query Golden Records |
-| 6 | `PROMO - DH Op - Update PromotionLog` | PromotionLog | Update Golden Records |
-| 7 | `PROMO - DH Op - Query ExtensionAccessMapping` | ExtensionAccessMapping | Query Golden Records |
-| 8 | `PROMO - DH Op - Update ExtensionAccessMapping` | ExtensionAccessMapping | Update Golden Records |
-| 9 | `PROMO - DH Op - Query ClientAccountConfig` | ClientAccountConfig | Query Golden Records |
-| 10 | `PROMO - DH Op - Update ClientAccountConfig` | ClientAccountConfig | Update Golden Records |
+| 1 | `PROMO - DH Op - Query ComponentMapping` | ComponentMapping | QUERY |
+| 2 | `PROMO - DH Op - Upsert ComponentMapping` | ComponentMapping | UPSERT |
+| 3 | `PROMO - DH Op - Query DevAccountAccess` | DevAccountAccess | QUERY |
+| 4 | `PROMO - DH Op - Query PromotionLog` | PromotionLog | QUERY |
+| 5 | `PROMO - DH Op - Upsert PromotionLog` | PromotionLog | UPSERT |
+| 6 | `PROMO - DH Op - Delete PromotionLog` | PromotionLog | DELETE |
+| 7 | `PROMO - DH Op - Query ExtensionAccessMapping` | ExtensionAccessMapping | QUERY |
+| 8 | `PROMO - DH Op - Upsert ExtensionAccessMapping` | ExtensionAccessMapping | UPSERT |
+| 9 | `PROMO - DH Op - Query ClientAccountConfig` | ClientAccountConfig | QUERY |
+| 10 | `PROMO - DH Op - Upsert ClientAccountConfig` | ClientAccountConfig | UPSERT |
 
 > **Recommended workflow:** Create operation #1 manually (Build -> New Component -> Connector -> Operation -> Boomi DataHub), import the model profile, export via `GET /Component/{id}`, and use the exported XML as a template for the remaining 9.
 
@@ -615,11 +615,13 @@ Reference: Build guide files [05](05-process-f-mapping-crud.md) through [13](13-
 | 7 | Package and Deploy | D | [11-process-d-package-and-deploy.md](11-process-d-package-and-deploy.md) |
 | 8 | List Integration Packs | J | [12-process-j-list-integration-packs.md](12-process-j-list-integration-packs.md) |
 | 9 | Component Diff | G | [13-process-g-component-diff.md](13-process-g-component-diff.md) |
-| 10-14 | E2, E3, E4, E5 + Peer Review | E2/E3/E4/E5 | Extended from Process E; see [07](07-process-e-status-and-review.md) |
-| 15 | List Client Accounts | K | [20-extension-editor.md](20-extension-editor.md) |
-| 16 | Get Extensions | L | [20-extension-editor.md](20-extension-editor.md) |
-| 17 | Update Extensions | M | [20-extension-editor.md](20-extension-editor.md) |
-| 18 | Copy Extensions Test to Prod + Update Map Extension | N/O | [20-extension-editor.md](20-extension-editor.md) |
+| 10-12 | E2, E3, E4 | E2/E3/E4 | Extended from Process E; see [07](07-process-e-status-and-review.md) |
+| 13 | Withdraw Promotion | E5 | Extended from Process E; see [07](07-process-e-status-and-review.md) |
+| 14 | List Client Accounts | K | [20-extension-editor.md](20-extension-editor.md) |
+| 15 | Get Extensions | L | [20-extension-editor.md](20-extension-editor.md) |
+| 16 | Update Extensions | M | [20-extension-editor.md](20-extension-editor.md) |
+| 17 | Copy Extensions Test to Prod | N | [20-extension-editor.md](20-extension-editor.md) |
+| 18 | Update Map Extension | O | [20-extension-editor.md](20-extension-editor.md) |
 
 **Export a completed process:**
 
@@ -795,6 +797,71 @@ $result | Out-File "component-template.xml" -Encoding UTF8
 | `version` | Remove or set to `0` for new components |
 | `folderFullPath` | Update if targeting a different folder |
 | Embedded component references | Replace with IDs from the target account |
+
+---
+
+### Profile XML Generation (Alternative to Export-First)
+
+The setup tool includes a built-in JSON-to-XML profile generator that eliminates the need for the export-first workflow for JSON profiles. Instead of manually creating a template profile in the UI, the generator reads the JSON schema files directly and produces valid Boomi Component XML.
+
+**How it works:**
+
+1. Reads a JSON schema file from `integration/profiles/` (e.g., `executePromotion-request.json`)
+2. Infers Boomi data types from example values (string→character, integer→number, boolean, datetime)
+3. Generates a complete `<bns:Component type="profile.json">` XML with proper `<JSONProfile>` structure
+4. Sequential key numbering, correct nesting for objects and arrays
+
+**Usage via setup tool:**
+
+```bash
+# The setup tool's step 3.1 (CreateProfiles) uses the generator automatically
+python -m setup setup
+```
+
+**Manual generation (Python):**
+
+```python
+from setup.generators.profile_xml import generate_profile_xml
+import json
+
+with open("integration/profiles/executePromotion-request.json") as f:
+    schema = json.load(f)
+
+xml = generate_profile_xml(schema, "PROMO - Profile - ExecutePromotionRequest", "PROMO/Profiles")
+print(xml)
+```
+
+> **When to use export-first instead:** For non-JSON profile types (XML, Flat File, EDI, Database), the export-first approach is still required as the generator only supports JSON profiles.
+
+---
+
+### Script Creation (Automated)
+
+The setup tool can automatically create all 10 Groovy process scripts from the source files in `integration/scripts/`. Each `.groovy` file is wrapped in the proper `<bns:Component type="scripting">` XML envelope with CDATA content.
+
+**Scripts created:**
+
+| # | Component Name | Source File |
+|---|---------------|-------------|
+| 1 | `PROMO - Script - BuildVisitedSet` | `build-visited-set.groovy` |
+| 2 | `PROMO - Script - SortByDependency` | `sort-by-dependency.groovy` |
+| 3 | `PROMO - Script - StripEnvConfig` | `strip-env-config.groovy` |
+| 4 | `PROMO - Script - ValidateConnectionMappings` | `validate-connection-mappings.groovy` |
+| 5 | `PROMO - Script - RewriteReferences` | `rewrite-references.groovy` |
+| 6 | `PROMO - Script - NormalizeXml` | `normalize-xml.groovy` |
+| 7 | `PROMO - Script - FilterAlreadyPromoted` | `filter-already-promoted.groovy` |
+| 8 | `PROMO - Script - BuildExtensionAccessCache` | `build-extension-access-cache.groovy` |
+| 9 | `PROMO - Script - StripConnectionsForCopy` | `strip-connections-for-copy.groovy` |
+| 10 | `PROMO - Script - MergeExtensionData` | `merge-extension-data.groovy` |
+
+**Usage via setup tool:**
+
+```bash
+# Step 3.1b (CreateScripts) runs automatically during setup
+python -m setup setup
+```
+
+> **Note:** Scripts are created as `processscript` type with `groovy2` language. The script content is preserved exactly as-is inside a CDATA block.
 
 ---
 
