@@ -99,6 +99,8 @@ Flow values are used to maintain state across pages and message steps.
 
 ## Flow Navigation (Step-by-Step)
 
+> **Diagram:** See the [Flow Navigation Map](../docs/diagrams/flow-navigation.md) for a visual overview of all page transitions.
+
 ### Developer Flow Path
 
 1. **START** → Developer Swimlane → **Page 1 (Package Browser)**
