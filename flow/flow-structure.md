@@ -7,7 +7,7 @@ The Promotion Dashboard is a single Flow application with three swimlanes design
 **Key Facts:**
 - 1 Flow application
 - 3 Swimlanes (Developer, Peer Review, Admin)
-- 9 pages total (4 developer pages + 1 production readiness page, 2 peer review pages, 2 admin pages)
+- 11 pages total (4 developer pages + 1 production readiness page + 2 extension editor pages, 2 peer review pages, 2 admin pages)
 - All backend calls via Boomi Integration Service connector
 - SSO-based authorization via Azure AD groups
 - 2-layer approval: peer review gate (any dev or admin except submitter) → admin review gate (admin only)
@@ -22,7 +22,9 @@ The Promotion Dashboard is a single Flow application with three swimlanes design
   3. Promotion Status
   4. Deployment Submission
   9. Production Readiness
-- **Purpose:** Browse packages, review dependencies, execute promotion, submit for review or test deployment, promote tested packages to production
+  10. Extension Manager
+  11. Extension Copy Confirmation
+- **Purpose:** Browse packages, review dependencies, execute promotion, submit for review or test deployment, promote tested packages to production, manage environment extensions
 - **Note:** READONLY/OPERATOR tier users cannot access any Developer pages
 
 ### Peer Review Swimlane
@@ -84,6 +86,16 @@ Flow values are used to maintain state across pages and message steps.
 | `testDeployments` | List | Test deployments ready for production promotion (from queryTestDeployments) |
 | `selectedTestDeployment` | Object | Currently selected test deployment in Production Readiness queue |
 | `activePromotions` | List | Current user's pending promotions (PENDING_PEER_REVIEW + PENDING_ADMIN_REVIEW, filtered by initiatedBy == $User/Email) |
+| `selectedClientAccountId` | String | Currently selected client account ID (sub-account) |
+| `selectedClientAccountName` | String | Display name for selected client account |
+| `selectedEnvironmentId` | String | Selected environment ID within client account |
+| `selectedEnvironmentName` | String | Display name for selected environment |
+| `extensionData` | String | JSON-serialized environment extension data from getExtensions |
+| `accessMappings` | String | JSON-serialized access mapping data from getExtensions |
+| `extensionEditorPayload` | Object | Combined data for ExtensionEditor component binding |
+| `updatedFieldCount` | Integer | Count of fields updated by updateExtensions |
+| `copyResult` | Object | Result from copyExtensionsTestToProd (sectionsExcluded, fieldsCopied, encryptedFieldsSkipped) |
+| `isAdmin` | String | "true"/"false" — whether current user has admin tier (from getDevAccounts effectiveTier) |
 
 ## Flow Navigation (Step-by-Step)
 
@@ -159,6 +171,22 @@ Flow values are used to maintain state across pages and message steps.
 
 13. **Page 8 (Mapping Viewer)** accessible from Admin swimlane navigation
     - Independent page for viewing/managing component mappings
+
+### Extension Editor Flow Path
+
+15. **Page 10 (Extension Manager)** accessible from Developer + Admin swimlane navigation
+    - On load: Message step → `listClientAccounts`
+    - User selects client account → Message step → `getExtensions`
+    - User selects environment → refreshes extension data
+    - ExtensionEditor custom component renders inline
+    - "Save" → Message step → `updateExtensions`
+    - "Copy Test → Prod" → **Page 11 (Extension Copy Confirmation)**
+    - Independent page for editing environment extensions — separate from promotion workflow
+
+16. **Page 11 (Extension Copy Confirmation)** navigated from Page 10
+    - Displays exclusion summary (connections excluded, encrypted fields skipped)
+    - "Confirm Copy" → Message step → `copyExtensionsTestToProd` → Results panel
+    - "Cancel" → **Page 10**
 
 ## Message Steps (Integration Calls)
 
@@ -349,6 +377,77 @@ All Message steps use the Boomi Integration Service connector. Each generates Re
   - `branchDeleted` (boolean)
   - `message` (string)
 
+### 14. List Client Accounts
+- **Step name:** `List Client Accounts`
+- **Message Action:** `listClientAccounts`
+- **Used in:** Page 10 load
+- **Request Type:** `ListClientAccountsRequest` (auto-generated)
+- **Response Type:** `ListClientAccountsResponse` (auto-generated)
+- **Input values:**
+  - `userSsoGroups` (from authorization context)
+- **Output values:**
+  - `clientAccounts` (array of client account objects with accountId, accountName, testEnvironmentId, prodEnvironmentId)
+
+### 15. Get Extensions
+- **Step name:** `Get Extensions`
+- **Message Action:** `getExtensions`
+- **Used in:** Page 10, on account + environment selection
+- **Request Type:** `GetExtensionsRequest` (auto-generated)
+- **Response Type:** `GetExtensionsResponse` (auto-generated)
+- **Input values:**
+  - `selectedClientAccountId`
+  - `selectedEnvironmentId`
+  - `userSsoGroups`
+  - `userEmail` (from `$User/Email`)
+- **Output values:**
+  - `extensionData` (JSON string — full environment extension data)
+  - `accessMappings` (JSON string — process-scoped access mapping data)
+
+### 16. Update Extensions
+- **Step name:** `Update Extensions`
+- **Message Action:** `updateExtensions`
+- **Used in:** Page 10, on "Save" button click
+- **Request Type:** `UpdateExtensionsRequest` (auto-generated)
+- **Response Type:** `UpdateExtensionsResponse` (auto-generated)
+- **Input values:**
+  - `selectedClientAccountId`
+  - `selectedEnvironmentId`
+  - `extensionPayload` (JSON string — modified extension data from ExtensionEditor)
+  - `userSsoGroups`
+  - `userEmail` (from `$User/Email`)
+- **Output values:**
+  - `updatedFieldCount` (integer — number of fields changed)
+
+### 17. Copy Extensions Test to Prod
+- **Step name:** `Copy Extensions Test to Prod`
+- **Message Action:** `copyExtensionsTestToProd`
+- **Used in:** Page 11, on "Confirm Copy" button click
+- **Request Type:** `CopyExtensionsTestToProdRequest` (auto-generated)
+- **Response Type:** `CopyExtensionsTestToProdResponse` (auto-generated)
+- **Input values:**
+  - `selectedClientAccountId`
+  - `testEnvironmentId`
+  - `prodEnvironmentId`
+  - `userSsoGroups`
+  - `userEmail` (from `$User/Email`)
+- **Output values:**
+  - `copyResult` (object with sectionsExcluded, fieldsCopied, encryptedFieldsSkipped)
+
+### 18. Update Map Extension
+- **Step name:** `Update Map Extension`
+- **Message Action:** `updateMapExtension`
+- **Used in:** Page 10 (Phase 2 — map extension editing)
+- **Request Type:** `UpdateMapExtensionRequest` (auto-generated)
+- **Response Type:** `UpdateMapExtensionResponse` (auto-generated)
+- **Input values:**
+  - `selectedClientAccountId`
+  - `selectedEnvironmentId`
+  - `mapExtensionId`
+  - `mapExtensionPayload` (JSON string)
+- **Output values:**
+  - `mapExtensionId` (string)
+  - `mapName` (string)
+
 ## Decision Steps
 
 After each Message step that can fail, add a Decision step to handle errors gracefully.
@@ -372,6 +471,11 @@ After each Message step that can fail, add a Decision step to handle errors grac
 - List Integration Packs → Decision → (Success: Populate combobox | Failure: Show error, allow manual entry)
 - Query Test Deployments → Decision → (Success: Page 9 | Failure: Error Page)
 - Withdraw Promotion → Decision → (Success: Remove from panel, show toast | Failure: Show error toast)
+- List Client Accounts → Decision → (Success: Populate account selector | Failure: Error Page)
+- Get Extensions → Decision → (Success: Load ExtensionEditor component | Failure: Error Page)
+- Update Extensions → Decision → (Success: Show success toast, reset dirty state | Failure: Show error toast)
+- Copy Extensions Test to Prod → Decision → (Success: Show results panel | Failure: Error Page)
+- Update Map Extension → Decision → (Success: Show success toast | Failure: Show error toast)
 
 ## Email Notifications
 
