@@ -3,8 +3,6 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock
 
-import pytest
-
 from setup.validation.validators import (
     validate_models_deployed,
     validate_sources_exist,
@@ -87,6 +85,19 @@ class TestValidateModelsDeployed:
         assert success is False
         assert "failed to query" in msg
 
+    def test_validate_models_deployed_string_response(self) -> None:
+        """Non-dict response is handled gracefully."""
+        mock_dh = MagicMock()
+        mock_dh.get_model.side_effect = [
+            _make_model_response("ComponentMapping", "DEPLOYED", 10),
+            "<xml>unexpected</xml>",  # str instead of dict
+            _make_model_response("PromotionLog", "DEPLOYED", 34),
+        ]
+
+        success, msg = validate_models_deployed(mock_dh, MagicMock())
+        assert success is False
+        assert "unexpected response format" in msg
+
 
 class TestValidateSourcesExist:
     def test_validate_sources_exist_success(self) -> None:
@@ -123,12 +134,27 @@ class TestValidateSourcesExist:
         assert success is False
         assert "Failed to list sources" in msg
 
+    def test_validate_sources_dict_response(self) -> None:
+        """Handle dict-wrapped response from API."""
+        mock_dh = MagicMock()
+        mock_dh.list_sources.return_value = {
+            "result": [
+                {"name": "PROMOTION_ENGINE"},
+                {"name": "ADMIN_SEEDING"},
+                {"name": "ADMIN_CONFIG"},
+            ]
+        }
+
+        success, msg = validate_sources_exist(mock_dh, MagicMock())
+        assert success is True
+        assert "All 3 sources exist" in msg
+
 
 class TestValidateHttpOpsCount:
     def test_validate_http_ops_count_correct(self) -> None:
         """Count returns 19 — success."""
         mock_platform = MagicMock()
-        mock_platform.query_components.return_value = list(range(19))
+        mock_platform.count_components_by_prefix.return_value = 19
 
         success, msg = validate_http_ops_count(mock_platform, MagicMock())
         assert success is True
@@ -137,7 +163,7 @@ class TestValidateHttpOpsCount:
     def test_validate_http_ops_count_wrong(self) -> None:
         """Count returns 15, expect failure."""
         mock_platform = MagicMock()
-        mock_platform.query_components.return_value = list(range(15))
+        mock_platform.count_components_by_prefix.return_value = 15
 
         success, msg = validate_http_ops_count(mock_platform, MagicMock())
         assert success is False
@@ -148,7 +174,7 @@ class TestValidateTotalComponents:
     def test_validate_total_components_success(self) -> None:
         """Count returns 85, success."""
         mock_platform = MagicMock()
-        mock_platform.query_components.return_value = list(range(85))
+        mock_platform.count_components_by_prefix.return_value = 85
 
         success, msg = validate_total_components(mock_platform, MagicMock())
         assert success is True
@@ -157,7 +183,7 @@ class TestValidateTotalComponents:
     def test_validate_total_components_wrong(self) -> None:
         """Count returns 80, expect failure."""
         mock_platform = MagicMock()
-        mock_platform.query_components.return_value = list(range(80))
+        mock_platform.count_components_by_prefix.return_value = 80
 
         success, msg = validate_total_components(mock_platform, MagicMock())
         assert success is False

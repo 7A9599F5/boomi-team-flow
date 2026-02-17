@@ -5,12 +5,18 @@ from pathlib import Path
 
 import click
 
+from setup.api.datahub_api import DataHubApi
+from setup.api.platform_api import PlatformApi
 from setup.config import BoomiConfig, load_config
 from setup.engine import Engine, StepRegistry, StepStatus
 from setup.state import DEFAULT_STATE_FILE, SetupState
 
 
-def _build_registry(config: BoomiConfig, platform_api, datahub_api) -> StepRegistry:
+def _build_registry(
+    config: BoomiConfig,
+    platform_api: PlatformApi | None,
+    datahub_api: DataHubApi | None,
+) -> StepRegistry:
     """Build the step registry with all 30 steps across 6 phases."""
     from setup.steps.phase1_datahub import (
         CreateModel, CreateRepo, CreateSources, SeedDevAccess, TestCrud,

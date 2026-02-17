@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from typing import Optional
 
 from setup.config import BoomiConfig
 from setup.engine import StepStatus, StepType
@@ -21,8 +22,8 @@ class BaseStep(ABC):
     def __init__(
         self,
         config: BoomiConfig,
-        platform_api: PlatformApi,
-        datahub_api: DataHubApi,
+        platform_api: Optional[PlatformApi] = None,
+        datahub_api: Optional[DataHubApi] = None,
     ) -> None:
         self.config = config
         self.platform_api = platform_api

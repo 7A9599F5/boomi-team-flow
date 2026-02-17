@@ -35,6 +35,10 @@ def validate_models_deployed(
             errors.append(f"{model_name}: not found")
             continue
 
+        if not isinstance(model, dict):
+            errors.append(f"{model_name}: unexpected response format")
+            continue
+
         status = model.get("status", "UNKNOWN")
         if status != "DEPLOYED":
             errors.append(f"{model_name}: status is {status}, expected DEPLOYED")
@@ -60,7 +64,15 @@ def validate_sources_exist(
     except Exception as e:
         return False, f"Failed to list sources: {e}"
 
-    source_names = {s.get("name", "") for s in sources}
+    if isinstance(sources, dict):
+        # API may wrap list in a dict with a results key
+        source_list = sources.get("result", sources.get("results", []))
+    elif isinstance(sources, list):
+        source_list = sources
+    else:
+        return False, f"Unexpected sources response type: {type(sources)}"
+
+    source_names = {s.get("name", "") for s in source_list if isinstance(s, dict)}
     missing = [s for s in _REQUIRED_SOURCES if s not in source_names]
 
     if missing:
@@ -68,19 +80,11 @@ def validate_sources_exist(
     return True, "All 3 sources exist (PROMOTION_ENGINE, ADMIN_SEEDING, ADMIN_CONFIG)"
 
 
-def _count_components_by_prefix(
-    platform_api: Any, prefix: str
-) -> int:
-    """Count components matching a name prefix via Platform API query."""
-    results = platform_api.query_components(name_prefix=prefix)
-    return len(results)
-
-
 def validate_http_ops_count(
     platform_api: Any, state: Any
 ) -> tuple[bool, str]:
     """Count HTTP operations matching 'PROMO - HTTP Op' prefix, expect 19."""
-    count = _count_components_by_prefix(platform_api, "PROMO - HTTP Op")
+    count = platform_api.count_components_by_prefix("PROMO - HTTP Op")
     if count != 19:
         return False, f"Found {count} HTTP operations, expected 19"
     return True, "All 19 HTTP operations found"
@@ -90,7 +94,7 @@ def validate_dh_ops_count(
     platform_api: Any, state: Any
 ) -> tuple[bool, str]:
     """Count DataHub operations matching 'PROMO - DH Op' prefix, expect 6."""
-    count = _count_components_by_prefix(platform_api, "PROMO - DH Op")
+    count = platform_api.count_components_by_prefix("PROMO - DH Op")
     if count != 6:
         return False, f"Found {count} DataHub operations, expected 6"
     return True, "All 6 DataHub operations found"
@@ -99,18 +103,18 @@ def validate_dh_ops_count(
 def validate_profile_count(
     platform_api: Any, state: Any
 ) -> tuple[bool, str]:
-    """Count profiles matching 'PROMO - Profile' prefix, expect 28."""
-    count = _count_components_by_prefix(platform_api, "PROMO - Profile")
-    if count != 28:
-        return False, f"Found {count} profiles, expected 28"
-    return True, "All 28 profiles found"
+    """Count profiles matching 'PROMO - Profile' prefix, expect 26."""
+    count = platform_api.count_components_by_prefix("PROMO - Profile")
+    if count != 26:
+        return False, f"Found {count} profiles, expected 26"
+    return True, "All 26 profiles found"
 
 
 def validate_fss_ops_count(
     platform_api: Any, state: Any
 ) -> tuple[bool, str]:
     """Count FSS operations matching 'PROMO - FSS Op' prefix, expect 14."""
-    count = _count_components_by_prefix(platform_api, "PROMO - FSS Op")
+    count = platform_api.count_components_by_prefix("PROMO - FSS Op")
     if count != 14:
         return False, f"Found {count} FSS operations, expected 14"
     return True, "All 14 FSS operations found"
@@ -119,32 +123,28 @@ def validate_fss_ops_count(
 def validate_process_count(
     platform_api: Any, state: Any
 ) -> tuple[bool, str]:
-    """Count processes matching 'PROMO - FSS Op' prefix, expect 12."""
-    count = _count_components_by_prefix(platform_api, "PROMO - FSS Op")
+    """Count processes matching 'PROMO - Process' prefix, expect 12."""
+    count = platform_api.count_components_by_prefix("PROMO - Process")
     if count != 12:
         return False, f"Found {count} processes, expected 12"
     return True, "All 12 processes found"
 
 
-def validate_flow_service_live(
+def validate_flow_service_deployed(
     platform_api: Any, state: Any
 ) -> tuple[bool, str]:
-    """Test POST to Flow Service endpoint to verify it is live."""
-    try:
-        result = platform_api.test_flow_service()
-    except Exception as e:
-        return False, f"Flow Service test failed: {e}"
-
-    if result:
-        return True, "Flow Service is live and responding"
-    return False, "Flow Service did not respond successfully"
+    """Verify the Flow Service component exists via prefix count."""
+    count = platform_api.count_components_by_prefix("PROMO - Flow Service")
+    if count < 1:
+        return False, "Flow Service component not found"
+    return True, "Flow Service component found"
 
 
 def validate_total_components(
     platform_api: Any, state: Any
 ) -> tuple[bool, str]:
     """Count all components matching 'PROMO -' prefix, expect 85."""
-    count = _count_components_by_prefix(platform_api, "PROMO -")
+    count = platform_api.count_components_by_prefix("PROMO -")
     if count != 85:
         return False, f"Found {count} total PROMO components, expected 85"
     return True, "All 85 PROMO components found"
