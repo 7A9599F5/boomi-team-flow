@@ -112,6 +112,68 @@ Create `PROMO - FSS Op - PackageAndDeploy` per Section 3.B, using `PROMO - Profi
        - Non-empty → step 2.4 (skip merge, jump to step 3)
        - Empty (hotfix) → step 2.5 (merge as normal)
 
+### Deployment Mode Decision Tree
+
+Process D supports three deployment modes. The mode determines which pipeline steps are executed and the resulting promotion status.
+
+```mermaid
+flowchart TD
+    entryNode["Process D Entry"]
+    statusGate["Status Gate\n(COMPLETED or TEST_DEPLOYED?)"]
+    selfCheck["Self-Approval Check\n(admin != initiator?)"]
+    modeDecision{"deploymentMode?"}
+    testPromotionCheck{"testPromotionId\nnon-empty?"}
+
+    testMerge["Merge branch to main\n(OVERRIDE strategy)"]
+    testPackage["Create PackagedComponent"]
+    testPack["Create / Add to Integration Pack"]
+    testRelease["Release Integration Pack"]
+    testDeploy["Deploy to Test Environment"]
+    testCache["Refresh ExtensionAccessMapping Cache"]
+    testBranchKeep["Preserve Branch\n(branch stays for prod promotion)"]
+    testStatus["Status → TEST_DEPLOYED"]
+
+    prodSkipMerge["Skip Merge\n(content already on main)"]
+    prodPackage["Create PackagedComponent"]
+    prodPack["Create / Add to Integration Pack"]
+    prodRelease["Release Integration Pack"]
+    prodDeploy["Deploy to Production"]
+    prodCache["Refresh ExtensionAccessMapping Cache"]
+    prodBranchDel["Delete Branch"]
+    prodStatus["Status → PROD_DEPLOYED"]
+
+    hotfixMerge["Merge branch to main\n(OVERRIDE strategy)"]
+    hotfixPackage["Create PackagedComponent"]
+    hotfixPack["Create / Add to Integration Pack\n(with hotfix flag)"]
+    hotfixRelease["Release Integration Pack"]
+    hotfixDeploy["Deploy to Production"]
+    hotfixCache["Refresh ExtensionAccessMapping Cache"]
+    hotfixBranchDel["Delete Branch"]
+    hotfixStatus["Status → PROD_DEPLOYED\n(isHotfix = true)"]
+
+    errStatus["Return PROMOTION_NOT_COMPLETED Error"]
+    errSelf["Return SELF_APPROVAL_NOT_ALLOWED Error"]
+
+    entryNode --> statusGate
+    statusGate -->|"COMPLETED or TEST_DEPLOYED"| selfCheck
+    statusGate -->|"Other status"| errStatus
+
+    selfCheck -->|"Different users"| modeDecision
+    selfCheck -->|"Same user"| errSelf
+
+    modeDecision -->|"TEST\n(deploymentTarget=TEST)"| testMerge
+    modeDecision -->|"PRODUCTION"| testPromotionCheck
+
+    testPromotionCheck -->|"Non-empty\n(production-from-test)"| prodSkipMerge
+    testPromotionCheck -->|"Empty\n(hotfix)"| hotfixMerge
+
+    testMerge --> testPackage --> testPack --> testRelease --> testDeploy --> testCache --> testBranchKeep --> testStatus
+
+    prodSkipMerge --> prodPackage --> prodPack --> prodRelease --> prodDeploy --> prodCache --> prodBranchDel --> prodStatus
+
+    hotfixMerge --> hotfixPackage --> hotfixPack --> hotfixRelease --> hotfixDeploy --> hotfixCache --> hotfixBranchDel --> hotfixStatus
+```
+
 2.3. **TEST Mode Pre-Processing**
    - No additional pre-processing needed — proceed to step 2.5 (merge) as normal
    - After merge + package + deploy, the process will:
