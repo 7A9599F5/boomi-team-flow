@@ -24,7 +24,7 @@
 
 All components promoted by the system are placed in this folder hierarchy. Boomi auto-creates folders that do not exist.
 
-### Complete 51-Component Inventory Checklist
+### Complete 78-Component Inventory Checklist
 
 ```
 Phase 1 -- DataHub Models (3):
@@ -36,7 +36,7 @@ Phase 2 -- Connections (2):
 [ ] 4. PROMO - Partner API Connection
 [ ] 5. PROMO - DataHub Connection
 
-Phase 2 -- HTTP Client Operations (12):
+Phase 2 -- HTTP Client Operations (19):
 [ ] 6.  PROMO - HTTP Op - GET Component
 [ ] 7.  PROMO - HTTP Op - POST Component Create
 [ ] 8.  PROMO - HTTP Op - POST Component Update
@@ -49,70 +49,77 @@ Phase 2 -- HTTP Client Operations (12):
 [ ] 15. PROMO - HTTP Op - POST Branch
 [ ] 16. PROMO - HTTP Op - QUERY Branch
 [ ] 17. PROMO - HTTP Op - POST MergeRequest
+[ ] 18. PROMO - HTTP Op - POST MergeRequest Execute
+[ ] 19. PROMO - HTTP Op - GET Branch
+[ ] 20. PROMO - HTTP Op - DELETE Branch
+[ ] 21. PROMO - HTTP Op - QUERY IntegrationPack
+[ ] 22. PROMO - HTTP Op - POST Add To IntegrationPack
+[ ] 23. PROMO - HTTP Op - POST ReleaseIntegrationPack
+[ ] 24. PROMO - HTTP Op - GET MergeRequest
 
 Phase 2 -- DataHub Operations (6):
-[ ] 18. PROMO - DH Op - Query ComponentMapping
-[ ] 19. PROMO - DH Op - Update ComponentMapping
-[ ] 20. PROMO - DH Op - Query DevAccountAccess
-[ ] 21. PROMO - DH Op - Update DevAccountAccess
-[ ] 22. PROMO - DH Op - Query PromotionLog
-[ ] 23. PROMO - DH Op - Update PromotionLog
+[ ] 25. PROMO - DH Op - Query ComponentMapping
+[ ] 26. PROMO - DH Op - Update ComponentMapping
+[ ] 27. PROMO - DH Op - Query DevAccountAccess
+[ ] 28. PROMO - DH Op - Update DevAccountAccess
+[ ] 29. PROMO - DH Op - Query PromotionLog
+[ ] 30. PROMO - DH Op - Update PromotionLog
 
 Phase 3 -- JSON Profiles (22):
-[ ] 24. PROMO - Profile - GetDevAccountsRequest
-[ ] 25. PROMO - Profile - GetDevAccountsResponse
-[ ] 26. PROMO - Profile - ListDevPackagesRequest
-[ ] 27. PROMO - Profile - ListDevPackagesResponse
-[ ] 28. PROMO - Profile - ResolveDependenciesRequest
-[ ] 29. PROMO - Profile - ResolveDependenciesResponse
-[ ] 30. PROMO - Profile - ExecutePromotionRequest
-[ ] 31. PROMO - Profile - ExecutePromotionResponse
-[ ] 32. PROMO - Profile - PackageAndDeployRequest
-[ ] 33. PROMO - Profile - PackageAndDeployResponse
-[ ] 34. PROMO - Profile - QueryStatusRequest
-[ ] 35. PROMO - Profile - QueryStatusResponse
-[ ] 36. PROMO - Profile - ManageMappingsRequest
-[ ] 37. PROMO - Profile - ManageMappingsResponse
-[ ] 38. PROMO - Profile - QueryPeerReviewQueueRequest
-[ ] 39. PROMO - Profile - QueryPeerReviewQueueResponse
-[ ] 40. PROMO - Profile - SubmitPeerReviewRequest
-[ ] 41. PROMO - Profile - SubmitPeerReviewResponse
-[ ] 42. PROMO - Profile - ListIntegrationPacksRequest
-[ ] 43. PROMO - Profile - ListIntegrationPacksResponse
-[ ] 44. PROMO - Profile - GenerateComponentDiffRequest
-[ ] 45. PROMO - Profile - GenerateComponentDiffResponse
+[ ] 31. PROMO - Profile - GetDevAccountsRequest
+[ ] 32. PROMO - Profile - GetDevAccountsResponse
+[ ] 33. PROMO - Profile - ListDevPackagesRequest
+[ ] 34. PROMO - Profile - ListDevPackagesResponse
+[ ] 35. PROMO - Profile - ResolveDependenciesRequest
+[ ] 36. PROMO - Profile - ResolveDependenciesResponse
+[ ] 37. PROMO - Profile - ExecutePromotionRequest
+[ ] 38. PROMO - Profile - ExecutePromotionResponse
+[ ] 39. PROMO - Profile - PackageAndDeployRequest
+[ ] 40. PROMO - Profile - PackageAndDeployResponse
+[ ] 41. PROMO - Profile - QueryStatusRequest
+[ ] 42. PROMO - Profile - QueryStatusResponse
+[ ] 43. PROMO - Profile - ManageMappingsRequest
+[ ] 44. PROMO - Profile - ManageMappingsResponse
+[ ] 45. PROMO - Profile - QueryPeerReviewQueueRequest
+[ ] 46. PROMO - Profile - QueryPeerReviewQueueResponse
+[ ] 47. PROMO - Profile - SubmitPeerReviewRequest
+[ ] 48. PROMO - Profile - SubmitPeerReviewResponse
+[ ] 49. PROMO - Profile - ListIntegrationPacksRequest
+[ ] 50. PROMO - Profile - ListIntegrationPacksResponse
+[ ] 51. PROMO - Profile - GenerateComponentDiffRequest
+[ ] 52. PROMO - Profile - GenerateComponentDiffResponse
 
 Phase 3 -- Integration Processes (11):
-[ ] 46. PROMO - Get Dev Accounts
-[ ] 47. PROMO - List Dev Packages
-[ ] 48. PROMO - Resolve Dependencies
-[ ] 49. PROMO - Execute Promotion
-[ ] 50. PROMO - Package and Deploy
-[ ] 51. PROMO - Query Status
-[ ] 52. PROMO - Mapping CRUD
-[ ] 53. PROMO - Query Peer Review Queue
-[ ] 54. PROMO - Submit Peer Review
-[ ] 55. PROMO - List Integration Packs
-[ ] 56. PROMO - Generate Component Diff
+[ ] 53. PROMO - Get Dev Accounts
+[ ] 54. PROMO - List Dev Packages
+[ ] 55. PROMO - Resolve Dependencies
+[ ] 56. PROMO - Execute Promotion
+[ ] 57. PROMO - Package and Deploy
+[ ] 58. PROMO - Query Status
+[ ] 59. PROMO - Mapping CRUD
+[ ] 60. PROMO - Query Peer Review Queue
+[ ] 61. PROMO - Submit Peer Review
+[ ] 62. PROMO - List Integration Packs
+[ ] 63. PROMO - Generate Component Diff
 
 Phase 4 -- Flow Service Components (12):
-[ ] 57. PROMO - FSS Op - GetDevAccounts
-[ ] 58. PROMO - FSS Op - ListDevPackages
-[ ] 59. PROMO - FSS Op - ResolveDependencies
-[ ] 60. PROMO - FSS Op - ExecutePromotion
-[ ] 61. PROMO - FSS Op - PackageAndDeploy
-[ ] 62. PROMO - FSS Op - QueryStatus
-[ ] 63. PROMO - FSS Op - ManageMappings
-[ ] 64. PROMO - FSS Op - QueryPeerReviewQueue
-[ ] 65. PROMO - FSS Op - SubmitPeerReview
-[ ] 66. PROMO - FSS Op - ListIntegrationPacks
-[ ] 67. PROMO - FSS Op - GenerateComponentDiff
-[ ] 68. PROMO - Flow Service
+[ ] 64. PROMO - FSS Op - GetDevAccounts
+[ ] 65. PROMO - FSS Op - ListDevPackages
+[ ] 66. PROMO - FSS Op - ResolveDependencies
+[ ] 67. PROMO - FSS Op - ExecutePromotion
+[ ] 68. PROMO - FSS Op - PackageAndDeploy
+[ ] 69. PROMO - FSS Op - QueryStatus
+[ ] 70. PROMO - FSS Op - ManageMappings
+[ ] 71. PROMO - FSS Op - QueryPeerReviewQueue
+[ ] 72. PROMO - FSS Op - SubmitPeerReview
+[ ] 73. PROMO - FSS Op - ListIntegrationPacks
+[ ] 74. PROMO - FSS Op - GenerateComponentDiff
+[ ] 75. PROMO - Flow Service
 
 Phase 5 -- Flow Dashboard (3):
-[ ] 69. XmlDiffViewer (Custom Component)
-[ ] 70. Promotion Service Connector
-[ ] 71. Promotion Dashboard
+[ ] 76. XmlDiffViewer (Custom Component)
+[ ] 77. Promotion Service Connector
+[ ] 78. Promotion Dashboard
 ```
 
 ---

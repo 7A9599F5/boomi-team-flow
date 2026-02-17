@@ -25,13 +25,13 @@ This guide walks through building every component of the Promotion System step b
 
 ## Bill of Materials
 
-The system comprises **67 components** across 6 phases:
+The system comprises **74 components** across 6 phases:
 
 | Phase | Category | Count | Components |
 |-------|----------|-------|------------|
 | 1 | DataHub Models | 3 | ComponentMapping, DevAccountAccess, PromotionLog (34 fields incl. peer/admin review, branching, multi-environment) |
 | 2 | Connections | 2 | HTTP Client (Partner API), DataHub |
-| 2 | HTTP Client Operations | 12 | GET/POST/QUERY for Component, Reference, Metadata, Package, Deploy, IntegrationPack; Branch (create, query), MergeRequest (create, execute) |
+| 2 | HTTP Client Operations | 19 | GET/POST/QUERY for Component, Reference, Metadata, Package, Deploy, IntegrationPack; Branch (create, query, get, delete), MergeRequest (create, execute, get); Add To IntegrationPack, ReleaseIntegrationPack |
 | 2 | DataHub Operations | 6 | Query + Update for each of 3 models |
 | 3 | JSON Profiles | 24 | Request + Response for each of 12 processes |
 | 3 | Integration Processes | 12 | A0, A, B, C, D, E, E2, E3, E4, F, G, J |
@@ -40,7 +40,7 @@ The system comprises **67 components** across 6 phases:
 | 5 | Custom Component | 1 | XmlDiffViewer (React diff viewer for Flow custom player) |
 | 5 | Flow Connector | 1 | Promotion Service Connector |
 | 5 | Flow Application | 1 | Promotion Dashboard (3 swimlanes, 9 pages) |
-| | **Total** | **67** | |
+| | **Total** | **74** | |
 
 ---
 
@@ -91,7 +91,7 @@ F (Mapping CRUD) → A0 (Get Dev Accounts) → E (Query Status) → E2 (Query Pe
 | `/datahub/api-requests/` | Test XML for DataHub CRUD validation (2 files) | Phase 1, 6 |
 | `/integration/profiles/` | JSON request/response profiles (24 files, 12 processes × 2) | Phase 3 |
 | `/integration/scripts/` | Groovy scripts for XML manipulation (6 files) | Phase 3 |
-| `/integration/api-requests/` | API request templates (13 files) | Phase 2, 3 |
+| `/integration/api-requests/` | API request templates (19 files) | Phase 2, 3 |
 | `/integration/flow-service/` | Flow Service component specification | Phase 4 |
 | `/flow/` | Flow app structure and page layouts (9 files) | Phase 5 |
 | `/docs/` | This guide and architecture reference | All |
