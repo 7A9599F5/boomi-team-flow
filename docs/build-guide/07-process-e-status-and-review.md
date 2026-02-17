@@ -1,3 +1,23 @@
+### Process E Family Overview
+
+The Process E family handles all status queries and review operations. Process E provides the base query logic, with E2-E5 extending it for specific workflows.
+
+```mermaid
+graph TD
+    procE["Process E\nqueryStatus\nBase PromotionLog query\nwith optional filters"]
+    procE2["Process E2\nqueryPeerReviewQueue\nQuery PENDING_PEER_REVIEW\nexcludes own submissions"]
+    procE3["Process E3\nsubmitPeerReview\nRecord approve or reject\nself-review prevention"]
+    procE4["Process E4\nqueryTestDeployments\nQuery TEST_DEPLOYED\nexcludes already promoted"]
+    procE5["Process E5\nwithdrawPromotion\nInitiator withdrawal\ndeletes promotion branch"]
+
+    procE --> procE2
+    procE2 --> procE3
+    procE --> procE4
+    procE --> procE5
+```
+
+---
+
 ### Process E: Query Status (`PROMO - Query Status`)
 
 > **API Alternative:** This process can be created programmatically via `POST /Component` with `type="process"`. Due to the complexity of process canvas XML (shapes, routing, DPP mappings, script references), the recommended workflow is: (1) build the process manually following the steps below, (2) use `GET /Component/{processId}` to export the XML, (3) store the XML as a template for automated recreation. See [Appendix D: API Automation Guide](22-api-automation-guide.md) for the full workflow.

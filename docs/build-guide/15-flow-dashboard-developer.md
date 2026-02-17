@@ -232,6 +232,30 @@ Displays test deployments that are ready to be promoted to production. Developer
 
 ### Step 5.4 -- Wire Navigation
 
+#### Developer Page Navigation Flow
+
+The developer swimlane pages follow a linear promotion workflow, with extension management as a parallel track.
+
+```mermaid
+graph LR
+    p1["Page 1\nPackage Browser"]
+    p2["Page 2\nPromotion Review"]
+    p3["Page 3\nPromotion Status"]
+    p4["Page 4\nDeployment Submission"]
+    p9["Page 9\nProduction Readiness"]
+    p10["Page 10\nExtension Manager"]
+    p11["Page 11\nExtension Copy Confirmation"]
+
+    p1 -->|"Select Package"| p2
+    p2 -->|"Submit Promotion"| p3
+    p3 -->|"Continue to Deployment"| p4
+    p3 -->|"Done"| flowEnd["End Flow"]
+    p4 -->|"Deploy Test - stays in Dev swimlane"| p9
+    p9 -->|"Promote to Production"| p4
+    p10 -->|"Copy Test to Prod"| p11
+    p11 -->|"Cancel"| p10
+```
+
 Connect all pages via Outcome elements on the Flow canvas.
 
 1. **Flow start** -> Page 1 (Package Browser) in the Developer swimlane.
