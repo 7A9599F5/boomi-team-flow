@@ -1,0 +1,59 @@
+---
+globs:
+  - "integration/**"
+---
+
+# Integration Patterns
+
+## Naming Conventions
+
+### Processes
+- **Prefix all Integration processes with `PROMO - `**
+- Example: `PROMO - FSS Op - GetDevAccounts`
+
+### Process Letter Codes
+- **A0**: getDevAccounts — SSO group → dev account access lookup
+- **A**: listDevPackages — query dev account's PackagedComponents
+- **B**: resolveDependencies — recursive dependency traversal + mapping lookup
+- **C**: executePromotion — create branch → promote to branch → strip env config → rewrite refs
+- **D**: packageAndDeploy — merge branch → main, create PackagedComponent, Integration Pack, deploy
+- **E**: queryStatus — read PromotionLog from DataHub
+- **E2**: queryPeerReviewQueue — query PENDING_PEER_REVIEW promotions, exclude own
+- **E3**: submitPeerReview — record peer approve/reject with self-review prevention
+- **F**: manageMappings — CRUD on ComponentMapping records
+- **G**: generateComponentDiff — fetch branch vs main component XML for diff rendering
+- **J**: listIntegrationPacks — query Integration Packs with smart suggestion from history
+
+### Profile Naming
+- **Pattern**: `PROMO - Profile - {ActionName}Request` / `PROMO - Profile - {ActionName}Response`
+- Examples:
+  - `PROMO - Profile - GetDevAccountsRequest`
+  - `PROMO - Profile - ExecutePromotionResponse`
+
+### Error Codes
+- **Format**: UPPER_SNAKE_CASE
+- Examples:
+  - `MISSING_CONNECTION_MAPPINGS`
+  - `COMPONENT_NOT_FOUND`
+  - `BRANCH_LIMIT_REACHED`
+  - `SELF_REVIEW_NOT_ALLOWED`
+
+## Build Order Dependencies
+
+### Phase 3: Integration Process Build Order
+1. **Process A0** (no dependencies) — foundation for dev account access
+2. **Process A** (no dependencies) — package listing
+3. **Process B** (depends on A) — dependency resolution
+4. **Process C** (depends on B) — promotion execution
+5. **Process E** (no dependencies) — status queries
+6. **Process E2** (depends on E) — peer review queue
+7. **Process E3** (depends on E2) — peer review submission
+8. **Process F** (no dependencies) — mapping management
+9. **Process G** (depends on C) — component diff generation
+10. **Process J** (no dependencies) — Integration Pack listing
+11. **Process D** (depends on C) — final packaging and deployment
+
+### Why This Order Matters
+- Process C creates the promotion branch; Processes G and D depend on branch operations
+- Processes E2 and E3 extend Process E's status query logic for 2-layer approval
+- Process B must exist before C (dependency tree feeds into promotion)
