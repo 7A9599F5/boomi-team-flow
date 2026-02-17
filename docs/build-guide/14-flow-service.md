@@ -4,6 +4,62 @@
 
 Reference: `/integration/flow-service/flow-service-spec.md`
 
+#### Via API
+
+The Flow Service component can be created via `POST /Component` with `type="flowservice"`. The component XML includes the service path, external name, message actions (referencing FSS operations and profiles by component ID), and configuration values.
+
+> **Note:** All FSS operations and profiles must exist before creating the Flow Service, because the component XML references them by component ID. If you built Phase 3 components via API and captured their IDs, you can construct the Flow Service XML programmatically.
+
+```bash
+# Linux/macOS — create Flow Service component
+curl -s -u "BOOMI_TOKEN.user@company.com:your-api-token" \
+  -X POST "https://api.boomi.com/partner/api/rest/v1/{accountId}/Component" \
+  -H "Content-Type: application/xml" -H "Accept: application/xml" \
+  -d '<bns:Component xmlns:bns="http://api.platform.boomi.com/" name="PROMO - Flow Service" type="flowservice" folderFullPath="/Promoted">
+  <bns:object>
+    <bns:pathToService>/fs/PromotionService</bns:pathToService>
+    <bns:externalName>PromotionService</bns:externalName>
+    <bns:messageActions>
+      <!-- 12 message actions, each referencing FSS operation + profiles by component ID -->
+      <!-- Use GET /Component on a UI-created Flow Service to capture exact XML structure -->
+    </bns:messageActions>
+    <bns:configurationValues>
+      <bns:configValue name="primaryAccountId" type="String" required="true" />
+    </bns:configurationValues>
+  </bns:object>
+</bns:Component>'
+```
+
+```powershell
+# Windows — create Flow Service component
+$cred = [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes("BOOMI_TOKEN.user@company.com:your-api-token"))
+$headers = @{
+    Authorization  = "Basic $cred"
+    "Content-Type" = "application/xml"
+    Accept         = "application/xml"
+}
+$body = @'
+<bns:Component xmlns:bns="http://api.platform.boomi.com/" name="PROMO - Flow Service" type="flowservice" folderFullPath="/Promoted">
+  <bns:object>
+    <bns:pathToService>/fs/PromotionService</bns:pathToService>
+    <bns:externalName>PromotionService</bns:externalName>
+    <bns:messageActions>
+      <!-- 12 message actions — use API-First Discovery Workflow to capture exact XML -->
+    </bns:messageActions>
+    <bns:configurationValues>
+      <bns:configValue name="primaryAccountId" type="String" required="true" />
+    </bns:configurationValues>
+  </bns:object>
+</bns:Component>
+'@
+Invoke-RestMethod -Uri "https://api.boomi.com/partner/api/rest/v1/{accountId}/Component" `
+  -Method POST -Headers $headers -Body $body
+```
+
+> **Recommended:** Flow Service XML is complex (12 message actions with cross-references). Use the [API-First Discovery Workflow](22-api-automation-guide.md#api-first-discovery-workflow): create the Flow Service in the UI, export via `GET /Component/{flowServiceId}`, and store the XML as a template for future recreation.
+
+#### Via UI (Manual Fallback)
+
 1. Navigate to **Build -> New Component -> Flow Service**.
 2. Name: `PROMO - Flow Service`.
 3. On the **General** tab, configure:
@@ -34,6 +90,78 @@ Reference: `/integration/flow-service/flow-service-spec.md`
 6. Save the component.
 
 ### Step 4.2 -- Deploy Flow Service
+
+#### Via API
+
+Packaging and deployment can be performed entirely via the Platform API:
+
+**Step 1: Create PackagedComponent**
+
+```bash
+# Linux/macOS — package the Flow Service
+curl -s -u "BOOMI_TOKEN.user@company.com:your-api-token" \
+  -X POST "https://api.boomi.com/partner/api/rest/v1/{accountId}/PackagedComponent" \
+  -H "Content-Type: application/json" -H "Accept: application/json" \
+  -d '{
+  "componentId": "{flowServiceComponentId}",
+  "packageVersion": "1.0.0",
+  "notes": "Initial Flow Service deployment",
+  "shareable": true
+}'
+```
+
+```powershell
+# Windows — package the Flow Service
+$cred = [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes("BOOMI_TOKEN.user@company.com:your-api-token"))
+$headers = @{
+    Authorization  = "Basic $cred"
+    "Content-Type" = "application/json"
+    Accept         = "application/json"
+}
+$body = @'
+{
+  "componentId": "{flowServiceComponentId}",
+  "packageVersion": "1.0.0",
+  "notes": "Initial Flow Service deployment",
+  "shareable": true
+}
+'@
+Invoke-RestMethod -Uri "https://api.boomi.com/partner/api/rest/v1/{accountId}/PackagedComponent" `
+  -Method POST -Headers $headers -Body $body
+```
+
+Capture the `packageId` from the response.
+
+**Step 2: Deploy to environment**
+
+```bash
+# Linux/macOS — deploy to target environment
+curl -s -u "BOOMI_TOKEN.user@company.com:your-api-token" \
+  -X POST "https://api.boomi.com/partner/api/rest/v1/{accountId}/DeployedPackage" \
+  -H "Content-Type: application/json" -H "Accept: application/json" \
+  -d '{
+  "packageId": "{packageId}",
+  "environmentId": "{environmentId}"
+}'
+```
+
+```powershell
+# Windows — deploy to target environment
+$body = @'
+{
+  "packageId": "{packageId}",
+  "environmentId": "{environmentId}"
+}
+'@
+Invoke-RestMethod -Uri "https://api.boomi.com/partner/api/rest/v1/{accountId}/DeployedPackage" `
+  -Method POST -Headers $headers -Body $body
+```
+
+**Step 3: Set configuration value**
+
+> **Note:** Configuration value setting after deployment is done via the Atom Management API. Navigate to the Atom Management UI to set `primaryAccountId`, or use the Atom Management API if available in your environment.
+
+#### Via UI (Manual Fallback)
 
 1. Open the `PROMO - Flow Service` component in Build.
 2. Select **Create Packaged Component**.

@@ -28,6 +28,7 @@ This guide walks through building every component of the Promotion System step b
 | 19 | [Appendix A: Naming & Inventory](19-appendix-naming-and-inventory.md) | Naming patterns + component inventory checklist |
 | 20 | [Appendix B: DPP Catalog](20-appendix-dpp-catalog.md) | DPP catalog, Groovy cross-reference, type priority |
 | 21 | [Appendix C: Platform API Reference](21-appendix-platform-api-reference.md) | Auth, endpoints, rate limiting, response codes, curl/PS templates |
+| 22 | [Appendix D: API Automation Guide](22-api-automation-guide.md) | Dependency-ordered API workflow, batch scripts, export/import, verification |
 
 ## Quick Links by Phase
 
@@ -37,4 +38,4 @@ This guide walks through building every component of the Promotion System step b
 - **Phase 4** (Flow Service): [14](14-flow-service.md)
 - **Phase 5** (Flow Dashboard): [15](15-flow-dashboard-developer.md), [16](16-flow-dashboard-review-admin.md)
 - **Phase 6** (Testing): [17](17-testing.md)
-- **Reference**: [18](18-troubleshooting.md), [19](19-appendix-naming-and-inventory.md), [20](20-appendix-dpp-catalog.md), [21](21-appendix-platform-api-reference.md)
+- **Reference**: [18](18-troubleshooting.md), [19](19-appendix-naming-and-inventory.md), [20](20-appendix-dpp-catalog.md), [21](21-appendix-platform-api-reference.md), [22](22-api-automation-guide.md)

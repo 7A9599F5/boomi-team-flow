@@ -4,6 +4,130 @@ DataHub stores the three models that power the promotion engine: component mappi
 
 ### Step 1.1 -- Create ComponentMapping Model
 
+#### Via API
+
+The DataHub Model API provides full lifecycle management (create, publish, deploy) via REST.
+
+**Step 1: Create the model**
+
+```bash
+# Linux/macOS -- create ComponentMapping model
+curl -s -u "BOOMI_TOKEN.user@company.com:your-api-token" \
+  -X POST "https://api.boomi.com/mdm/api/rest/v1/{accountId}/repositories/{repositoryId}/models" \
+  -H "Content-Type: application/json" \
+  -d '{
+  "modelName": "ComponentMapping",
+  "rootElement": "ComponentMapping",
+  "fields": [
+    {"name": "devComponentId", "type": "String", "required": true, "matchField": true},
+    {"name": "devAccountId", "type": "String", "required": true, "matchField": true},
+    {"name": "prodComponentId", "type": "String", "required": true},
+    {"name": "componentName", "type": "String", "required": true},
+    {"name": "componentType", "type": "String", "required": true},
+    {"name": "prodAccountId", "type": "String", "required": true},
+    {"name": "prodLatestVersion", "type": "Number", "required": true},
+    {"name": "lastPromotedAt", "type": "Date", "required": true},
+    {"name": "lastPromotedBy", "type": "String", "required": true},
+    {"name": "mappingSource", "type": "String", "required": false}
+  ],
+  "matchRules": [{"type": "EXACT", "fields": ["devComponentId", "devAccountId"]}],
+  "sources": [
+    {"name": "PROMOTION_ENGINE", "type": "contribute-only"},
+    {"name": "ADMIN_SEEDING", "type": "contribute-only"}
+  ]
+}'
+```
+
+```powershell
+# Windows -- create ComponentMapping model
+$cred = [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes("BOOMI_TOKEN.user@company.com:your-api-token"))
+$headers = @{
+    Authorization  = "Basic $cred"
+    "Content-Type" = "application/json"
+}
+$body = @'
+{
+  "modelName": "ComponentMapping",
+  "rootElement": "ComponentMapping",
+  "fields": [
+    {"name": "devComponentId", "type": "String", "required": true, "matchField": true},
+    {"name": "devAccountId", "type": "String", "required": true, "matchField": true},
+    {"name": "prodComponentId", "type": "String", "required": true},
+    {"name": "componentName", "type": "String", "required": true},
+    {"name": "componentType", "type": "String", "required": true},
+    {"name": "prodAccountId", "type": "String", "required": true},
+    {"name": "prodLatestVersion", "type": "Number", "required": true},
+    {"name": "lastPromotedAt", "type": "Date", "required": true},
+    {"name": "lastPromotedBy", "type": "String", "required": true},
+    {"name": "mappingSource", "type": "String", "required": false}
+  ],
+  "matchRules": [{"type": "EXACT", "fields": ["devComponentId", "devAccountId"]}],
+  "sources": [
+    {"name": "PROMOTION_ENGINE", "type": "contribute-only"},
+    {"name": "ADMIN_SEEDING", "type": "contribute-only"}
+  ]
+}
+'@
+Invoke-RestMethod -Uri "https://api.boomi.com/mdm/api/rest/v1/{accountId}/repositories/{repositoryId}/models" `
+  -Method POST -Headers $headers -Body $body
+```
+
+**Step 2: Publish the model**
+
+```bash
+# Linux/macOS -- publish ComponentMapping model
+curl -s -u "BOOMI_TOKEN.user@company.com:your-api-token" \
+  -X POST "https://api.boomi.com/mdm/api/rest/v1/{accountId}/repositories/{repositoryId}/models/{modelId}/publish" \
+  -H "Content-Type: application/json"
+```
+
+```powershell
+# Windows -- publish ComponentMapping model
+$cred = [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes("BOOMI_TOKEN.user@company.com:your-api-token"))
+$headers = @{
+    Authorization  = "Basic $cred"
+    "Content-Type" = "application/json"
+}
+Invoke-RestMethod -Uri "https://api.boomi.com/mdm/api/rest/v1/{accountId}/repositories/{repositoryId}/models/{modelId}/publish" `
+  -Method POST -Headers $headers
+```
+
+**Step 3: Deploy the model**
+
+Deployment is asynchronous. Issue the deploy request, then poll for completion.
+
+```bash
+# Linux/macOS -- deploy ComponentMapping model
+curl -s -u "BOOMI_TOKEN.user@company.com:your-api-token" \
+  -X POST "https://api.boomi.com/mdm/api/rest/v1/{accountId}/repositories/{repositoryId}/models/{modelId}/deploy" \
+  -H "Content-Type: application/json"
+
+# Poll deployment status until state = "DEPLOYED"
+curl -s -u "BOOMI_TOKEN.user@company.com:your-api-token" \
+  -X GET "https://api.boomi.com/mdm/api/rest/v1/{accountId}/repositories/{repositoryId}/models/{modelId}" \
+  -H "Accept: application/json"
+```
+
+```powershell
+# Windows -- deploy ComponentMapping model
+$cred = [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes("BOOMI_TOKEN.user@company.com:your-api-token"))
+$headers = @{
+    Authorization  = "Basic $cred"
+    "Content-Type" = "application/json"
+}
+Invoke-RestMethod -Uri "https://api.boomi.com/mdm/api/rest/v1/{accountId}/repositories/{repositoryId}/models/{modelId}/deploy" `
+  -Method POST -Headers $headers
+
+# Poll deployment status until state = "DEPLOYED"
+$headers["Accept"] = "application/json"
+Invoke-RestMethod -Uri "https://api.boomi.com/mdm/api/rest/v1/{accountId}/repositories/{repositoryId}/models/{modelId}" `
+  -Method GET -Headers $headers
+```
+
+**Verify:** GET the model endpoint and confirm the response shows status `"DEPLOYED"`, 10 fields, 1 match rule, and 2 sources.
+
+#### Via UI (Manual Fallback)
+
 1. Navigate to **Services --> DataHub --> Repositories** and select your repository (or create one).
 2. Click **Models** in the left sidebar, then **New Model**.
 3. Enter Model Name: `ComponentMapping`, Root Element: `ComponentMapping`.
@@ -31,6 +155,118 @@ DataHub stores the three models that power the promotion engine: component mappi
 
 ### Step 1.2 -- Create DevAccountAccess Model
 
+#### Via API
+
+The DataHub Model API provides full lifecycle management (create, publish, deploy) via REST.
+
+**Step 1: Create the model**
+
+```bash
+# Linux/macOS -- create DevAccountAccess model
+curl -s -u "BOOMI_TOKEN.user@company.com:your-api-token" \
+  -X POST "https://api.boomi.com/mdm/api/rest/v1/{accountId}/repositories/{repositoryId}/models" \
+  -H "Content-Type: application/json" \
+  -d '{
+  "modelName": "DevAccountAccess",
+  "rootElement": "DevAccountAccess",
+  "fields": [
+    {"name": "ssoGroupId", "type": "String", "required": true, "matchField": true},
+    {"name": "ssoGroupName", "type": "String", "required": true},
+    {"name": "devAccountId", "type": "String", "required": true, "matchField": true},
+    {"name": "devAccountName", "type": "String", "required": true},
+    {"name": "isActive", "type": "String", "required": true}
+  ],
+  "matchRules": [{"type": "EXACT", "fields": ["ssoGroupId", "devAccountId"]}],
+  "sources": [
+    {"name": "ADMIN_CONFIG", "type": "contribute-only"}
+  ]
+}'
+```
+
+```powershell
+# Windows -- create DevAccountAccess model
+$cred = [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes("BOOMI_TOKEN.user@company.com:your-api-token"))
+$headers = @{
+    Authorization  = "Basic $cred"
+    "Content-Type" = "application/json"
+}
+$body = @'
+{
+  "modelName": "DevAccountAccess",
+  "rootElement": "DevAccountAccess",
+  "fields": [
+    {"name": "ssoGroupId", "type": "String", "required": true, "matchField": true},
+    {"name": "ssoGroupName", "type": "String", "required": true},
+    {"name": "devAccountId", "type": "String", "required": true, "matchField": true},
+    {"name": "devAccountName", "type": "String", "required": true},
+    {"name": "isActive", "type": "String", "required": true}
+  ],
+  "matchRules": [{"type": "EXACT", "fields": ["ssoGroupId", "devAccountId"]}],
+  "sources": [
+    {"name": "ADMIN_CONFIG", "type": "contribute-only"}
+  ]
+}
+'@
+Invoke-RestMethod -Uri "https://api.boomi.com/mdm/api/rest/v1/{accountId}/repositories/{repositoryId}/models" `
+  -Method POST -Headers $headers -Body $body
+```
+
+**Step 2: Publish the model**
+
+```bash
+# Linux/macOS -- publish DevAccountAccess model
+curl -s -u "BOOMI_TOKEN.user@company.com:your-api-token" \
+  -X POST "https://api.boomi.com/mdm/api/rest/v1/{accountId}/repositories/{repositoryId}/models/{modelId}/publish" \
+  -H "Content-Type: application/json"
+```
+
+```powershell
+# Windows -- publish DevAccountAccess model
+$cred = [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes("BOOMI_TOKEN.user@company.com:your-api-token"))
+$headers = @{
+    Authorization  = "Basic $cred"
+    "Content-Type" = "application/json"
+}
+Invoke-RestMethod -Uri "https://api.boomi.com/mdm/api/rest/v1/{accountId}/repositories/{repositoryId}/models/{modelId}/publish" `
+  -Method POST -Headers $headers
+```
+
+**Step 3: Deploy the model**
+
+Deployment is asynchronous. Issue the deploy request, then poll for completion.
+
+```bash
+# Linux/macOS -- deploy DevAccountAccess model
+curl -s -u "BOOMI_TOKEN.user@company.com:your-api-token" \
+  -X POST "https://api.boomi.com/mdm/api/rest/v1/{accountId}/repositories/{repositoryId}/models/{modelId}/deploy" \
+  -H "Content-Type: application/json"
+
+# Poll deployment status until state = "DEPLOYED"
+curl -s -u "BOOMI_TOKEN.user@company.com:your-api-token" \
+  -X GET "https://api.boomi.com/mdm/api/rest/v1/{accountId}/repositories/{repositoryId}/models/{modelId}" \
+  -H "Accept: application/json"
+```
+
+```powershell
+# Windows -- deploy DevAccountAccess model
+$cred = [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes("BOOMI_TOKEN.user@company.com:your-api-token"))
+$headers = @{
+    Authorization  = "Basic $cred"
+    "Content-Type" = "application/json"
+}
+Invoke-RestMethod -Uri "https://api.boomi.com/mdm/api/rest/v1/{accountId}/repositories/{repositoryId}/models/{modelId}/deploy" `
+  -Method POST -Headers $headers
+
+# Poll deployment status until state = "DEPLOYED"
+$headers["Accept"] = "application/json"
+Invoke-RestMethod -Uri "https://api.boomi.com/mdm/api/rest/v1/{accountId}/repositories/{repositoryId}/models/{modelId}" `
+  -Method GET -Headers $headers
+```
+
+**Verify:** GET the model endpoint and confirm the response shows status `"DEPLOYED"`, 5 fields, 1 compound match rule, and source `ADMIN_CONFIG`.
+
+#### Via UI (Manual Fallback)
+
 1. Navigate to **Services --> DataHub --> Repositories --> [your repo] --> Models --> New Model**.
 2. Enter Model Name: `DevAccountAccess`, Root Element: `DevAccountAccess`.
 3. Add fields per `/datahub/models/DevAccountAccess-model-spec.json`:
@@ -50,6 +286,130 @@ DataHub stores the three models that power the promotion engine: component mappi
 **Verify:** Model shows 5 fields, 1 compound match rule, source `ADMIN_CONFIG`.
 
 ### Step 1.3 -- Create PromotionLog Model
+
+#### Via API
+
+The DataHub Model API provides full lifecycle management (create, publish, deploy) via REST.
+
+**Step 1: Create the model**
+
+```bash
+# Linux/macOS -- create PromotionLog model
+curl -s -u "BOOMI_TOKEN.user@company.com:your-api-token" \
+  -X POST "https://api.boomi.com/mdm/api/rest/v1/{accountId}/repositories/{repositoryId}/models" \
+  -H "Content-Type: application/json" \
+  -d '{
+  "modelName": "PromotionLog",
+  "rootElement": "PromotionLog",
+  "fields": [
+    {"name": "promotionId", "type": "String", "required": true, "matchField": true},
+    {"name": "devAccountId", "type": "String", "required": true},
+    {"name": "prodAccountId", "type": "String", "required": true},
+    {"name": "devPackageId", "type": "String", "required": true},
+    {"name": "prodPackageId", "type": "String", "required": false},
+    /* ... 34 fields — see /datahub/models/PromotionLog-model-spec.json for complete list */
+    {"name": "testPromotionId", "type": "String", "required": false},
+    {"name": "testDeployedAt", "type": "Date", "required": false},
+    {"name": "testIntegrationPackId", "type": "String", "required": false},
+    {"name": "testIntegrationPackName", "type": "String", "required": false},
+    {"name": "promotedFromTestBy", "type": "String", "required": false}
+  ],
+  "matchRules": [{"type": "EXACT", "fields": ["promotionId"]}],
+  "sources": [
+    {"name": "PROMOTION_ENGINE", "type": "contribute-only"}
+  ]
+}'
+```
+
+```powershell
+# Windows -- create PromotionLog model
+$cred = [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes("BOOMI_TOKEN.user@company.com:your-api-token"))
+$headers = @{
+    Authorization  = "Basic $cred"
+    "Content-Type" = "application/json"
+}
+$body = @'
+{
+  "modelName": "PromotionLog",
+  "rootElement": "PromotionLog",
+  "fields": [
+    {"name": "promotionId", "type": "String", "required": true, "matchField": true},
+    {"name": "devAccountId", "type": "String", "required": true},
+    {"name": "prodAccountId", "type": "String", "required": true},
+    {"name": "devPackageId", "type": "String", "required": true},
+    {"name": "prodPackageId", "type": "String", "required": false},
+    /* ... 34 fields -- see /datahub/models/PromotionLog-model-spec.json for complete list */
+    {"name": "testPromotionId", "type": "String", "required": false},
+    {"name": "testDeployedAt", "type": "Date", "required": false},
+    {"name": "testIntegrationPackId", "type": "String", "required": false},
+    {"name": "testIntegrationPackName", "type": "String", "required": false},
+    {"name": "promotedFromTestBy", "type": "String", "required": false}
+  ],
+  "matchRules": [{"type": "EXACT", "fields": ["promotionId"]}],
+  "sources": [
+    {"name": "PROMOTION_ENGINE", "type": "contribute-only"}
+  ]
+}
+'@
+Invoke-RestMethod -Uri "https://api.boomi.com/mdm/api/rest/v1/{accountId}/repositories/{repositoryId}/models" `
+  -Method POST -Headers $headers -Body $body
+```
+
+**Step 2: Publish the model**
+
+```bash
+# Linux/macOS -- publish PromotionLog model
+curl -s -u "BOOMI_TOKEN.user@company.com:your-api-token" \
+  -X POST "https://api.boomi.com/mdm/api/rest/v1/{accountId}/repositories/{repositoryId}/models/{modelId}/publish" \
+  -H "Content-Type: application/json"
+```
+
+```powershell
+# Windows -- publish PromotionLog model
+$cred = [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes("BOOMI_TOKEN.user@company.com:your-api-token"))
+$headers = @{
+    Authorization  = "Basic $cred"
+    "Content-Type" = "application/json"
+}
+Invoke-RestMethod -Uri "https://api.boomi.com/mdm/api/rest/v1/{accountId}/repositories/{repositoryId}/models/{modelId}/publish" `
+  -Method POST -Headers $headers
+```
+
+**Step 3: Deploy the model**
+
+Deployment is asynchronous. Issue the deploy request, then poll for completion.
+
+```bash
+# Linux/macOS -- deploy PromotionLog model
+curl -s -u "BOOMI_TOKEN.user@company.com:your-api-token" \
+  -X POST "https://api.boomi.com/mdm/api/rest/v1/{accountId}/repositories/{repositoryId}/models/{modelId}/deploy" \
+  -H "Content-Type: application/json"
+
+# Poll deployment status until state = "DEPLOYED"
+curl -s -u "BOOMI_TOKEN.user@company.com:your-api-token" \
+  -X GET "https://api.boomi.com/mdm/api/rest/v1/{accountId}/repositories/{repositoryId}/models/{modelId}" \
+  -H "Accept: application/json"
+```
+
+```powershell
+# Windows -- deploy PromotionLog model
+$cred = [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes("BOOMI_TOKEN.user@company.com:your-api-token"))
+$headers = @{
+    Authorization  = "Basic $cred"
+    "Content-Type" = "application/json"
+}
+Invoke-RestMethod -Uri "https://api.boomi.com/mdm/api/rest/v1/{accountId}/repositories/{repositoryId}/models/{modelId}/deploy" `
+  -Method POST -Headers $headers
+
+# Poll deployment status until state = "DEPLOYED"
+$headers["Accept"] = "application/json"
+Invoke-RestMethod -Uri "https://api.boomi.com/mdm/api/rest/v1/{accountId}/repositories/{repositoryId}/models/{modelId}" `
+  -Method GET -Headers $headers
+```
+
+**Verify:** GET the model endpoint and confirm the response shows status `"DEPLOYED"`, 34 fields, 1 match rule, and source `PROMOTION_ENGINE`.
+
+#### Via UI (Manual Fallback)
 
 1. Navigate to **Services --> DataHub --> Repositories --> [your repo] --> Models --> New Model**.
 2. Enter Model Name: `PromotionLog`, Root Element: `PromotionLog`.
@@ -99,8 +459,7 @@ DataHub stores the three models that power the promotion engine: component mappi
 |--------|-------------|
 | `IN_PROGRESS` | Promotion is executing (components being promoted to branch) |
 | `COMPLETED` | Promotion finished successfully (all components promoted) |
-| `FAILED` | Promotion failed (catastrophic error or all components failed) |
-| `PARTIALLY_COMPLETED` | Some components promoted, some failed or skipped |
+| `FAILED` | Promotion failed (catastrophic error or any component failed — branch deleted) |
 | `PENDING_PEER_REVIEW` | Awaiting peer review (promotion succeeded, needs approval) |
 | `PEER_APPROVED` | Peer review approved, awaiting admin review |
 | `PEER_REJECTED` | Peer review rejected (promoter must address feedback) |
@@ -108,6 +467,8 @@ DataHub stores the three models that power the promotion engine: component mappi
 | `ADMIN_APPROVED` | Admin approved, ready for deployment |
 | `TEST_DEPLOYING` | Test deployment in progress |
 | `TEST_DEPLOYED` | Test deployment completed, ready for production promotion |
+
+> **Fail-Fast Policy**: Process C uses a fail-fast approach — if any component fails during promotion, the entire promotion branch is deleted and the status is set to `FAILED`. There is no partial state; promotions are either fully `COMPLETED` or `FAILED`. This simplifies recovery (just re-run the promotion) and prevents Process D from merging incomplete branches to main.
 
 4. Match rule: **Exact** on `promotionId` (single field).
 5. Source: `PROMOTION_ENGINE` (Contribute Only).
@@ -222,6 +583,28 @@ POST the same create payload again from step 1.5a. Because the compound match ru
 **Verify:** Query again using step 1.5b. Confirm still exactly one record (no duplicate). The record's `lastPromotedAt` and other fields should reflect the second POST.
 
 #### 1.5d -- Clean Up
+
+##### Via API
+
+```bash
+# Linux/macOS -- delete test golden record
+curl -s -u "BOOMI_TOKEN.user@company.com:your-api-token" \
+  -X DELETE "https://api.boomi.com/mdm/api/v1/repositories/{repositoryId}/models/ComponentMapping/records/{recordId}"
+```
+
+```powershell
+# Windows -- delete test golden record
+$cred = [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes("BOOMI_TOKEN.user@company.com:your-api-token"))
+$headers = @{
+    Authorization = "Basic $cred"
+}
+Invoke-RestMethod -Uri "https://api.boomi.com/mdm/api/v1/repositories/{repositoryId}/models/ComponentMapping/records/{recordId}" `
+  -Method DELETE -Headers $headers
+```
+
+Replace `{recordId}` with the record ID returned from the create response in step 1.5a.
+
+##### Via UI (Manual Fallback)
 
 Delete the test record from the DataHub UI: navigate to **DataHub --> Repositories --> [your repo] --> ComponentMapping --> Golden Records**, select the test record, and click **Delete**.
 

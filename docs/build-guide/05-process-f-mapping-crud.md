@@ -6,6 +6,8 @@ Build in this order. Process F is fully detailed as the template; subsequent pro
 
 ### Process F: Mapping CRUD (`PROMO - Mapping CRUD`)
 
+> **API Alternative:** This process can be created programmatically via `POST /Component` with `type="process"`. Due to the complexity of process canvas XML (shapes, routing, DPP mappings, script references), the recommended workflow is: (1) build the process manually following the steps below, (2) use `GET /Component/{processId}` to export the XML, (3) store the XML as a template for automated recreation. See [Appendix D: API Automation Guide](22-api-automation-guide.md) for the full workflow.
+
 This is the simplest process — a good "hello world" to validate the FSS-to-process pipeline before tackling complex logic.
 
 #### Profiles

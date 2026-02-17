@@ -628,4 +628,4 @@ Quick lookup: which processes call which endpoints.
 | DH Update PromotionLog | | | | X | X | | | X | | | | |
 
 ---
-Prev: [Appendix B: DPP Catalog](20-appendix-dpp-catalog.md) | [Back to Index](index.md)
+Prev: [Appendix B: DPP Catalog](20-appendix-dpp-catalog.md) | Next: [Appendix D: API Automation Guide](22-api-automation-guide.md) | [Back to Index](index.md)

@@ -1,5 +1,7 @@
 ### Process J: List Integration Packs (`PROMO - List Integration Packs`)
 
+> **API Alternative:** This process can be created programmatically via `POST /Component` with `type="process"`. Due to the complexity of process canvas XML (shapes, routing, DPP mappings, script references), the recommended workflow is: (1) build the process manually following the steps below, (2) use `GET /Component/{processId}` to export the XML, (3) store the XML as a template for automated recreation. See [Appendix D: API Automation Guide](22-api-automation-guide.md) for the full workflow.
+
 **Purpose:** Query existing MULTI-type Integration Packs from primary account and suggest the most recently used pack for a given process.
 
 **Components Used:**

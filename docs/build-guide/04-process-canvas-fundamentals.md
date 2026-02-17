@@ -24,6 +24,49 @@ Before building individual processes, understand the shape types and patterns us
 
 Every process needs request and response JSON profiles. Import them once; all processes reference them.
 
+##### Via API
+
+JSON profiles can be created programmatically via `POST /Component` with `type="profile.json"`. However, there is no API equivalent for the UI's "Import from JSON" feature — the profile element XML must be constructed manually.
+
+**Recommended workflow:** Create one profile in the UI using the import steps below, then export it via `GET /Component/{profileId}` to capture the internal XML structure. Use that XML as a template for the remaining 25 profiles by modifying field names and types.
+
+**Template** (after capturing XML from a UI-created profile):
+
+```bash
+# Linux/macOS — create a JSON profile from exported XML template
+curl -s -u "BOOMI_TOKEN.user@company.com:your-api-token" \
+  -X POST "https://api.boomi.com/partner/api/rest/v1/{accountId}/Component" \
+  -H "Content-Type: application/xml" -H "Accept: application/xml" \
+  -d '<bns:Component xmlns:bns="http://api.platform.boomi.com/" name="PROMO - Profile - {ProfileName}" type="profile.json" folderFullPath="/Promoted/Profiles">
+  <bns:object>
+    <!-- Paste exported profile element XML here -->
+  </bns:object>
+</bns:Component>'
+```
+
+```powershell
+# Windows — create a JSON profile from exported XML template
+$cred = [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes("BOOMI_TOKEN.user@company.com:your-api-token"))
+$headers = @{
+    Authorization  = "Basic $cred"
+    "Content-Type" = "application/xml"
+    Accept         = "application/xml"
+}
+$body = @'
+<bns:Component xmlns:bns="http://api.platform.boomi.com/" name="PROMO - Profile - {ProfileName}" type="profile.json" folderFullPath="/Promoted/Profiles">
+  <bns:object>
+    <!-- Paste exported profile element XML here -->
+  </bns:object>
+</bns:Component>
+'@
+Invoke-RestMethod -Uri "https://api.boomi.com/partner/api/rest/v1/{accountId}/Component" `
+  -Method POST -Headers $headers -Body $body
+```
+
+See [Appendix D: API Automation Guide](22-api-automation-guide.md#api-first-discovery-workflow) for the complete export/import workflow and a batch creation script.
+
+##### Via UI (Manual Fallback)
+
 1. Navigate to **Build --> New Component --> Profile --> JSON**
 2. Name the profile using the exact name from the master component list (e.g., `PROMO - Profile - ManageMappingsRequest`)
 3. Click **Import** and select the corresponding file from `/integration/profiles/` (e.g., `manageMappings-request.json`)
@@ -109,6 +152,55 @@ The Start shape receives the request JSON document from the Flow Service and pla
 
 Each process requires a corresponding FSS Operation component that links it to a message action in the Flow Service. Create all 13 before building the process canvases, or create each one just before its process.
 
+##### Via API
+
+FSS Operations can be created via `POST /Component` with `type="connector-action"` and `subType="flowservicesserver"`.
+
+**Template:**
+
+```bash
+# Linux/macOS — create an FSS Operation
+curl -s -u "BOOMI_TOKEN.user@company.com:your-api-token" \
+  -X POST "https://api.boomi.com/partner/api/rest/v1/{accountId}/Component" \
+  -H "Content-Type: application/xml" -H "Accept: application/xml" \
+  -d '<bns:Component xmlns:bns="http://api.platform.boomi.com/" name="{FSS_OPERATION_NAME}" type="connector-action" subType="flowservicesserver" folderFullPath="/Promoted/Operations">
+  <bns:object>
+    <bns:serviceType>MESSAGE_ACTION</bns:serviceType>
+    <bns:requestProfileId>{requestProfileComponentId}</bns:requestProfileId>
+    <bns:responseProfileId>{responseProfileComponentId}</bns:responseProfileId>
+  </bns:object>
+</bns:Component>'
+```
+
+```powershell
+# Windows — create an FSS Operation
+$cred = [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes("BOOMI_TOKEN.user@company.com:your-api-token"))
+$headers = @{
+    Authorization  = "Basic $cred"
+    "Content-Type" = "application/xml"
+    Accept         = "application/xml"
+}
+$body = @'
+<bns:Component xmlns:bns="http://api.platform.boomi.com/" name="{FSS_OPERATION_NAME}" type="connector-action" subType="flowservicesserver" folderFullPath="/Promoted/Operations">
+  <bns:object>
+    <bns:serviceType>MESSAGE_ACTION</bns:serviceType>
+    <bns:requestProfileId>{requestProfileComponentId}</bns:requestProfileId>
+    <bns:responseProfileId>{responseProfileComponentId}</bns:responseProfileId>
+  </bns:object>
+</bns:Component>
+'@
+Invoke-RestMethod -Uri "https://api.boomi.com/partner/api/rest/v1/{accountId}/Component" `
+  -Method POST -Headers $headers -Body $body
+```
+
+Replace `{requestProfileComponentId}` and `{responseProfileComponentId}` with the component IDs returned when creating the corresponding profiles. Use the lookup table below to match FSS operations to their profiles.
+
+> **Note:** The exact XML structure for FSS operation configuration may vary — use the [API-First Discovery Workflow](22-api-automation-guide.md#api-first-discovery-workflow) to capture precise XML from a UI-created operation if the template above does not work directly.
+
+See [Appendix D: API Automation Guide](22-api-automation-guide.md) for a batch creation script covering all 13 operations.
+
+##### Via UI (Manual Fallback)
+
 1. **Build --> New Component --> Operation --> Flow Services Server**
 2. Name: use the exact FSS Operation name from the master component list (see table below)
 3. Service Type: **Message Action**
@@ -139,6 +231,44 @@ Every process ends with a **Return Documents** shape. This sends the final respo
 #### Error Response Pattern
 
 When a process encounters an error, build the error response JSON with `success = false`, an `errorCode`, and an `errorMessage`. Use a Map shape to construct this JSON from DPPs. The Flow application checks the `success` field in every response to decide whether to continue or show an error.
+
+---
+
+### 3.D — API-First Discovery Workflow
+
+When creating components programmatically, the internal XML structure is often undocumented or varies by connector type. The recommended approach — endorsed by Boomi documentation — is the "GET first" pattern:
+
+1. **Create a skeleton component in the UI** — build one representative component (e.g., one profile, one operation) using the manual steps above
+2. **Export via API** — call `GET /Component/{componentId}` to retrieve the full internal XML:
+
+```bash
+# Linux/macOS — export a component's full XML
+curl -s -u "BOOMI_TOKEN.user@company.com:your-api-token" \
+  -H "Accept: application/xml" \
+  "https://api.boomi.com/partner/api/rest/v1/{accountId}/Component/{componentId}" > component-template.xml
+```
+
+```powershell
+# Windows — export a component's full XML
+$cred = [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes("BOOMI_TOKEN.user@company.com:your-api-token"))
+$headers = @{
+    Authorization = "Basic $cred"
+    Accept        = "application/xml"
+}
+Invoke-RestMethod -Uri "https://api.boomi.com/partner/api/rest/v1/{accountId}/Component/{componentId}" `
+  -Method GET -Headers $headers -OutFile "component-template.xml"
+```
+
+3. **Use as template** — modify the exported XML (change `name`, remove `componentId` and `version`, adjust fields) and POST it to create new components
+4. **Batch create** — loop through a list of component definitions, substituting unique values into the template
+
+This workflow is especially valuable for:
+- **26 JSON profiles** — create one, export, template the remaining 25
+- **19 HTTP Client operations** — create one, export, template the remaining 18
+- **13 FSS operations** — create one, export, template the remaining 12
+- **Cross-account migration** — export all components from one account, recreate in another
+
+See [Appendix D: API Automation Guide](22-api-automation-guide.md) for complete batch creation scripts and the dependency-ordered workflow.
 
 ---
 

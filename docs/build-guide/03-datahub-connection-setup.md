@@ -1,5 +1,48 @@
 ### Step 2.3 -- Create DataHub Connection
 
+#### Via API
+
+```bash
+# Linux/macOS -- create DataHub Connection component
+curl -s -u "BOOMI_TOKEN.user@company.com:your-api-token" \
+  -X POST "https://api.boomi.com/partner/api/rest/v1/{accountId}/Component" \
+  -H "Content-Type: application/xml" -H "Accept: application/xml" \
+  -d '<bns:Component xmlns:bns="http://api.platform.boomi.com/" name="PROMO - DataHub Connection" type="connector-settings" subType="datahub" folderFullPath="/Promoted/Connections">
+  <bns:object>
+    <bns:hubCloudName>US_EAST</bns:hubCloudName>
+    <bns:authToken>{hubAuthToken}</bns:authToken>
+    <bns:repositoryId>{repositoryId}</bns:repositoryId>
+  </bns:object>
+</bns:Component>'
+```
+
+```powershell
+# Windows -- create DataHub Connection component
+$cred = [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes("BOOMI_TOKEN.user@company.com:your-api-token"))
+$headers = @{
+    Authorization  = "Basic $cred"
+    "Content-Type" = "application/xml"
+    Accept         = "application/xml"
+}
+$body = @"
+<bns:Component xmlns:bns="http://api.platform.boomi.com/" name="PROMO - DataHub Connection" type="connector-settings" subType="datahub" folderFullPath="/Promoted/Connections">
+  <bns:object>
+    <bns:hubCloudName>US_EAST</bns:hubCloudName>
+    <bns:authToken>{hubAuthToken}</bns:authToken>
+    <bns:repositoryId>{repositoryId}</bns:repositoryId>
+  </bns:object>
+</bns:Component>
+"@
+Invoke-RestMethod -Uri "https://api.boomi.com/partner/api/rest/v1/{accountId}/Component" `
+  -Method POST -Headers $headers -Body $body
+```
+
+> **Note:** The Hub Authentication Token must still be retrieved from the DataHub UI: **Services --> DataHub --> Repositories --> [your repo] --> Configure** tab. There is no API to generate this token. Connection testing also has no API equivalent.
+
+**Verify:** Capture the `componentId` from the response for use in operation creation.
+
+#### Via UI (Manual Fallback)
+
 1. Navigate to **Build --> New Component --> Connector --> Connection**.
 2. Select connector type: **Boomi DataHub**.
 3. Set component name: `PROMO - DataHub Connection`.
@@ -37,6 +80,62 @@ Create 6 DataHub operations -- a Query and an Update for each of the 3 models. E
 
 #### Step 2.4.1 -- PROMO - DH Op - Query ComponentMapping
 
+##### Via API
+
+```bash
+# Linux/macOS -- create DataHub Query operation for ComponentMapping
+curl -s -u "BOOMI_TOKEN.user@company.com:your-api-token" \
+  -X POST "https://api.boomi.com/partner/api/rest/v1/{accountId}/Component" \
+  -H "Content-Type: application/xml" -H "Accept: application/xml" \
+  -d '<bns:Component xmlns:bns="http://api.platform.boomi.com/" name="PROMO - DH Op - Query ComponentMapping" type="connector-action" subType="datahub" folderFullPath="/Promoted/Operations">
+  <bns:object>
+    <bns:connectorId>{dhConnectionComponentId}</bns:connectorId>
+    <bns:action>QUERY</bns:action>
+    <bns:modelName>ComponentMapping</bns:modelName>
+  </bns:object>
+</bns:Component>'
+```
+
+```powershell
+# Windows -- create DataHub Query operation for ComponentMapping
+$cred = [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes("BOOMI_TOKEN.user@company.com:your-api-token"))
+$headers = @{
+    Authorization  = "Basic $cred"
+    "Content-Type" = "application/xml"
+    Accept         = "application/xml"
+}
+$body = @"
+<bns:Component xmlns:bns="http://api.platform.boomi.com/" name="PROMO - DH Op - Query ComponentMapping" type="connector-action" subType="datahub" folderFullPath="/Promoted/Operations">
+  <bns:object>
+    <bns:connectorId>{dhConnectionComponentId}</bns:connectorId>
+    <bns:action>QUERY</bns:action>
+    <bns:modelName>ComponentMapping</bns:modelName>
+  </bns:object>
+</bns:Component>
+"@
+Invoke-RestMethod -Uri "https://api.boomi.com/partner/api/rest/v1/{accountId}/Component" `
+  -Method POST -Headers $headers -Body $body
+```
+
+**Verify:** Response returns HTTP 200 with the created component. Capture the `componentId` from the response.
+
+##### Batch Creation Template for All 6 Operations
+
+To create all 6 DataHub operations via API, use the same curl/PowerShell template above, substituting values from this table:
+
+| Step | Operation Name | Action | Model |
+|------|---------------|--------|-------|
+| 2.4.1 | PROMO - DH Op - Query ComponentMapping | QUERY | ComponentMapping |
+| 2.4.2 | PROMO - DH Op - Update ComponentMapping | UPDATE | ComponentMapping |
+| 2.4.3 | PROMO - DH Op - Query DevAccountAccess | QUERY | DevAccountAccess |
+| 2.4.4 | PROMO - DH Op - Update DevAccountAccess | UPDATE | DevAccountAccess |
+| 2.4.5 | PROMO - DH Op - Query PromotionLog | QUERY | PromotionLog |
+| 2.4.6 | PROMO - DH Op - Update PromotionLog | UPDATE | PromotionLog |
+
+> **Note:** DataHub operations auto-generate request/response profiles when created via the UI's Import feature. When creating via API, the profile import step must be handled separately -- use the [API-First Discovery Workflow](22-api-automation-guide.md#api-first-discovery-workflow) to capture the exact XML structure from a UI-created operation.
+
+##### Via UI (Manual Fallback)
+
 1. Navigate to **Build --> New Component --> Connector --> Operation**.
 2. Select connector type: **Boomi DataHub**. Name: `PROMO - DH Op - Query ComponentMapping`.
 3. Connection: select `PROMO - DataHub Connection`.
@@ -45,6 +144,8 @@ Create 6 DataHub operations -- a Query and an Update for each of the 3 models. E
 6. **Save**.
 
 #### Step 2.4.2 -- PROMO - DH Op - Update ComponentMapping
+
+> **API Alternative:** Use the batch creation template above with this operation's values from the lookup table.
 
 1. **Build --> New Component --> Connector --> Operation --> Boomi DataHub**.
 2. Name: `PROMO - DH Op - Update ComponentMapping`.
@@ -55,6 +156,8 @@ Create 6 DataHub operations -- a Query and an Update for each of the 3 models. E
 
 #### Step 2.4.3 -- PROMO - DH Op - Query DevAccountAccess
 
+> **API Alternative:** Use the batch creation template above with this operation's values from the lookup table.
+
 Follows the same pattern as Step 2.4.1 with these differences:
 
 1. Name: `PROMO - DH Op - Query DevAccountAccess`.
@@ -63,6 +166,8 @@ Follows the same pattern as Step 2.4.1 with these differences:
 4. **Save**.
 
 #### Step 2.4.4 -- PROMO - DH Op - Update DevAccountAccess
+
+> **API Alternative:** Use the batch creation template above with this operation's values from the lookup table.
 
 Follows the same pattern as Step 2.4.2 with these differences:
 
@@ -73,6 +178,8 @@ Follows the same pattern as Step 2.4.2 with these differences:
 
 #### Step 2.4.5 -- PROMO - DH Op - Query PromotionLog
 
+> **API Alternative:** Use the batch creation template above with this operation's values from the lookup table.
+
 Follows the same pattern as Step 2.4.1 with these differences:
 
 1. Name: `PROMO - DH Op - Query PromotionLog`.
@@ -81,6 +188,8 @@ Follows the same pattern as Step 2.4.1 with these differences:
 4. **Save**.
 
 #### Step 2.4.6 -- PROMO - DH Op - Update PromotionLog
+
+> **API Alternative:** Use the batch creation template above with this operation's values from the lookup table.
 
 Follows the same pattern as Step 2.4.2 with these differences:
 
