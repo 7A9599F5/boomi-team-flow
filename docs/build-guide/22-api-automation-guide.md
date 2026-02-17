@@ -58,15 +58,15 @@ The complete system can be created in this order. Each step depends on all previ
 ```
 Step 1:  DataHub Repository
 Step 2:  DataHub Sources (3)
-Step 3:  DataHub Models (3) -> Publish -> Deploy
+Step 3:  DataHub Models (5) -> Publish -> Deploy
 Step 4:  Folder Structure
-Step 5:  JSON Profiles (26)
+Step 5:  JSON Profiles (38)
 Step 6:  HTTP Client Connection
-Step 7:  HTTP Client Operations (19)
+Step 7:  HTTP Client Operations (27)
 Step 8:  DataHub Connection
-Step 9:  DataHub Operations (6)
-Step 10: FSS Operations (13)
-Step 11: Integration Processes (12)
+Step 9:  DataHub Operations (10)
+Step 10: FSS Operations (19)
+Step 11: Integration Processes (18)
 Step 12: Flow Service
 Step 13: Package + Deploy Flow Service
 Step 14: Phase 7 DataHub Models (2) -> Publish -> Deploy
@@ -160,7 +160,7 @@ Invoke-RestMethod -Uri "https://api.boomi.com/mdm/api/rest/v1/$env:BOOMI_ACCOUNT
 
 ---
 
-#### Step 3 -- Create 3 DataHub Models, Publish, and Deploy
+#### Step 3 -- Create 5 DataHub Models, Publish, and Deploy
 
 Reference: [Phase 1: DataHub Foundation](01-datahub-foundation.md)
 
@@ -209,6 +209,8 @@ Invoke-RestMethod -Uri "https://api.boomi.com/mdm/api/rest/v1/$env:BOOMI_ACCOUNT
 | 1 | ComponentMapping | `datahub/models/ComponentMapping-model-spec.json` | 10 | `devComponentId` + `devAccountId` | PROMOTION_ENGINE, ADMIN_SEEDING |
 | 2 | DevAccountAccess | `datahub/models/DevAccountAccess-model-spec.json` | 5 | `ssoGroupId` + `devAccountId` | ADMIN_CONFIG |
 | 3 | PromotionLog | `datahub/models/PromotionLog-model-spec.json` | 34 | `promotionId` | PROMOTION_ENGINE |
+| 4 | ExtensionAccessMapping | `datahub/models/ExtensionAccessMapping-model-spec.json` | 6 | `environmentId` + `prodComponentId` | PROMOTION_ENGINE |
+| 5 | ClientAccountConfig | `datahub/models/ClientAccountConfig-model-spec.json` | 7 | `clientAccountId` + `ssoGroupId` | ADMIN_CONFIG |
 
 > Capture the `modelId` from each create response. You will need it for the publish and deploy calls.
 
@@ -260,7 +262,7 @@ Invoke-RestMethod -Uri "https://api.boomi.com/partner/api/rest/v1/$env:BOOMI_ACC
 
 ---
 
-#### Step 5 -- Create 26 JSON Profiles (Batch)
+#### Step 5 -- Create 38 JSON Profiles (Batch)
 
 Reference: [Phase 3: Process Canvas Fundamentals](04-process-canvas-fundamentals.md) for profile import instructions.
 
@@ -291,7 +293,7 @@ Invoke-RestMethod -Uri "https://api.boomi.com/partner/api/rest/v1/$env:BOOMI_ACC
   -Method POST -Headers $BoomiHeadersXml -Body $profileXml
 ```
 
-**Complete Profile Inventory (26 profiles):**
+**Complete Profile Inventory (38 profiles):**
 
 | # | Profile Component Name | Source File |
 |---|----------------------|-------------|
@@ -321,8 +323,20 @@ Invoke-RestMethod -Uri "https://api.boomi.com/partner/api/rest/v1/$env:BOOMI_ACC
 | 24 | `PROMO - Profile - QueryTestDeploymentsResponse` | `queryTestDeployments-response.json` |
 | 25 | `PROMO - Profile - CancelTestDeploymentRequest` | `cancelTestDeployment-request.json` |
 | 26 | `PROMO - Profile - CancelTestDeploymentResponse` | `cancelTestDeployment-response.json` |
+| 27 | `PROMO - Profile - WithdrawPromotionRequest` | `withdrawPromotion-request.json` |
+| 28 | `PROMO - Profile - WithdrawPromotionResponse` | `withdrawPromotion-response.json` |
+| 29 | `PROMO - Profile - ListClientAccountsRequest` | `listClientAccounts-request.json` |
+| 30 | `PROMO - Profile - ListClientAccountsResponse` | `listClientAccounts-response.json` |
+| 31 | `PROMO - Profile - GetExtensionsRequest` | `getExtensions-request.json` |
+| 32 | `PROMO - Profile - GetExtensionsResponse` | `getExtensions-response.json` |
+| 33 | `PROMO - Profile - UpdateExtensionsRequest` | `updateExtensions-request.json` |
+| 34 | `PROMO - Profile - UpdateExtensionsResponse` | `updateExtensions-response.json` |
+| 35 | `PROMO - Profile - CopyExtensionsTestToProdRequest` | `copyExtensionsTestToProd-request.json` |
+| 36 | `PROMO - Profile - CopyExtensionsTestToProdResponse` | `copyExtensionsTestToProd-response.json` |
+| 37 | `PROMO - Profile - UpdateMapExtensionRequest` | `updateMapExtension-request.json` |
+| 38 | `PROMO - Profile - UpdateMapExtensionResponse` | `updateMapExtension-response.json` |
 
-> **Recommended workflow:** Create one profile manually in the UI by importing the JSON schema, then export it via `GET /Component/{id}` to capture the internal XML representation. Use that exported XML as a template for the remaining 25 profiles. See [API-First Discovery Workflow](#api-first-discovery-workflow) below.
+> **Recommended workflow:** Create one profile manually in the UI by importing the JSON schema, then export it via `GET /Component/{id}` to capture the internal XML representation. Use that exported XML as a template for the remaining 37 profiles. See [API-First Discovery Workflow](#api-first-discovery-workflow) below.
 
 ---
 
@@ -367,11 +381,11 @@ Invoke-RestMethod -Uri "https://api.boomi.com/partner/api/rest/v1/$env:BOOMI_ACC
 
 ---
 
-#### Step 7 -- Create 19 HTTP Client Operations (Batch)
+#### Step 7 -- Create 27 HTTP Client Operations (Batch)
 
 Reference: [Phase 2a: HTTP Client Setup](02-http-client-setup.md), Step 2.2
 
-Each operation is a `connector-action` type component with subType `http`. All 19 operations use the `PROMO - Partner API Connection` from Step 6.
+Each operation is a `connector-action` type component with subType `http`. All 27 operations use the `PROMO - Partner API Connection` from Step 6.
 
 **Template (single operation):**
 
@@ -398,7 +412,7 @@ Invoke-RestMethod -Uri "https://api.boomi.com/partner/api/rest/v1/$env:BOOMI_ACC
   -Method POST -Headers $BoomiHeadersXml -Body $opXml
 ```
 
-**Complete HTTP Client Operation Inventory (19 operations):**
+**Complete HTTP Client Operation Inventory (27 operations):**
 
 | # | Component Name | Method | Request URL | Content-Type |
 |---|---------------|--------|-------------|-------------|
@@ -421,6 +435,14 @@ Invoke-RestMethod -Uri "https://api.boomi.com/partner/api/rest/v1/$env:BOOMI_ACC
 | 17 | `PROMO - HTTP Op - POST Add To IntegrationPack` | POST | `/partner/api/rest/v1/{1}/IntegrationPack/{2}/PackagedComponent/{3}` | `application/json` |
 | 18 | `PROMO - HTTP Op - POST ReleaseIntegrationPack` | POST | `/partner/api/rest/v1/{1}/ReleaseIntegrationPack` | `application/json` |
 | 19 | `PROMO - HTTP Op - GET MergeRequest` | GET | `/partner/api/rest/v1/{1}/MergeRequest/{2}` | `application/json` |
+| 20 | `PROMO - HTTP Op - GET EnvironmentExtensions` | GET | `/partner/api/rest/v1/{1}/EnvironmentExtensions/{2}` | `application/json` |
+| 21 | `PROMO - HTTP Op - POST EnvironmentExtensions Update` | POST | `/partner/api/rest/v1/{1}/EnvironmentExtensions/{2}/update` | `application/json` |
+| 22 | `PROMO - HTTP Op - QUERY DeployedPackage` | POST | `/partner/api/rest/v1/{1}/DeployedPackage/query` | `application/json` |
+| 23 | `PROMO - HTTP Op - QUERY Environment` | POST | `/partner/api/rest/v1/{1}/Environment/query` | `application/json` |
+| 24 | `PROMO - HTTP Op - GET MapExtensions` | GET | `/partner/api/rest/v1/{1}/MapExtensions/{2}/{3}` | `application/json` |
+| 25 | `PROMO - HTTP Op - POST MapExtensions Update` | POST | `/partner/api/rest/v1/{1}/MapExtensions/{2}/{3}/update` | `application/json` |
+| 26 | `PROMO - HTTP Op - DELETE DeployedPackage` | DELETE | `/partner/api/rest/v1/{1}/DeployedPackage/{2}` | `application/json` |
+| 27 | `PROMO - HTTP Op - QUERY IntegrationPackInstance` | POST | `/partner/api/rest/v1/{1}/IntegrationPackInstance/query` | `application/json` |
 
 > **Recommended workflow:** Create operation #1 (`GET Component`) manually in the UI, then export via `GET /Component/{id}` to capture the internal XML. Use that as a template, modifying the name, method, URL, and headers for each subsequent operation. The internal XML structure for connector-action components is not publicly documented, making the export-first approach essential.
 
@@ -461,11 +483,11 @@ Invoke-RestMethod -Uri "https://api.boomi.com/partner/api/rest/v1/$env:BOOMI_ACC
 
 ---
 
-#### Step 9 -- Create 6 DataHub Operations (Batch)
+#### Step 9 -- Create 10 DataHub Operations (Batch)
 
 Reference: [Phase 2b: DataHub Connection Setup](03-datahub-connection-setup.md), Step 2.4
 
-Each DataHub operation is a `connector-action` component with subType `mdm`. All 6 use the `PROMO - DataHub Connection` from Step 8.
+Each DataHub operation is a `connector-action` component with subType `mdm`. All 10 use the `PROMO - DataHub Connection` from Step 8.
 
 **Template (single operation):**
 
@@ -492,7 +514,7 @@ Invoke-RestMethod -Uri "https://api.boomi.com/partner/api/rest/v1/$env:BOOMI_ACC
   -Method POST -Headers $BoomiHeadersXml -Body $dhOpXml
 ```
 
-**Complete DataHub Operation Inventory (6 operations):**
+**Complete DataHub Operation Inventory (10 operations):**
 
 | # | Component Name | Model | Action |
 |---|---------------|-------|--------|
@@ -502,12 +524,16 @@ Invoke-RestMethod -Uri "https://api.boomi.com/partner/api/rest/v1/$env:BOOMI_ACC
 | 4 | `PROMO - DH Op - Update DevAccountAccess` | DevAccountAccess | Update Golden Records |
 | 5 | `PROMO - DH Op - Query PromotionLog` | PromotionLog | Query Golden Records |
 | 6 | `PROMO - DH Op - Update PromotionLog` | PromotionLog | Update Golden Records |
+| 7 | `PROMO - DH Op - Query ExtensionAccessMapping` | ExtensionAccessMapping | Query Golden Records |
+| 8 | `PROMO - DH Op - Update ExtensionAccessMapping` | ExtensionAccessMapping | Update Golden Records |
+| 9 | `PROMO - DH Op - Query ClientAccountConfig` | ClientAccountConfig | Query Golden Records |
+| 10 | `PROMO - DH Op - Update ClientAccountConfig` | ClientAccountConfig | Update Golden Records |
 
-> **Recommended workflow:** Create operation #1 manually (Build -> New Component -> Connector -> Operation -> Boomi DataHub), import the model profile, export via `GET /Component/{id}`, and use the exported XML as a template for the remaining 5.
+> **Recommended workflow:** Create operation #1 manually (Build -> New Component -> Connector -> Operation -> Boomi DataHub), import the model profile, export via `GET /Component/{id}`, and use the exported XML as a template for the remaining 9.
 
 ---
 
-#### Step 10 -- Create 13 FSS Operations (Batch)
+#### Step 10 -- Create 19 FSS Operations (Batch)
 
 Reference: [Phase 4: Flow Service Component](14-flow-service.md)
 
@@ -538,7 +564,7 @@ Invoke-RestMethod -Uri "https://api.boomi.com/partner/api/rest/v1/$env:BOOMI_ACC
   -Method POST -Headers $BoomiHeadersXml -Body $fssOpXml
 ```
 
-**Complete FSS Operation Inventory (13 operations):**
+**Complete FSS Operation Inventory (19 operations):**
 
 | # | Component Name | Linked Process | Action Name |
 |---|---------------|---------------|-------------|
@@ -564,7 +590,7 @@ Invoke-RestMethod -Uri "https://api.boomi.com/partner/api/rest/v1/$env:BOOMI_ACC
 
 ---
 
-#### Step 11 -- Create 12 Integration Processes
+#### Step 11 -- Create 18 Integration Processes
 
 Reference: Build guide files [05](05-process-f-mapping-crud.md) through [13](13-process-g-component-diff.md)
 
@@ -589,7 +615,11 @@ Reference: Build guide files [05](05-process-f-mapping-crud.md) through [13](13-
 | 7 | Package and Deploy | D | [11-process-d-package-and-deploy.md](11-process-d-package-and-deploy.md) |
 | 8 | List Integration Packs | J | [12-process-j-list-integration-packs.md](12-process-j-list-integration-packs.md) |
 | 9 | Component Diff | G | [13-process-g-component-diff.md](13-process-g-component-diff.md) |
-| 10-12 | E2, E3, E4 | E2/E3/E4 | Extended from Process E; see [07](07-process-e-status-and-review.md) |
+| 10-14 | E2, E3, E4, E5 + Peer Review | E2/E3/E4/E5 | Extended from Process E; see [07](07-process-e-status-and-review.md) |
+| 15 | List Client Accounts | K | [20-extension-editor.md](20-extension-editor.md) |
+| 16 | Get Extensions | L | [20-extension-editor.md](20-extension-editor.md) |
+| 17 | Update Extensions | M | [20-extension-editor.md](20-extension-editor.md) |
+| 18 | Copy Extensions Test to Prod + Update Map Extension | N/O | [20-extension-editor.md](20-extension-editor.md) |
 
 **Export a completed process:**
 
