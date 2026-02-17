@@ -300,7 +300,7 @@ Invoke-RestMethod -Uri "https://api.boomi.com/partner/api/rest/v1/{primaryAccoun
 
 Simulate a failure by promoting a component that will fail mid-tree (for example, temporarily revoke API access to a referenced component, or corrupt a component reference).
 
-1. Trigger the promotion and wait for the FAILED/PARTIAL status on Page 3.
+1. Trigger the promotion and wait for the FAILED status on Page 3.
 
 #### Verification: PromotionLog Shows Failure
 

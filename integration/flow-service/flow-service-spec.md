@@ -168,7 +168,7 @@ else → effectiveTier = "READONLY" (no dashboard access — should not reach th
 **Response Profile**: `PROMO - Profile - PackageAndDeployResponse`
 **Service Type**: Message Action
 
-**Description**: Creates a shareable PackagedComponent, optionally creates/updates an Integration Pack, releases it, and deploys to specified target environments. Supports 3 deployment modes: TEST (merge branch, package, deploy to test pack, preserve branch), PRODUCTION from test (skip merge — content already on main, package, deploy to prod pack, delete branch), and PRODUCTION hotfix (merge branch, package, deploy to prod pack, delete branch).
+**Description**: Creates a shareable PackagedComponent, optionally creates/updates an Integration Pack, releases it, and deploys to specified target environments. Before executing, Process D validates the PromotionLog status is `COMPLETED` or `TEST_DEPLOYED` — returns `PROMOTION_NOT_COMPLETED` if the promotion hasn't reached a valid state for packaging. This gate prevents merging incomplete or unapproved branches to main. Supports 3 deployment modes: TEST (merge branch, package, deploy to test pack, preserve branch), PRODUCTION from test (skip merge — content already on main, package, deploy to prod pack, delete branch), and PRODUCTION hotfix (merge branch, package, deploy to prod pack, delete branch).
 
 **Request Fields**:
 - `prodComponentId` (string, required - root process component)
@@ -719,7 +719,8 @@ Decision: Check Success
 | `API_RATE_LIMIT` | Partner API rate limit exceeded | Retry after cooldown period |
 | `DEPENDENCY_CYCLE` | Circular dependency detected | Review component references |
 | `INVALID_REQUEST` | Request validation failed | Check required fields |
-| `PROMOTION_FAILED` | Component promotion failed | Review error message for details |
+| `PROMOTION_FAILED` | One or more components failed during promotion — the promotion branch has been deleted and no component mappings were written | Re-run the promotion after resolving the underlying issue |
+| `PROMOTION_NOT_COMPLETED` | Process D gate: PromotionLog status is not `COMPLETED` or `TEST_DEPLOYED` — the promotion must complete successfully and pass required reviews before packaging | Ensure the promotion has completed and passed all required reviews before attempting to package and deploy |
 | `DEPLOYMENT_FAILED` | Environment deployment failed | Check target environment status |
 | `MISSING_CONNECTION_MAPPINGS` | One or more connection mappings not found in DataHub | Admin must seed missing mappings via Mapping Viewer |
 | `BRANCH_LIMIT_REACHED` | Too many active promotion branches (limit: 20 per account) | Wait for pending reviews to complete before starting new promotions |

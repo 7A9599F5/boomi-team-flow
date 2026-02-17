@@ -66,6 +66,49 @@ Invoke-RestMethod -Uri "https://api.boomi.com/partner/api/rest/v1/{primaryAccoun
 
 ---
 
+### Partial Promotion Failure Recovery
+
+When Process C encounters any component failure during promotion, it implements a fail-fast policy: the promotion branch is deleted and the promotion is recorded as `FAILED`. No partial state survives.
+
+**Diagnosis Steps:**
+
+1. Check the `executePromotion` response — the `results` array contains per-component status (`PROMOTED`, `FAILED`, `SKIPPED`)
+2. Query PromotionLog in DataHub for the `promotionId` — status will be `FAILED`
+3. Review Process Reporting logs for the failed execution — look for the specific API error in the component promotion step
+
+**Common Causes:**
+
+| Cause | Symptom | Resolution |
+|-------|---------|------------|
+| API timeout | `TIMEOUT` or `CONNECTION_ERROR` in results | Retry — transient network issue |
+| Component locked | `COMPONENT_LOCKED` in error details | Wait for the other user to release the component, then retry |
+| Insufficient permissions | `UNAUTHORIZED` or `FORBIDDEN` | Verify the API credentials have Component CRUD permissions |
+| Component deleted | `COMPONENT_NOT_FOUND` | The source component was deleted after packaging — re-package from current components |
+| Branch limit reached | `BRANCH_LIMIT_REACHED` | Delete stale branches (threshold: 15 per component) then retry |
+
+**Recovery Procedure:**
+
+1. No cleanup needed — the failed branch was already deleted by Process C
+2. Resolve the underlying issue using the diagnosis above
+3. Return to the Package Browser (Page 1) and re-run the promotion
+4. The system will create a fresh branch and attempt all components again
+
+---
+
+### PROMOTION_NOT_COMPLETED Error
+
+This error occurs when Process D (packageAndDeploy) is called but the PromotionLog status is not `COMPLETED` or `TEST_DEPLOYED`.
+
+**Why it happens**: Process D merges the promotion branch to main. This gate prevents merging incomplete or unapproved branches, even if someone calls the Flow Service API directly (bypassing the UI).
+
+**Valid statuses for Process D:**
+- `COMPLETED` — promotion succeeded, ready for test or hotfix deployment
+- `TEST_DEPLOYED` — test deployment succeeded, ready for production-from-test deployment
+
+**Resolution**: Ensure the promotion has completed successfully and passed all required reviews before attempting to package and deploy.
+
+---
+
 ### Phase 3 Issues
 
 **"Groovy script error: property not found"**
@@ -103,7 +146,7 @@ The `strip-env-config.groovy` script strips these elements by clearing their tex
 Three conditions must be met: (1) The atom must be running (check Runtime Management, Atom Status). (2) The `PROMO - Flow Service` must be deployed as a Packaged Component to the atom. (3) The atom must be a public Boomi cloud atom (not a private cloud or local atom). Private atoms cannot receive inbound Flow Service requests.
 
 **"Operation not found in Flow Service"**
-Each FSS Operation must be linked in the Message Actions tab of the `PROMO - Flow Service` component. Verify all 12 operations are listed: `PROMO - FSS Op - GetDevAccounts`, `PROMO - FSS Op - ListDevPackages`, `PROMO - FSS Op - ResolveDependencies`, `PROMO - FSS Op - ExecutePromotion`, `PROMO - FSS Op - PackageAndDeploy`, `PROMO - FSS Op - QueryStatus`, `PROMO - FSS Op - ManageMappings`, `PROMO - FSS Op - QueryPeerReviewQueue`, `PROMO - FSS Op - SubmitPeerReview`, `PROMO - FSS Op - ListIntegrationPacks`, `PROMO - FSS Op - GenerateComponentDiff`, `PROMO - FSS Op - QueryTestDeployments`. If an operation is missing from the list, add it, re-save, re-package, and re-deploy.
+Each FSS Operation must be linked in the Message Actions tab of the `PROMO - Flow Service` component. Verify all 13 operations are listed: `PROMO - FSS Op - GetDevAccounts`, `PROMO - FSS Op - ListDevPackages`, `PROMO - FSS Op - ResolveDependencies`, `PROMO - FSS Op - ExecutePromotion`, `PROMO - FSS Op - PackageAndDeploy`, `PROMO - FSS Op - QueryStatus`, `PROMO - FSS Op - ManageMappings`, `PROMO - FSS Op - QueryPeerReviewQueue`, `PROMO - FSS Op - SubmitPeerReview`, `PROMO - FSS Op - ListIntegrationPacks`, `PROMO - FSS Op - GenerateComponentDiff`, `PROMO - FSS Op - QueryTestDeployments`, `PROMO - FSS Op - CancelTestDeployment`. If an operation is missing from the list, add it, re-save, re-package, and re-deploy.
 
 **"Configuration value not set"**
 The `primaryAccountId` configuration value must be set after deployment via component configuration (Manage, Deployed Components, select the Flow Service, Configuration tab). This value is NOT set at build time -- it is set per deployment. If this value is empty, all HTTP operations using `{1}` in their URL will fail.
@@ -186,7 +229,8 @@ Complete mapping of all error codes to their source processes, causes, and resol
 | `API_RATE_LIMIT` | All (API calls) | Partner API rate limit exceeded (approximately 10 req/s) | Wait and retry; ensure 120ms gap between consecutive calls; check for parallel processes creating excessive load |
 | `DEPENDENCY_CYCLE` | B | Circular dependency detected during BFS traversal | Review component references in the dev account; break the circular reference |
 | `INVALID_REQUEST` | All | Request validation failed — missing required fields or invalid field values | Check required fields in the flow-service-spec for the specific action |
-| `PROMOTION_FAILED` | C | Component promotion failed during branch creation or component write | Review `errorMessage` for specific failure details; check component XML validity |
+| `PROMOTION_FAILED` | C | One or more components failed during promotion — the promotion branch has been deleted and no component mappings were written | Review per-component `results` array for failure details; resolve the underlying issue; re-run the promotion from the Package Browser |
+| `PROMOTION_NOT_COMPLETED` | D | Process D gate — PromotionLog status is not `COMPLETED` or `TEST_DEPLOYED` | Ensure the promotion completed successfully and passed all required reviews before attempting to package and deploy |
 | `PROMOTION_IN_PROGRESS` | C | Another promotion is already running for the same dev account (concurrency guard) | Wait for the current promotion to complete before starting a new one |
 | `DEPLOYMENT_FAILED` | D | Environment deployment failed — atom unreachable or environment invalid | Verify target environment exists and atom is running; check environment associations |
 | `MISSING_CONNECTION_MAPPINGS` | C | One or more connection references lack prod mappings in DataHub | Admin seeds missing mappings via `manageMappings` action or Mapping Viewer (Page 8); `missingConnectionMappings` array in response lists the specific missing mappings |

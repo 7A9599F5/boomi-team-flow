@@ -61,6 +61,34 @@ This prevents users from bookmarking or manually navigating to this page without
 - No "keep this window open" warnings needed
 - Modern async experience
 
+## Promotion Failed Banner
+
+**Component Type:** Alert / Error panel
+
+**Visibility:** Shown when `componentsFailed > 0` (i.e., the promotion has any failed components)
+
+**Location:** Above the Results Data Grid, below the Summary Section
+
+**Content:**
+
+| Element | Details |
+|---------|---------|
+| **Icon** | Error/warning icon (red circle with X) |
+| **Heading** | "Promotion Failed" |
+| **Failure Count** | "{componentsFailed} of {totalComponents} component(s) failed" |
+| **Explanation** | "The promotion branch has been deleted. No changes were applied to the production environment. Review the failure details below, resolve the underlying issues, and re-run the promotion from the Package Browser." |
+| **Action Button** | "Return to Package Browser" → navigates to Page 1 |
+| **Collapsible Section** | "Common Failure Causes" — expandable guide listing: API timeout (retry — transient network issue), component locked by another user (wait and retry), insufficient permissions (verify API credentials), component deleted since package creation (re-package from current components) |
+
+**Styling:**
+- Background: Light red (#ffebee)
+- Border: Red left border (4px)
+- Padding: 16px
+- Action button: Secondary style, positioned at bottom of panel
+- Collapsible section: Collapsed by default, toggle with chevron icon
+
+---
+
 ## Components (After Completion)
 
 ### Results Data Grid
@@ -295,9 +323,13 @@ To reconfigure:
 
 **Purpose:** Allows the developer to preview exactly what changed in each component before submitting for peer review. This helps catch issues early — before the peer reviewer even sees the promotion.
 
+**Note:** Diff links are unavailable when `branchId` is absent (FAILED promotions delete the branch). Rows with FAILED or SKIPPED status already hide diff links per the per-component status rules in the Changes column.
+
 ---
 
 ### Deployment Target Selection
+
+**Visibility:** Hidden when `componentsFailed > 0` — failed promotions cannot proceed to deployment. The entire Deployment Target section and Submit button are replaced by the Promotion Failed Banner above.
 
 **Component Type:** Radio Button Group with conditional content
 
