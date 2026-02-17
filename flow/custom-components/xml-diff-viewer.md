@@ -12,9 +12,10 @@ The `XmlDiffViewer` is a custom React component registered in the Boomi Flow cus
 
 | Package | Version | Purpose |
 |---------|---------|---------|
-| `diff` | ^5.x | Myers diff algorithm — computes line-level differences between two strings |
-| `react-diff-view` | ^3.x | Renders unified or split diff hunks with gutter, line numbers, and styling |
-| `prismjs` | ^1.29 | XML/HTML syntax highlighting for diff content |
+| `react-diff-viewer-continued` | ^4.0 | Full-featured diff rendering — split/unified views, code folding, line numbers, word-level diffs |
+| `prismjs` | ^1.29 | XML/HTML syntax highlighting via `renderContent` callback (core + markup only, ~6KB gz) |
+
+> **Note:** `react-diff-viewer-continued` bundles the `diff` library internally. No separate `diff` dependency is needed.
 
 ---
 
@@ -117,14 +118,21 @@ manywho.initialize({
 
 ### Component Registration (inside xml-diff-viewer.js)
 
-```javascript
-// Register with Flow runtime
-manywho.component.register('XmlDiffViewer', class XmlDiffViewer extends React.Component {
-  // Component implementation
-  // Reads props from this.props.objectData
-  // Renders diff view using react-diff-view
-});
+The component uses a Higher-Order Component (HOC) wrapper that bridges the Flow runtime (`manywho.model`, `manywho.state`) with typed React props:
+
+```typescript
+// src/index.tsx
+import { component } from './utils/wrapper';
+import { XmlDiffViewer } from './XmlDiffViewer';
+
+manywho.component.register('XmlDiffViewer', component(XmlDiffViewer));
 ```
+
+The `component()` HOC:
+- Reads `model` and `state` from `manywho.model.getComponent()` / `manywho.state.getComponent()`
+- Extracts `objectData` and passes it as typed props
+- Respects Flow visibility (`model.isVisible`)
+- Applies Flow CSS classes via `manywho.styling.getClasses()`
 
 ### Flow Page Binding
 
@@ -141,21 +149,23 @@ In the Flow page builder, add a **Custom Component** element:
 | Class | Purpose |
 |-------|---------|
 | `.xml-diff-viewer` | Root container |
-| `.xml-diff-toolbar` | Toolbar with controls |
+| `.xml-diff-header` | Header with name/action badges and stats |
+| `.xml-diff-toolbar__controls` | Toolbar with view mode and action controls |
 | `.xml-diff-summary` | Change summary line |
 | `.xml-diff-content` | Scrollable diff container (max-height: 500px) |
-| `.xml-diff-gutter` | Line number gutter |
-| `.xml-diff-line--added` | Added line (green background #e6ffec) |
-| `.xml-diff-line--removed` | Removed line (red background #ffebe9) |
-| `.xml-diff-line--changed` | Changed line (yellow background #fff8c5) |
-| `.xml-diff-expander` | Collapsed section expander |
-| `.xml-diff-new-component` | Single-pane all-green view for CREATE |
+| `.xml-diff-badge` | Component name and action badges |
+| `.xml-diff-toggle` | Split/Unified radio toggle |
+| `.xml-diff-btn` | Toolbar action buttons |
+| `.xml-diff-fold-message` | Collapsed section expander |
+| `.xml-diff-content--create` | Single-pane all-green view for CREATE |
+| `.xml-diff-content--wrap` | Wrap-lines mode override |
 
 ### Theme Support
 
-- Inherits Flow player theme colors where possible
-- Provides both light and dark mode color schemes
-- Diff colors follow GitHub's diff color conventions
+- GitHub-style diff colors (light theme by default)
+- Dark theme support via `diff-styles.ts` Emotion overrides
+- Prism.js syntax token colors for XML elements
+- Diff colors follow GitHub conventions: green (#e6ffec) for additions, red (#ffebe9) for deletions
 
 ---
 
@@ -181,7 +191,9 @@ In the Flow page builder, add a **Custom Component** element:
 - Keyboard navigation: Tab to toolbar controls, arrow keys within diff
 - Screen reader: Announces change summary, line-by-line changes
 - Focus indicators on all interactive elements
-- ARIA labels: `role="table"` for diff grid, `aria-label` on controls
+- ARIA labels: `role="table"` for diff grid, `role="toolbar"` on controls, `aria-label` on all buttons
+- `aria-pressed` on toggle buttons (Expand All, Wrap Lines)
+- `role="radiogroup"` with `aria-checked` on Split/Unified toggle
 - High contrast mode: Diff colors meet WCAG AA contrast requirements
 
 ---
@@ -197,16 +209,93 @@ In the Flow page builder, add a **Custom Component** element:
 
 ## Build and Deploy
 
+### Build Instructions
+
+The implementation source lives in `xml-diff-viewer/`:
+
+```bash
+cd flow/custom-components/xml-diff-viewer/
+
+# Install dependencies
+npm install
+
+# Run tests (38 tests, >80% coverage)
+npm test
+
+# Development server (localhost:8080)
+npm start
+
+# Production build
+npm run build
+
+# Bundle analysis
+npm run analyze
+```
+
 ### Build Process
 
-1. **Development**: Standard React development with webpack/vite
-2. **Bundle**: Build production bundle (single JS + CSS file)
-3. **Upload**: Upload to Boomi Flow tenant as assets
+1. **Development**: `npm start` — Webpack dev server with template.html (React 16 loaded via CDN, manywho stub provided)
+2. **Bundle**: `npm run build` — production bundle with CSS extraction
+3. **Upload**: Upload `build/xml-diff-viewer.js` + `build/xml-diff-viewer.css` to Boomi Flow tenant assets
 4. **Register**: Add asset URLs to custom player `customResources`
 
 ### File Output
 
-| File | Size Target | Contents |
-|------|-------------|----------|
-| `xml-diff-viewer.js` | < 150KB gzipped | React component + diff + prismjs |
-| `xml-diff-viewer.css` | < 10KB | Component styles + diff colors |
+| File | Size (gzipped) | Contents |
+|------|----------------|----------|
+| `xml-diff-viewer.js` | ~64KB | React component + react-diff-viewer-continued + prismjs (markup) |
+| `xml-diff-viewer.css` | ~1.4KB | Component styles + diff colors + responsive breakpoints |
+
+### Build Configuration
+
+- **Webpack 5** with `ts-loader` for TypeScript compilation
+- **React/ReactDOM externalized** — provided by Flow player at runtime
+- `react-diff-viewer-continued` aliased to CJS build for React 16 compatibility (avoids `react/jsx-runtime`)
+- CSS extracted via `mini-css-extract-plugin` in production, inline via `style-loader` in development
+
+---
+
+## Source Structure
+
+```
+xml-diff-viewer/
+  package.json              # Dependencies, scripts, Jest config
+  tsconfig.json             # TypeScript strict, JSX react, ES2018 target
+  webpack.config.js         # Dev server config
+  webpack.production.config.js  # Production bundle config
+  template.html             # Local dev with manywho stub + sample data
+  mocks/
+    manywho.js              # Jest mock for Flow runtime globals
+    matchMedia.js           # Jest mock for window.matchMedia
+    styles.js               # CSS module stub
+  src/
+    index.tsx               # Entry: registers component with Flow
+    XmlDiffViewer.tsx        # Main orchestrator (toolbar state, routing)
+    components/
+      DiffToolbar.tsx        # View toggle, expand, wrap, copy buttons
+      DiffHeader.tsx         # Name/action badges, version info, stats
+      DiffContent.tsx        # Wraps ReactDiffViewer with Prism + themes
+      CreateView.tsx         # All-green single-pane for CREATE
+      LoadingState.tsx       # Skeleton shimmer
+      ErrorState.tsx         # Error message + retry
+    hooks/
+      useResponsive.ts       # Breakpoint detection via matchMedia
+      useDiffStats.ts        # LCS-based addition/deletion/unchanged counts
+      useClipboard.ts        # Clipboard API with execCommand fallback
+    types/
+      index.ts               # IDiffData, IDiffStats, ViewMode, IToolbarState
+      manywho.d.ts           # Type declarations for manywho global
+    utils/
+      wrapper.tsx            # component() HOC (bridges Flow runtime to typed props)
+      objectData.ts          # Named property extraction from objectData
+      xml-highlight.tsx      # Prism.js renderContent function
+      diff-styles.ts         # GitHub-style light/dark theme overrides
+    styles/
+      xml-diff-viewer.css    # Toolbar, badges, responsive, loading, error CSS
+    __tests__/
+      XmlDiffViewer.test.tsx # Integration tests (loading, error, UPDATE, CREATE)
+      DiffToolbar.test.tsx   # Toggle, expand, wrap, copy, ARIA tests
+      DiffHeader.test.tsx    # Badge, version, stats, a11y tests
+      useDiffStats.test.ts   # LCS computation edge cases
+      useClipboard.test.ts   # Clipboard API + fallback tests
+```
