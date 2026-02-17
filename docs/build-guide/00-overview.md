@@ -81,22 +81,73 @@ DataHub models and Flow components use plain names without the prefix.
 
 ## Dependency Build Order
 
-Build phases in order — each depends on the previous:
+### Build Phase Dependencies
 
-```
-Phase 1: DataHub Models
-    └── Phase 2: Connections & Operations (need DataHub for DH operations)
-            └── Phase 3: Integration Processes (need connections, operations, profiles)
-                    └── Phase 4: Flow Service (links processes to message actions)
-                            └── Phase 5: Flow Dashboard (calls Flow Service via connector)
-                                    └── Phase 6: Testing (validates entire stack)
-                                            └── Phase 7: Extension Editor (extends processes, Flow Service, dashboard)
+Each phase gates the next — complete all steps in a phase before advancing. Phase 7 extends the system after the core (Phases 1–6) is validated end-to-end.
+
+```mermaid
+graph LR
+    ph1["Phase 1: DataHub Models"]
+    ph2["Phase 2: Connections & Operations"]
+    ph3["Phase 3: Integration Processes"]
+    ph4["Phase 4: Flow Service"]
+    ph5["Phase 5: Flow Dashboard"]
+    ph6["Phase 6: Testing & Deployment"]
+    ph7["Phase 7: Extension Editor"]
+
+    ph1 --> ph2
+    ph2 --> ph3
+    ph3 --> ph4
+    ph4 --> ph5
+    ph5 --> ph6
+    ph6 --> ph7
 ```
 
-Within Phase 3, build processes in this order (simplest → most complex):
+### Process Build Order
 
-```
-F (Mapping CRUD) → A0 (Get Dev Accounts) → E (Query Status) → E2 (Query Peer Review Queue) → E3 (Submit Peer Review) → E4 (Query Test Deployments) → E5 (Withdraw Promotion) → J (List Integration Packs) → G (Generate Component Diff) → A (List Packages) → B (Resolve Dependencies) → C (Execute Promotion) → D (Package & Deploy)
+Within Phase 3, build Integration processes in dependency order — a process must be built before any process that depends on it. Processes with no dependencies can be built in any order relative to each other.
+
+```mermaid
+graph LR
+    subgraph corePromo["Promotion Core (A0, A, B, C, D, F, G, J)"]
+        pF["F: manageMappings"]
+        pA0["A0: getDevAccounts"]
+        pA["A: listDevPackages"]
+        pJ["J: listIntegrationPacks"]
+        pB["B: resolveDependencies"]
+        pC["C: executePromotion"]
+        pG["G: generateComponentDiff"]
+        pD["D: packageAndDeploy"]
+    end
+
+    subgraph eFam["Status and Review (E, E2, E3, E4, E5)"]
+        pE["E: queryStatus"]
+        pE4["E4: queryTestDeployments"]
+        pE2["E2: queryPeerReviewQueue"]
+        pE3["E3: submitPeerReview"]
+        pE5["E5: withdrawPromotion"]
+    end
+
+    subgraph extProc["Extension Processes (K, L, M, N, O)"]
+        pK["K: listClientAccounts"]
+        pL["L: getExtensions"]
+        pM["M: updateExtensions"]
+        pN["N: copyExtensionsTestToProd"]
+        pO["O: updateMapExtension"]
+    end
+
+    pA --> pB
+    pB --> pC
+    pC --> pG
+    pC --> pD
+    pE --> pE4
+    pE --> pE2
+    pE2 --> pE3
+    pE --> pE5
+    pK --> pL
+    pL --> pM
+    pL --> pN
+    pL --> pO
 ```
 
 ---
