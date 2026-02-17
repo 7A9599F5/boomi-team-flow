@@ -1,5 +1,7 @@
 ### Process C: Execute Promotion (`PROMO - Execute Promotion`)
 
+> **API Alternative:** This process can be created programmatically via `POST /Component` with `type="process"`. Due to the complexity of process canvas XML (shapes, routing, DPP mappings, script references), the recommended workflow is: (1) build the process manually following the steps below, (2) use `GET /Component/{processId}` to export the XML, (3) store the XML as a template for automated recreation. See [Appendix D: API Automation Guide](22-api-automation-guide.md) for the full workflow.
+
 This is the core engine of the system. It promotes components from a dev sub-account to the primary account, handling XML retrieval, credential stripping, reference rewriting, and component creation or update via the Platform API. This is the most detailed process.
 
 #### Profiles
@@ -50,6 +52,7 @@ Create `PROMO - FSS Op - ExecutePromotion` per Section 3.B, using `PROMO - Profi
 | `branchId` | (set in step 3.7) | Promotion branch ID for tilde syntax writes |
 | `branchName` | `"promo-{promotionId}"` | Promotion branch name |
 | `activeBranchCount` | (set in step 3.5) | Current branch count for limit check |
+| `anyComponentFailed` | `"false"` | Flag set to `"true"` in the catch block when any component promotion fails. Controls fail-fast branch deletion. |
 
 #### Canvas — Shape by Shape
 
@@ -314,8 +317,14 @@ Create `PROMO - FSS Op - ExecutePromotion` per Section 3.B, using `PROMO - Profi
     2. Add the component to the results array with `action = "FAILED"`, `status = "FAILED"`, `errorMessage = ` the exception message
     3. Mark dependent components as `"SKIPPED"` — any component in the remaining loop that references `currentComponentId` cannot be promoted correctly because its reference cannot be rewritten. Identify dependents by checking if their type is higher in the priority order (e.g., if a connection fails, its operations, maps, and processes are affected).
     4. **Continue the loop** — do not abort the entire promotion
+    5. Set `anyComponentFailed = "true"` (DPP, non-persistent)
 
-19. **End of Loop** — after processing all components, continue to step 20
+19. **End of Loop** — after processing all components, continue to step 19.5
+
+19.5. **Decision — Fail-Fast Gate**
+    - Condition: DPP `anyComponentFailed` **EQUALS** `"true"`
+    - **YES (any component failed)**: skip step 20 entirely — do NOT write ComponentMapping records. Partial mapping writes would record dev-to-prod ID mappings for only the components that succeeded, leaving the system in an inconsistent state where future promotions partially resolve against a phantom branch that no longer exists. Jump directly to step 21.
+    - **NO (all components succeeded)**: continue to step 20 (write ComponentMapping records)
 
 20. **DataHub Batch Update — Write All Mappings**
     - Connector: `PROMO - DataHub Connection`
@@ -328,24 +337,42 @@ Create `PROMO - FSS Op - ExecutePromotion` per Section 3.B, using `PROMO - Profi
 21. **DataHub Update — Update PromotionLog (Final Status)**
     - Connector: `PROMO - DataHub Connection`
     - Operation: `PROMO - DH Op - Update PromotionLog`
-    - Update the record created in step 4:
-      - `status` = `"COMPLETED"` if no failures, `"PARTIAL"` if some failed, `"FAILED"` if all failed
-      - `componentsCreated` = count of CREATED results
-      - `componentsUpdated` = count of UPDATED results
-      - `componentsFailed` = count of FAILED results
-      - `resultDetail` = JSON string summarizing the results
+    - Update the record created in step 4, branching on DPP `anyComponentFailed`:
+
+    **If `anyComponentFailed = "false"` (success path)**:
+    - `status` = `"COMPLETED"`
+    - `componentsCreated` = count of CREATED results
+    - `componentsUpdated` = count of UPDATED results
+    - `componentsFailed` = `0`
+    - `resultDetail` = JSON string summarizing the results
+
+    **If `anyComponentFailed = "true"` (fail-fast path)**:
+    1. Write PromotionLog with `status = "FAILED"`, `componentsCreated` = count of CREATED results, `componentsUpdated` = count of UPDATED results, `componentsFailed` = count of FAILED results, `resultDetail` = JSON string summarizing the results
+    2. **HTTP Client Send — DELETE Branch**: Call `DELETE /partner/api/rest/v1/{primaryAccountId}/Branch/{branchId}` to delete the promotion branch. All partial component writes on the branch are discarded, preventing a dangling branch from remaining in the account.
+    3. **DataHub Update — Clear `branchId`**: Update the PromotionLog record to set `branchId` = `""` (empty string). The branch has been deleted and the stored ID would no longer be valid; clearing it prevents Process D or Process G from attempting to use a branch that no longer exists.
 
 22. **Map — Build Response JSON**
     - Source: accumulated results and DPPs
     - Destination: `PROMO - Profile - ExecutePromotionResponse`
-    - Map:
-      - `promotionId` = DPP `promotionId`
-      - `branchId` = DPP `branchId`
-      - `branchName` = DPP `branchName`
-      - `componentsCreated`, `componentsUpdated`, `componentsFailed` = computed counts
-      - `results` array = all accumulated component results
-      - `success` = `true` (even if some components failed — the promotion operation itself succeeded)
-      - `errorCode`, `errorMessage` = empty (set only if the entire process failed catastrophically)
+    - Map, branching on DPP `anyComponentFailed`:
+
+    **If `anyComponentFailed = "false"` (success path)**:
+    - `success` = `true`
+    - `promotionId` = DPP `promotionId`
+    - `branchId` = DPP `branchId`
+    - `branchName` = DPP `branchName`
+    - `componentsCreated`, `componentsUpdated`, `componentsFailed` = computed counts
+    - `results` array = all accumulated component results
+    - `errorCode`, `errorMessage` = empty
+
+    **If `anyComponentFailed = "true"` (fail-fast path)**:
+    - `success` = `false`
+    - `errorCode` = `"PROMOTION_FAILED"`
+    - `errorMessage` = `"One or more components failed to promote. The promotion branch has been deleted. No component mappings were written."`
+    - `promotionId` = DPP `promotionId`
+    - Omit `branchId` and `branchName` from response (branch no longer exists)
+    - `componentsCreated`, `componentsUpdated`, `componentsFailed` = computed counts
+    - `results` array = all accumulated component results (include all entries — PROMOTED, FAILED, and SKIPPED — for diagnosis)
 
 23. **Return Documents** — same as Process F
 
@@ -384,6 +411,24 @@ If you promote in the wrong order (e.g., process first), its XML would still con
 - **Expected**:
   - `componentsCreated = 0`, `componentsUpdated = 2` (both now exist, so they get updated)
   - Version numbers increment by 1
+
+**Partial Failure Verification**:
+- In a dev sub-account, set up 3 components in a dependency chain (e.g., profile → operation → process)
+- Temporarily break component #2 (the operation) so its `GET /Component` call returns an API error (e.g., revoke read access, or use a non-existent component ID)
+- Send an Execute Promotion request with all 3 components
+- **Expected**:
+  - Component #1 (profile) promotes successfully — `action = "PROMOTED"`, result recorded
+  - Component #2 (operation) fails — exception caught by step 18 catch block
+  - DPP `anyComponentFailed` = `"true"` (set in step 18, bullet 5)
+  - Component #3 (process) is marked `"SKIPPED"` (depends on the failed operation)
+  - Step 19.5 decision gate fires: ComponentMapping records are NOT written to DataHub (no partial mappings for the promoted profile)
+  - PromotionLog `status = "FAILED"` with all counts recorded
+  - The promotion branch is deleted via `DELETE /Branch/{branchId}`
+  - PromotionLog `branchId` is cleared to empty string
+  - Response: `success = false`, `errorCode = "PROMOTION_FAILED"`, no `branchId` or `branchName` in response body
+  - `results` array contains all 3 entries (1 PROMOTED, 1 FAILED, 1 SKIPPED) for diagnosis
+  - In DataHub, verify no new ComponentMapping records exist for any of the 3 components
+  - In the primary Boomi account, verify no branch with the promotion's name exists
 
 ---
 

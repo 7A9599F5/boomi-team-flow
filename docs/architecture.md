@@ -206,16 +206,19 @@ else → READONLY (no dashboard access)
    e. Construct target path: /Promoted{devFolderFullPath}
    f. CREATE or UPDATE on promotion branch via `Component/{id}~{branchId}`
    g. On error: mark dependents as SKIPPED
-9. Update PromotionLog (COMPLETED/FAILED) — include `branchId` in response
+9. Update PromotionLog: `COMPLETED` if all components succeeded, `FAILED` if any component failed. Include `branchId` in response. On failure, the promotion branch is deleted (`DELETE /Branch/{branchId}`), ensuring no partial state persists.
 10. Return results (including branchId, branchName, connectionsSkipped count, and any missingConnectionMappings)
-11. **On failure:** `DELETE /Branch/{branchId}` to clean up
+11. **On failure:** `DELETE /Branch/{branchId}` to clean up partial branch state
 
 ## Error Handling
-- Per-component failure isolation
+- **Fail-fast policy:** Any component failure during promotion causes the entire branch to be deleted (`DELETE /Branch/{branchId}`). The promotion is recorded as `FAILED` with full per-component results for diagnosis. No partial state is left in the primary account.
+- **Process D gate:** Before merging, Process D validates PromotionLog status is `COMPLETED` (or `TEST_DEPLOYED` for production-from-test). This prevents API-level bypass of the UI workflow — a promotion that failed mid-run cannot be packaged or deployed.
+- **Recovery:** Re-run the promotion from the beginning. Since the failed branch was deleted, there is no cleanup needed.
+- Per-component failure isolation (dependents marked SKIPPED)
 - 120ms gap between API calls (~8 req/s, under limit)
 - Retry on 429/503: up to 3 retries with exponential backoff
 - Concurrency lock via PromotionLog IN_PROGRESS check
-- No automated rollback — Boomi maintains version history
+- No automated rollback — Boomi maintains version history on main; branch deletion is the cleanup mechanism
 
 ## Multi-Environment Deployment Model
 
@@ -298,14 +301,17 @@ Emergency hotfixes are tracked for leadership review:
 ## Branch Lifecycle
 
 ```
-CREATE → POLL → PROMOTE → REVIEW → TERMINAL
-  │                                    │
-  │  POST /Branch                      ├─ APPROVE: Merge → Package → Deploy → DELETE
-  │  poll until ready                  ├─ REJECT: DELETE (peer)
-  │  Process C writes via tilde        └─ DENY: DELETE (admin)
-  │  Process G reads for diff
+CREATE → POLL → PROMOTE → OUTCOME
+  │                          │
+  │  POST /Branch             ├─ (all succeed) → COMPLETED → REVIEW → TERMINAL
+  │  poll until ready         │                                  │
+  │  Process C writes         │                     ├─ APPROVE: Merge → Package → Deploy → DELETE
+  │    via tilde syntax       │                     ├─ REJECT: DELETE (peer)
+  │  Process G reads          │                     └─ DENY: DELETE (admin)
+  │    for diff               │
+  │                           └─ (any fail) → FAILED → DELETE immediately (no merge)
   │
-  └─ On Process C failure: DELETE immediately
+  └─ On pre-promotion error (e.g. BRANCH_LIMIT_REACHED): branch never created or deleted on creation failure
 ```
 
 **Key invariant:** Every branch is either actively in review or has been deleted. No orphaned branches.

@@ -55,7 +55,7 @@
     {
       "name": "status",
       "type": "String",
-      "description": "Current status lifecycle: IN_PROGRESS → COMPLETED → TEST_DEPLOYING → TEST_DEPLOYED (for test deployments) or IN_PROGRESS → COMPLETED → PENDING_PEER_REVIEW → PEER_APPROVED → PENDING_ADMIN_REVIEW → ADMIN_APPROVED → DEPLOYED (for production deployments). Test deployment branches: COMPLETED → TEST_DEPLOYING → TEST_DEPLOYED or TEST_DEPLOY_FAILED. Rejection branches: PENDING_PEER_REVIEW → PEER_REJECTED, PENDING_ADMIN_REVIEW → ADMIN_REJECTED. Legacy/error: FAILED",
+      "description": "Current promotion status. Process C writes COMPLETED (all components promoted successfully) or FAILED (any component failed — branch deleted). Intermediate statuses (PENDING_PEER_REVIEW, PENDING_ADMIN_APPROVAL, TEST_DEPLOYED) are set by downstream processes. PARTIALLY_COMPLETED is NOT a valid status — the fail-fast policy ensures binary outcomes. Full lifecycle: IN_PROGRESS → COMPLETED → TEST_DEPLOYING → TEST_DEPLOYED (for test deployments) or IN_PROGRESS → COMPLETED → PENDING_PEER_REVIEW → PEER_APPROVED → PENDING_ADMIN_REVIEW → ADMIN_APPROVED → DEPLOYED (for production deployments). Rejection branches: PENDING_PEER_REVIEW → PEER_REJECTED, PENDING_ADMIN_REVIEW → ADMIN_REJECTED.",
       "required": true,
       "matchField": false
     },
@@ -260,7 +260,7 @@
     {
       "name": "PROMOTION_ENGINE",
       "type": "contribute-only",
-      "description": "Written by promotion engine at start (IN_PROGRESS), updated at completion (COMPLETED/FAILED), updated during test deployment lifecycle (TEST_DEPLOYING/TEST_DEPLOYED/TEST_DEPLOY_FAILED), and updated by peer review (Process E2) and admin review (Process E3) during the 2-layer approval workflow"
+      "description": "Written by promotion engine at start (IN_PROGRESS), updated at completion by Process C with exactly COMPLETED or FAILED (the only two terminal statuses from Process C — fail-fast policy guarantees no partial state), updated during test deployment lifecycle (TEST_DEPLOYING/TEST_DEPLOYED/TEST_DEPLOY_FAILED), and updated by peer review (Process E2) and admin review (Process E3) during the 2-layer approval workflow"
     }
   ],
   "dataQualitySteps": [],

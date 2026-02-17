@@ -138,7 +138,7 @@ else → effectiveTier = "READONLY" (no dashboard access — should not reach th
 - `userSsoGroups` (array of strings, required) — the authenticated user's SSO group names, passed through from the Flow authorization context. Process C re-runs the tier resolution algorithm as defense-in-depth to ensure the caller is at least CONTRIBUTOR tier before executing promotion
 
 **Response Fields**:
-- `success` (boolean)
+- `success` (boolean) — `false` if any component fails during promotion (partial failure is treated as overall failure)
 - `promotionResults` (array)
   - `devComponentId` (string)
   - `prodComponentId` (string)
@@ -147,8 +147,8 @@ else → effectiveTier = "READONLY" (no dashboard access — should not reach th
   - `action` (string: "created" | "updated" | "SKIPPED") — `SKIPPED` is set on dependent components when a prerequisite component fails during promotion. Prevents broken references from partially-promoted dependency chains.
   - `version` (integer)
 - `connectionsSkipped` (integer) — count of shared connections not promoted
-- `branchId` (string) — promotion branch ID for downstream diff/merge operations
-- `branchName` (string) — branch name (e.g., "promo-{promotionId}")
+- `branchId` (string) — promotion branch ID for downstream diff/merge operations. **Only present when `success = true`** — on failure, the branch is deleted and this field is absent.
+- `branchName` (string) — branch name (e.g., "promo-{promotionId}"). **Only present when `success = true`** — on failure, the branch is deleted and this field is absent.
 - `missingConnectionMappings` (array, conditional) — present when errorCode=MISSING_CONNECTION_MAPPINGS
   - `devComponentId` (string)
   - `name` (string)

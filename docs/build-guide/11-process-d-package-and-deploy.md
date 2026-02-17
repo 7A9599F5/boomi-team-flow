@@ -1,5 +1,7 @@
 ### Process D: Package and Deploy (`PROMO - Package and Deploy`)
 
+> **API Alternative:** This process can be created programmatically via `POST /Component` with `type="process"`. Due to the complexity of process canvas XML (shapes, routing, DPP mappings, script references), the recommended workflow is: (1) build the process manually following the steps below, (2) use `GET /Component/{processId}` to export the XML, (3) store the XML as a template for automated recreation. See [Appendix D: API Automation Guide](22-api-automation-guide.md) for the full workflow.
+
 This process creates a PackagedComponent from a promoted component, optionally creates or updates an Integration Pack, and deploys to target environments.
 
 #### Profiles
@@ -78,6 +80,17 @@ Create `PROMO - FSS Op - PackageAndDeploy` per Section 3.B, using `PROMO - Profi
    - DPP `testPromotionId` = document path: `testPromotionId`
    - DPP `testIntegrationPackId` = document path: `testIntegrationPackId`
    - DPP `testIntegrationPackName` = document path: `testIntegrationPackName`
+
+2.0. **Promotion Status Gate**
+   - Query PromotionLog from DataHub for the given `promotionId`.
+   - Validate that the `status` field is one of:
+     - `"COMPLETED"` — promotion succeeded, ready for packaging
+     - `"TEST_DEPLOYED"` — test deployment succeeded, ready for production promotion
+   - If the status is anything else (e.g., `"FAILED"`, `"PENDING_PEER_REVIEW"`, `"PENDING_ADMIN_APPROVAL"`), return an error response immediately:
+     - `success = false`
+     - `errorCode = "PROMOTION_NOT_COMPLETED"`
+     - `errorMessage = "Promotion {promotionId} has status '{status}' — packaging requires COMPLETED or TEST_DEPLOYED status"`
+   - **Why this gate exists**: Process D merges the promotion branch to main. Without this gate, a direct API call to the Flow Service could bypass the UI and merge a partially-promoted or unapproved branch. This is a defense-in-depth measure.
 
 2.1. **Admin Self-Approval Prevention**
    - Before proceeding to any deployment mode, validate that the admin submitting the deployment did not initiate the original promotion.
@@ -207,6 +220,7 @@ Create `PROMO - FSS Op - PackageAndDeploy` per Section 3.B, using `PROMO - Profi
 #### Error Handling
 
 Wrap the entire process (steps 2.5-8.5) in a **Try/Catch**:
+- **Promotion status gate failure** (step 2.0): return error immediately with `errorCode = "PROMOTION_NOT_COMPLETED"` — PromotionLog status is not `COMPLETED` or `TEST_DEPLOYED`. The promotion must complete successfully (and pass any required reviews) before packaging. This gate prevents merging incomplete branches to main.
 - **Merge failure** (step 2.6): attempt `DELETE /Branch/{branchId}`, return error with `errorCode = "MERGE_FAILED"`
 - **PackagedComponent creation failure**: attempt `DELETE /Branch/{branchId}`, return error with `errorCode = "PROMOTION_FAILED"`
 - **Integration Pack failure**: attempt `DELETE /Branch/{branchId}`, return error with `errorCode = "PROMOTION_FAILED"`
