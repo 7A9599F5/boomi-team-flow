@@ -13,7 +13,7 @@
 
 ## Message Actions
 
-The Flow Service exposes 14 message actions, each linked to a corresponding Integration process.
+The Flow Service exposes 19 message actions, each linked to a corresponding Integration process.
 
 ### 1. getDevAccounts
 
@@ -580,6 +580,166 @@ Process E3 MUST compare `reviewerEmail.toLowerCase()` with `initiatedBy.toLowerC
 
 ---
 
+### 15. listClientAccounts
+
+**Action Name**: `listClientAccounts`
+**Linked Process**: Process K - List Client Accounts
+**Flow Service Operation**: `PROMO - FSS Op - ListClientAccounts`
+**Request Profile**: `PROMO - Profile - ListClientAccountsRequest`
+**Response Profile**: `PROMO - Profile - ListClientAccountsResponse`
+**Service Type**: Message Action
+
+**Description**: Retrieves the list of client accounts accessible to the authenticated user based on their SSO group memberships. Queries the ClientAccountConfig DataHub model, filtering by the user's SSO groups. Admins see all active client accounts. Returns client account details including Test and Production environment IDs.
+
+**Request Fields**:
+- `userSsoGroups` (array of strings, required) — the authenticated user's Azure AD/Entra SSO group names
+
+**Response Fields**:
+- `success` (boolean)
+- `clientAccounts` (array)
+  - `clientAccountId` (string)
+  - `clientAccountName` (string)
+  - `testEnvironmentId` (string)
+  - `testEnvironmentName` (string)
+  - `prodEnvironmentId` (string)
+  - `prodEnvironmentName` (string)
+- `errorCode` (string, optional)
+- `errorMessage` (string, optional)
+
+---
+
+### 16. getExtensions
+
+**Action Name**: `getExtensions`
+**Linked Process**: Process L - Get Extensions
+**Flow Service Operation**: `PROMO - FSS Op - GetExtensions`
+**Request Profile**: `PROMO - Profile - GetExtensionsRequest`
+**Response Profile**: `PROMO - Profile - GetExtensionsResponse`
+**Service Type**: Message Action
+
+**Description**: Reads environment extensions and map extension summaries for a specified client account environment, merges with ExtensionAccessMapping records for access control data, and returns a combined response. Extension data and access mappings are returned as JSON-serialized strings to avoid deeply nested profile complexity — the custom component parses them client-side. Uses Partner API `overrideAccount` to access sub-account environments.
+
+**Request Fields**:
+- `clientAccountId` (string, required) — target client sub-account ID
+- `environmentId` (string, required) — target environment ID within the client account
+- `userSsoGroups` (array of strings, required) — for access filtering
+- `userEmail` (string, required) — for audit trail
+
+**Response Fields**:
+- `success` (boolean)
+- `environmentId` (string)
+- `extensionData` (string) — JSON-serialized EnvironmentExtensions response
+- `accessMappings` (string) — JSON-serialized array of ExtensionAccessMapping records
+- `mapExtensionSummaries` (string) — JSON-serialized EnvironmentMapExtensionsSummary results
+- `componentCount` (integer) — total extension components
+- `connectionCount` (integer) — count of connection extensions
+- `processPropertyCount` (integer) — count of process property extensions
+- `dynamicPropertyCount` (integer) — count of dynamic process property extensions
+- `mapExtensionCount` (integer) — count of map extensions
+- `errorCode` (string, optional)
+- `errorMessage` (string, optional)
+
+---
+
+### 17. updateExtensions
+
+**Action Name**: `updateExtensions`
+**Linked Process**: Process M - Update Extensions
+**Flow Service Operation**: `PROMO - FSS Op - UpdateExtensions`
+**Request Profile**: `PROMO - Profile - UpdateExtensionsRequest`
+**Response Profile**: `PROMO - Profile - UpdateExtensionsResponse`
+**Service Type**: Message Action
+
+**Description**: Saves environment extension changes for a specified client account environment. Validates that the user has authorization for each modified component via ExtensionAccessMapping lookup. Connection extensions require ADMIN tier. Uses `partial="true"` to ensure only modified sections are updated — omitted sections retain their current values. Uses Partner API `overrideAccount` to write to sub-account environments.
+
+**Request Fields**:
+- `clientAccountId` (string, required) — target client sub-account ID
+- `environmentId` (string, required) — target environment ID
+- `extensionPayload` (string, required) — JSON-serialized partial EnvironmentExtensions update
+- `userSsoGroups` (array of strings, required) — for access validation
+- `userEmail` (string, required) — for audit trail
+
+**Response Fields**:
+- `success` (boolean)
+- `updatedFieldCount` (integer) — count of fields successfully updated
+- `environmentId` (string)
+- `errors` (array, optional) — per-component errors
+  - `componentId` (string)
+  - `componentName` (string)
+  - `errorCode` (string)
+  - `errorMessage` (string)
+- `errorCode` (string, optional)
+- `errorMessage` (string, optional)
+
+**Access Validation (MUST implement)**:
+For each component in the `extensionPayload`:
+1. Query ExtensionAccessMapping for `environmentId` + `prodComponentId`
+2. If `isConnectionExtension = "true"` and user is not ADMIN → reject with `CONNECTION_EDIT_ADMIN_ONLY`
+3. If user's SSO groups do not intersect `authorizedSsoGroups` and user is not ADMIN → reject with `UNAUTHORIZED_EXTENSION_EDIT`
+4. If no ExtensionAccessMapping record exists → reject with `EXTENSION_NOT_FOUND` (conservative default)
+
+---
+
+### 18. copyExtensionsTestToProd
+
+**Action Name**: `copyExtensionsTestToProd`
+**Linked Process**: Process N - Copy Extensions Test to Prod
+**Flow Service Operation**: `PROMO - FSS Op - CopyExtensionsTestToProd`
+**Request Profile**: `PROMO - Profile - CopyExtensionsTestToProdRequest`
+**Response Profile**: `PROMO - Profile - CopyExtensionsTestToProdResponse`
+**Service Type**: Message Action
+
+**Description**: Copies non-connection environment extensions from a Test environment to a Production environment within the same client account. Fetches extensions from the Test environment, strips connections and PGP certificates, sets `partial="true"`, swaps the environment ID, and posts to the Production environment. Encrypted values (passwords, API keys) are never returned in GET responses and cannot be copied. Uses Partner API `overrideAccount` for sub-account access.
+
+**Request Fields**:
+- `clientAccountId` (string, required) — target client sub-account ID
+- `testEnvironmentId` (string, required) — source Test environment ID
+- `prodEnvironmentId` (string, required) — target Production environment ID
+- `userSsoGroups` (array of strings, required) — for access validation
+- `userEmail` (string, required) — for audit trail
+
+**Response Fields**:
+- `success` (boolean)
+- `sectionsExcluded` (string) — comma-separated list of excluded sections (e.g., "connections,PGPCertificates")
+- `fieldsCopied` (integer) — count of extension fields successfully copied
+- `encryptedFieldsSkipped` (integer) — count of encrypted fields that could not be copied
+- `testEnvironmentId` (string) — echoed back
+- `prodEnvironmentId` (string) — echoed back
+- `errorCode` (string, optional)
+- `errorMessage` (string, optional)
+
+---
+
+### 19. updateMapExtension
+
+**Action Name**: `updateMapExtension`
+**Linked Process**: Process O - Update Map Extension
+**Flow Service Operation**: `PROMO - FSS Op - UpdateMapExtension`
+**Request Profile**: `PROMO - Profile - UpdateMapExtensionRequest`
+**Response Profile**: `PROMO - Profile - UpdateMapExtensionResponse`
+**Service Type**: Message Action
+
+**Description**: Saves map extension changes for a specified client account environment. **Phase 2 feature — currently returns `MAP_EXTENSION_READONLY` error.** Map extension updates are destructive (omitted mappings/functions are deleted), so Phase 1 provides read-only access and Test-to-Prod copy only. Full editing will be enabled in Phase 2 with field-level granularity controls.
+
+**Request Fields**:
+- `clientAccountId` (string, required) — target client sub-account ID
+- `environmentId` (string, required) — target environment ID
+- `mapExtensionId` (string, required) — map extension ID from summary query
+- `mapExtensionPayload` (string, required) — JSON-serialized map extension update
+- `userSsoGroups` (array of strings, required) — for access validation
+- `userEmail` (string, required) — for audit trail
+
+**Response Fields**:
+- `success` (boolean)
+- `mapExtensionId` (string) — echoed back
+- `mapName` (string) — name of the map extension
+- `errorCode` (string, optional)
+- `errorMessage` (string, optional)
+
+**Phase 1 Behavior**: Returns `success=false`, `errorCode=MAP_EXTENSION_READONLY`, `errorMessage="Map extension editing is not yet available. Use Test-to-Prod copy for map extensions."` for all requests.
+
+---
+
 ## Configuration Values
 
 The Flow Service requires one configuration value to be set at deployment:
@@ -617,7 +777,7 @@ The Flow Service requires one configuration value to be set at deployment:
 ### Step 3: Verify Deployment
 
 1. Navigate to "Runtime Management" → "Listeners"
-2. Verify all 14 processes are visible and running:
+2. Verify all 19 processes are visible and running:
    - `PROMO - FSS Op - GetDevAccounts`
    - `PROMO - FSS Op - ListDevPackages`
    - `PROMO - FSS Op - ResolveDependencies`
@@ -632,6 +792,11 @@ The Flow Service requires one configuration value to be set at deployment:
    - `PROMO - FSS Op - QueryTestDeployments`
    - `PROMO - FSS Op - CancelTestDeployment`
    - `PROMO - FSS Op - WithdrawPromotion`
+   - `PROMO - FSS Op - ListClientAccounts`
+   - `PROMO - FSS Op - GetExtensions`
+   - `PROMO - FSS Op - UpdateExtensions`
+   - `PROMO - FSS Op - CopyExtensionsTestToProd`
+   - `PROMO - FSS Op - UpdateMapExtension`
 3. Note the full service URL: `https://{cloud-base-url}/fs/PromotionService`
 
 ---
@@ -654,7 +819,7 @@ After deploying the Flow Service, configure the Flow application to connect to i
 ### Step 2: Retrieve Connector Configuration
 
 1. Click "Retrieve Connector Configuration Data"
-2. Flow will automatically discover all 14 message actions
+2. Flow will automatically discover all 19 message actions
 3. Auto-generated Flow Types will be created (see below)
 
 ### Step 3: Set Configuration Value
@@ -701,6 +866,16 @@ When you retrieve the connector configuration, Flow automatically generates requ
 26. `cancelTestDeployment RESPONSE - cancelTestDeploymentResponse`
 27. `withdrawPromotion REQUEST - withdrawPromotionRequest`
 28. `withdrawPromotion RESPONSE - withdrawPromotionResponse`
+29. `listClientAccounts REQUEST - listClientAccountsRequest`
+30. `listClientAccounts RESPONSE - listClientAccountsResponse`
+31. `getExtensions REQUEST - getExtensionsRequest`
+32. `getExtensions RESPONSE - getExtensionsResponse`
+33. `updateExtensions REQUEST - updateExtensionsRequest`
+34. `updateExtensions RESPONSE - updateExtensionsResponse`
+35. `copyExtensionsTestToProd REQUEST - copyExtensionsTestToProdRequest`
+36. `copyExtensionsTestToProd RESPONSE - copyExtensionsTestToProdResponse`
+37. `updateMapExtension REQUEST - updateMapExtensionRequest`
+38. `updateMapExtension RESPONSE - updateMapExtensionResponse`
 
 These types are used throughout the Flow application to ensure type safety when calling the Flow Service operations.
 
@@ -788,6 +963,12 @@ Decision: Check Success
 | `PROMOTION_NOT_FOUND` | promotionId references a non-existent PromotionLog record | Verify the promotion ID is correct |
 | `INVALID_PROMOTION_STATUS` | Promotion is not in the expected status for the requested operation | Check current promotion status before retrying |
 | `NOT_PROMOTION_INITIATOR` | Requester is not the original initiator of the promotion | Only the person who initiated the promotion can withdraw it |
+| `EXTENSION_NOT_FOUND` | Extension component has no ExtensionAccessMapping record (unknown component) | Admin must rebuild extension access cache or verify component exists |
+| `UNAUTHORIZED_EXTENSION_EDIT` | User's SSO groups do not authorize editing this extension component | Contact admin for access or request extension access mapping update |
+| `CONNECTION_EDIT_ADMIN_ONLY` | Non-admin user attempted to edit a connection extension | Only ADMIN tier users can modify connection extensions |
+| `COPY_FAILED` | Test-to-Prod extension copy failed during GET or UPDATE | Check environment accessibility and retry |
+| `MAP_EXTENSION_READONLY` | Map extension editing is not yet available (Phase 2 feature) | Use Test-to-Prod copy for map extensions |
+| `CLIENT_ACCOUNT_NOT_FOUND` | Client account ID not found in ClientAccountConfig | Verify the client account is registered in DataHub |
 
 **Error Handling Best Practices**:
 
@@ -916,6 +1097,7 @@ The `devAccountId` parameter in several actions (listDevPackages, executePromoti
 | 1.1.0 | 2026-02-16 | Multi-environment deployment: 3 deployment modes (TEST, PRODUCTION from test, PRODUCTION hotfix), new queryTestDeployments action, packPurpose filter on listIntegrationPacks |
 | 1.2.0 | 2026-02-16 | Added cancelTestDeployment action for test branch cleanup; added PROMOTION_NOT_FOUND and INVALID_PROMOTION_STATUS error codes |
 | 1.3.0 | 2026-02-17 | Added withdrawPromotion action for initiator-driven withdrawal of pending promotions; added NOT_PROMOTION_INITIATOR error code |
+| 2.0.0 | 2026-02-17 | Extension Editor: 5 new message actions (listClientAccounts, getExtensions, updateExtensions, copyExtensionsTestToProd, updateMapExtension), 6 new error codes, total actions 14→19 |
 
 ---
 
