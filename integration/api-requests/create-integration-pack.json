@@ -5,6 +5,17 @@
     "After creation, add the PackagedComponent to the pack",
     "Then release via PROMO - HTTP Op - POST ReleaseIntegrationPack (POST /partner/api/rest/v1/{accountId}/ReleaseIntegrationPack)"
   ],
+  "_http_operation": {
+    "method": "POST",
+    "url": "/partner/api/rest/v1/{primaryAccountId}/IntegrationPack",
+    "urlParameters": {
+      "{primaryAccountId}": "DPP: primaryAccountId"
+    },
+    "headers": {
+      "Accept": "application/json",
+      "Content-Type": "application/json"
+    }
+  },
   "name": "{newPackName}",
   "description": "{newPackDescription}",
   "installationType": "MULTI"

@@ -4,7 +4,28 @@
     "Retrieves the current status of a merge request",
     "No request body — GET request with mergeRequestId in the URL",
     "Used to poll merge status after calling POST MergeRequest Execute",
-    "Poll until stage=MERGED (success) or stage=FAILED_TO_MERGE (failure)",
+    "Poll every 2 seconds until stage=MERGED (success) or stage=FAILED_TO_MERGE (failure)",
     "Merge stages: DRAFTING → DRAFTED → REVIEWING → MERGING → MERGED | FAILED_TO_MERGE"
-  ]
+  ],
+  "_http_operation": {
+    "method": "GET",
+    "url": "/partner/api/rest/v1/{primaryAccountId}/MergeRequest/{mergeRequestId}",
+    "urlParameters": {
+      "{primaryAccountId}": "DPP: primaryAccountId",
+      "{mergeRequestId}": "DPP: mergeRequestId"
+    },
+    "headers": {
+      "Accept": "application/json"
+    }
+  },
+  "_response_structure": {
+    "@type": "MergeRequest",
+    "mergeRequestId": "string — unique merge request ID",
+    "sourceBranchId": "string — source branch ID",
+    "targetBranchId": "string — target branch ID (usually main)",
+    "strategy": "string — merge strategy (OVERRIDE)",
+    "stage": "string — current merge stage (DRAFTING|DRAFTED|REVIEWING|MERGING|MERGED|FAILED_TO_MERGE)",
+    "createdDate": "string — ISO 8601 timestamp",
+    "createdBy": "string — email of creator"
+  }
 }

@@ -6,6 +6,17 @@
     "After release, changes to the pack require a new release",
     "Response includes the released packageId used for deployment"
   ],
+  "_http_operation": {
+    "method": "POST",
+    "url": "/partner/api/rest/v1/{primaryAccountId}/ReleaseIntegrationPack",
+    "urlParameters": {
+      "{primaryAccountId}": "DPP: primaryAccountId"
+    },
+    "headers": {
+      "Accept": "application/json",
+      "Content-Type": "application/json"
+    }
+  },
   "integrationPackId": "{integrationPackId}",
   "version": "{releaseVersion}",
   "notes": "{releaseNotes}"

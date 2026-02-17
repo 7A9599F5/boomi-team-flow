@@ -8,7 +8,21 @@
     "After creation, execute the merge via POST /MergeRequest/execute/{mergeRequestId}",
     "Only called on admin approval path (not on reject/deny)"
   ],
-  "source": "{branchId}",
+  "_NOTE": "The 'sourceBranchId' field name requires live API testing to verify. Candidates: 'source', 'sourceBranchId', 'sourceId'. Build guide step 2.2.12 uses 'sourceBranchId'. Cross-reference with Boomi Platform API documentation for merge requests.",
+  "_buildGuideRef": "docs/build-guide/02-http-client-setup.md, Step 2.2.12 — PROMO - HTTP Op - POST MergeRequest",
+  "_http_operation": {
+    "method": "POST",
+    "url": "/partner/api/rest/v1/{primaryAccountId}/MergeRequest",
+    "urlParameters": {
+      "{primaryAccountId}": "DPP: primaryAccountId"
+    },
+    "headers": {
+      "Accept": "application/json",
+      "Content-Type": "application/json"
+    }
+  },
+  "sourceBranchId": "{branchId}",
+  "targetBranchId": "main",
   "strategy": "OVERRIDE",
   "priorityBranch": "{branchId}"
 }

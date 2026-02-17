@@ -8,6 +8,17 @@
     "packageVersion: version string provided by the user (e.g., '1.0.0')",
     "notes: deployment notes + dev metadata block appended by Process D"
   ],
+  "_http_operation": {
+    "method": "POST",
+    "url": "/partner/api/rest/v1/{primaryAccountId}/PackagedComponent",
+    "urlParameters": {
+      "{primaryAccountId}": "DPP: primaryAccountId"
+    },
+    "headers": {
+      "Accept": "application/json",
+      "Content-Type": "application/json"
+    }
+  },
   "componentId": "{prodComponentId}",
   "componentType": "process",
   "packageVersion": "{packageVersion}",

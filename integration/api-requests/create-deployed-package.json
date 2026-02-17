@@ -8,6 +8,17 @@
     "listenerStatus: optional, RUNNING (default) or PAUSED — controls listener state after deployment",
     "componentType is NOT required — the API infers it from the packageId"
   ],
+  "_http_operation": {
+    "method": "POST",
+    "url": "/partner/api/rest/v1/{primaryAccountId}/DeployedPackage",
+    "urlParameters": {
+      "{primaryAccountId}": "DPP: primaryAccountId"
+    },
+    "headers": {
+      "Accept": "application/json",
+      "Content-Type": "application/json"
+    }
+  },
   "environmentId": "{targetEnvironmentId}",
   "packageId": "{releasedPackageId}",
   "notes": "{deploymentNotes}"

@@ -4,7 +4,7 @@
     "Creates a new branch in the primary (production) account",
     "Branch name follows pattern: promo-{promotionId}",
     "After creation, poll GET /Branch/{branchId} until ready=true (typically 5-30s)",
-    "Branch limit: 20 per account — check count before creation",
+    "Branch limit: 15 operational threshold (20 hard platform limit) — check count before creation",
     "All terminal paths (approve, reject, deny) must DELETE the branch",
     "Components are promoted to the branch via tilde syntax: POST /Component/{id}~{branchId}"
   ],
@@ -16,6 +16,17 @@
     "5a. APPROVE: MergeRequest OVERRIDE → execute MERGE → Package from main → DELETE branch",
     "5b. REJECT/DENY: DELETE /Branch/{branchId} — main untouched"
   ],
+  "_http_operation": {
+    "method": "POST",
+    "url": "/partner/api/rest/v1/{primaryAccountId}/Branch",
+    "urlParameters": {
+      "{primaryAccountId}": "DPP: primaryAccountId"
+    },
+    "headers": {
+      "Accept": "application/json",
+      "Content-Type": "application/json"
+    }
+  },
   "_pre_check": {
     "description": "Before creating, query existing branches to enforce limit",
     "method": "POST",
