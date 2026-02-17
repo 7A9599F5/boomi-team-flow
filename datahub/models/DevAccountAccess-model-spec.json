@@ -1,7 +1,7 @@
 {
   "modelName": "DevAccountAccess",
   "rootElement": "DevAccountAccess",
-  "description": "Maps SSO security groups to dev sub-account IDs. Controls which Azure AD groups have permission to promote components from specific dev accounts to production. Manually managed by administrators.",
+  "description": "Maps team-specific SSO groups (e.g., ABC_BOOMI_FLOW_DEVTEAMA) to dev sub-account IDs. Controls which dev accounts a user can access based on their team group membership. Tier-level access (CONTRIBUTOR, ADMIN) is resolved at runtime from SSO group names in Process A0 — not stored in DataHub. Manually managed by administrators.",
   "fields": [
     {
       "name": "ssoGroupId",
@@ -54,5 +54,5 @@
     }
   ],
   "dataQualitySteps": [],
-  "notes": "This model provides the authorization layer for the promotion engine. During promotion, the engine validates that the authenticated SSO user belongs to a group with isActive='true' for the source dev account. Multiple groups can map to the same account, and one group can access multiple accounts."
+  "notes": "This model provides the team-axis of the two-axis SSO authorization model. Team groups (ABC_BOOMI_FLOW_DEVTEAM*) determine which dev accounts a user can access; tier groups (ABC_BOOMI_FLOW_CONTRIBUTOR, ABC_BOOMI_FLOW_ADMIN) determine dashboard access level and are resolved at runtime in Process A0. ADMIN tier bypasses the team check and sees all active DevAccountAccess records. Non-dashboard tiers (READONLY, OPERATOR) never reach this model because they cannot access the Flow dashboard. Multiple team groups can map to the same account, and one group can access multiple accounts."
 }

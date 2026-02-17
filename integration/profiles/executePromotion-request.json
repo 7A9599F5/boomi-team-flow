@@ -9,5 +9,6 @@
       "folderFullPath": "string"
     }
   ],
-  "initiatedBy": "string"
+  "initiatedBy": "string",
+  "userSsoGroups": ["string"]
 }

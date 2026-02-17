@@ -24,9 +24,14 @@ globs:
 ## Swimlane Structure
 
 ### Authorization Model
-- **Developer Swimlane**: SSO group "Boomi Developers"
-- **Peer Review Swimlane**: SSO groups "Boomi Developers" OR "Boomi Admins" (any listed group grants access)
-- **Admin Swimlane**: SSO group "Boomi Admins"
+- **Developer Swimlane**: SSO group "ABC_BOOMI_FLOW_CONTRIBUTOR" OR "ABC_BOOMI_FLOW_ADMIN"
+- **Peer Review Swimlane**: SSO group "ABC_BOOMI_FLOW_CONTRIBUTOR" OR "ABC_BOOMI_FLOW_ADMIN"
+- **Admin Swimlane**: SSO group "ABC_BOOMI_FLOW_ADMIN"
+
+### Tier Groups (Dashboard Access)
+- **ABC_BOOMI_FLOW_ADMIN** — Full dashboard access, bypasses team check for account visibility
+- **ABC_BOOMI_FLOW_CONTRIBUTOR** — Developer + Peer Review swimlane access, account visibility determined by team groups
+- **ABC_BOOMI_FLOW_READONLY** / **ABC_BOOMI_FLOW_OPERATOR** — No dashboard access (AtomSphere only)
 
 ### Self-Review Prevention
 - Peer reviewers cannot review their own submissions

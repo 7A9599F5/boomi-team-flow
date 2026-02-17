@@ -1,5 +1,6 @@
 {
   "success": true,
+  "effectiveTier": "string",
   "errorCode": "",
   "errorMessage": "",
   "accounts": [
