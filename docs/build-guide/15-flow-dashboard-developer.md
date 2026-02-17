@@ -56,7 +56,7 @@
    - Authorization: SSO group `Boomi Admins`
    - This swimlane receives control after peer review passes
 
-Build the 8 pages in order. Each page uses Message steps to call Flow Service actions and Decision steps to handle the `success` field in responses.
+Build the 9 pages in order. Each page uses Message steps to call Flow Service actions and Decision steps to handle the `success` field in responses.
 
 #### Page 1: Package Browser (Developer Swimlane)
 
