@@ -1,2 +1,5 @@
 .workspace/
 node_modules/
+.boomi-setup-state.json
+__pycache__/
+*.pyc

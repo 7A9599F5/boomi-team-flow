@@ -1,0 +1,368 @@
+"""Phase 1 — DataHub setup steps (1.0 through 1.4)."""
+from __future__ import annotations
+
+from setup.api.client import BoomiApiError
+from setup.engine import StepStatus, StepType
+from setup.state import SetupState
+from setup.steps.base import BaseStep
+from setup.templates.loader import load_model_spec
+from setup.ui import console as ui
+from setup.ui.prompts import guide_and_collect, guide_and_confirm
+
+
+class CreateRepo(BaseStep):
+    """Step 1.0 — Create the PromotionHub DataHub repository."""
+
+    @property
+    def step_id(self) -> str:
+        return "1.0"
+
+    @property
+    def name(self) -> str:
+        return "Create DataHub Repository"
+
+    @property
+    def step_type(self) -> StepType:
+        return StepType.AUTO
+
+    def execute(self, state: SetupState, dry_run: bool = False) -> StepStatus:
+        ui.print_step(self.step_id, self.name, self.step_type.value)
+
+        # Skip if already configured
+        existing = state.config.get("boomi_repo_id", "")
+        if existing:
+            ui.print_success(f"Repository already exists (ID: {existing})")
+            return StepStatus.COMPLETED
+
+        if dry_run:
+            ui.print_info("Would create DataHub repository 'PromotionHub'")
+            return StepStatus.COMPLETED
+
+        try:
+            result = self.datahub_api.create_repository(
+                "PromotionHub", "Promotion engine data store"
+            )
+            repo_id = result["id"] if isinstance(result, dict) else ""
+            if not repo_id:
+                ui.print_error("No repository ID returned from API")
+                return StepStatus.FAILED
+            state.update_config({"boomi_repo_id": repo_id})
+            ui.print_success(f"Created repository 'PromotionHub' (ID: {repo_id})")
+            return StepStatus.COMPLETED
+        except BoomiApiError as exc:
+            ui.print_error(f"Failed to create repository: {exc}")
+            return StepStatus.FAILED
+
+
+class CreateSources(BaseStep):
+    """Step 1.1 — Create the three DataHub sources."""
+
+    SOURCES = ["PROMOTION_ENGINE", "ADMIN_SEEDING", "ADMIN_CONFIG"]
+
+    @property
+    def step_id(self) -> str:
+        return "1.1"
+
+    @property
+    def name(self) -> str:
+        return "Create DataHub Sources"
+
+    @property
+    def step_type(self) -> StepType:
+        return StepType.AUTO
+
+    @property
+    def depends_on(self) -> list[str]:
+        return ["1.0"]
+
+    def execute(self, state: SetupState, dry_run: bool = False) -> StepStatus:
+        ui.print_step(self.step_id, self.name, self.step_type.value)
+        remaining = state.get_remaining_items(self.step_id, self.SOURCES)
+
+        if not remaining:
+            ui.print_success("All sources already created")
+            return StepStatus.COMPLETED
+
+        if dry_run:
+            ui.print_info(f"Would create {len(remaining)} sources: {', '.join(remaining)}")
+            return StepStatus.COMPLETED
+
+        for source_name in remaining:
+            try:
+                result = self.datahub_api.create_source(source_name, "contribute-only")
+                source_id = result["id"] if isinstance(result, dict) else ""
+                if not source_id:
+                    ui.print_error(f"No source ID returned for {source_name}")
+                    return StepStatus.FAILED
+                state.store_component_id("sources", source_name, source_id)
+                state.mark_step_item_complete(self.step_id, source_name)
+                ui.print_success(f"Created source '{source_name}' (ID: {source_id})")
+            except BoomiApiError as exc:
+                ui.print_error(f"Failed to create source '{source_name}': {exc}")
+                return StepStatus.FAILED
+
+        return StepStatus.COMPLETED
+
+
+class CreateModel(BaseStep):
+    """Step 1.2x — Create, publish, and deploy a single DataHub model.
+
+    Instantiate one per model: ComponentMapping (1.2a), DevAccountAccess (1.2b),
+    PromotionLog (1.2c).
+    """
+
+    def __init__(self, *args, model_name: str, sub_id: str, **kwargs) -> None:  # type: ignore[override]
+        super().__init__(*args, **kwargs)
+        self._model_name = model_name
+        self._sub_id = sub_id
+
+    @property
+    def step_id(self) -> str:
+        return f"1.2{self._sub_id}"
+
+    @property
+    def name(self) -> str:
+        return f"Create Model — {self._model_name}"
+
+    @property
+    def step_type(self) -> StepType:
+        return StepType.AUTO
+
+    @property
+    def depends_on(self) -> list[str]:
+        return ["1.1"]
+
+    def execute(self, state: SetupState, dry_run: bool = False) -> StepStatus:
+        ui.print_step(self.step_id, self.name, self.step_type.value)
+
+        existing = state.get_component_id("models", self._model_name)
+        if existing:
+            ui.print_success(
+                f"Model '{self._model_name}' already exists (ID: {existing})"
+            )
+            return StepStatus.COMPLETED
+
+        if dry_run:
+            ui.print_info(f"Would create model '{self._model_name}'")
+            return StepStatus.COMPLETED
+
+        try:
+            spec = load_model_spec(self._model_name)
+            result = self.datahub_api.create_model(spec)
+            model_id = result["id"] if isinstance(result, dict) else ""
+            if not model_id:
+                ui.print_error(f"No model ID returned for {self._model_name}")
+                return StepStatus.FAILED
+
+            ui.print_info(f"Created model '{self._model_name}' (ID: {model_id})")
+
+            self.datahub_api.publish_model(model_id)
+            ui.print_info(f"Published model '{self._model_name}'")
+
+            self.datahub_api.deploy_model(model_id)
+            ui.print_info(f"Deploying model '{self._model_name}'...")
+
+            self.datahub_api.poll_model_deployed(model_id)
+            ui.print_success(f"Model '{self._model_name}' deployed (ID: {model_id})")
+
+            state.store_component_id("models", self._model_name, model_id)
+            return StepStatus.COMPLETED
+        except BoomiApiError as exc:
+            ui.print_error(f"Failed to create model '{self._model_name}': {exc}")
+            return StepStatus.FAILED
+
+
+class SeedDevAccess(BaseStep):
+    """Step 1.3 — Seed DevAccountAccess records via interactive prompts."""
+
+    @property
+    def step_id(self) -> str:
+        return "1.3"
+
+    @property
+    def name(self) -> str:
+        return "Seed Dev Account Access Records"
+
+    @property
+    def step_type(self) -> StepType:
+        return StepType.SEMI
+
+    @property
+    def depends_on(self) -> list[str]:
+        return ["1.2c"]
+
+    def _build_record_xml(
+        self, sso_group_id: str, group_name: str, dev_account_id: str, dev_account_name: str
+    ) -> str:
+        return (
+            '<?xml version="1.0" encoding="UTF-8"?>\n'
+            '<batch src="ADMIN_CONFIG">\n'
+            "  <DevAccountAccess>\n"
+            f"    <ssoGroupId>{sso_group_id}</ssoGroupId>\n"
+            f"    <ssoGroupName>{group_name}</ssoGroupName>\n"
+            f"    <devAccountId>{dev_account_id}</devAccountId>\n"
+            f"    <devAccountName>{dev_account_name}</devAccountName>\n"
+            "  </DevAccountAccess>\n"
+            "</batch>"
+        )
+
+    def execute(self, state: SetupState, dry_run: bool = False) -> StepStatus:
+        ui.print_step(self.step_id, self.name, self.step_type.value)
+
+        if dry_run:
+            ui.print_info("Would prompt for DevAccountAccess records and insert via DataHub API")
+            return StepStatus.COMPLETED
+
+        record_count = 0
+        while True:
+            sso_group_id = guide_and_collect(
+                "Enter the SSO group ID for this dev account access record.\n"
+                "Example: ABC_BOOMI_FLOW_CONTRIBUTOR",
+                "SSO Group ID",
+            )
+            group_name = guide_and_collect(
+                "Enter the SSO group display name.",
+                "SSO Group Name",
+            )
+            dev_account_id = guide_and_collect(
+                "Enter the Boomi dev sub-account ID.",
+                "Dev Account ID",
+            )
+            dev_account_name = guide_and_collect(
+                "Enter the dev account display name.",
+                "Dev Account Name",
+            )
+
+            record_xml = self._build_record_xml(
+                sso_group_id, group_name, dev_account_id, dev_account_name
+            )
+
+            try:
+                self.datahub_api.create_record(
+                    "DevAccountAccess", record_xml, "ADMIN_CONFIG"
+                )
+                record_count += 1
+                ui.print_success(
+                    f"Created DevAccountAccess record #{record_count} "
+                    f"({sso_group_id} -> {dev_account_name})"
+                )
+            except BoomiApiError as exc:
+                ui.print_error(f"Failed to create record: {exc}")
+                return StepStatus.FAILED
+
+            if not guide_and_confirm(
+                "Add another DevAccountAccess record?",
+                "Add another?",
+            ):
+                break
+
+        ui.print_success(f"Seeded {record_count} DevAccountAccess record(s)")
+        return StepStatus.COMPLETED
+
+
+class TestCrud(BaseStep):
+    """Step 1.4 — Validate DataHub CRUD by creating, querying, and deleting a test record."""
+
+    @property
+    def step_id(self) -> str:
+        return "1.4"
+
+    @property
+    def name(self) -> str:
+        return "Validate DataHub CRUD"
+
+    @property
+    def step_type(self) -> StepType:
+        return StepType.VALIDATE
+
+    @property
+    def depends_on(self) -> list[str]:
+        return ["1.2a"]
+
+    def execute(self, state: SetupState, dry_run: bool = False) -> StepStatus:
+        ui.print_step(self.step_id, self.name, self.step_type.value)
+
+        if dry_run:
+            ui.print_info("Would create, query, and delete a test ComponentMapping record")
+            return StepStatus.COMPLETED
+
+        test_dev_id = "test-crud-00000000"
+        test_account_id = "test-account-00000000"
+        record_xml = (
+            '<?xml version="1.0" encoding="UTF-8"?>\n'
+            '<batch src="PROMOTION_ENGINE">\n'
+            "  <ComponentMapping>\n"
+            f"    <devComponentId>{test_dev_id}</devComponentId>\n"
+            f"    <devAccountId>{test_account_id}</devAccountId>\n"
+            "    <prodComponentId>test-prod-00000000</prodComponentId>\n"
+            "    <componentName>CRUD Test Record</componentName>\n"
+            "    <componentType>process</componentType>\n"
+            "  </ComponentMapping>\n"
+            "</batch>"
+        )
+
+        try:
+            # Create
+            ui.print_info("Creating test ComponentMapping record...")
+            self.datahub_api.create_record(
+                "ComponentMapping", record_xml, "PROMOTION_ENGINE"
+            )
+            ui.print_success("Test record created")
+
+            # Query
+            ui.print_info("Querying test record...")
+            query_xml = (
+                '<?xml version="1.0" encoding="UTF-8"?>\n'
+                '<RecordQueryRequest limit="10">\n'
+                "  <view>\n"
+                "    <fieldId>devComponentId</fieldId>\n"
+                "    <fieldId>devAccountId</fieldId>\n"
+                "  </view>\n"
+                '  <filter op="AND">\n'
+                "    <fieldValue>\n"
+                "      <fieldId>devComponentId</fieldId>\n"
+                "      <operator>EQUALS</operator>\n"
+                f"      <value>{test_dev_id}</value>\n"
+                "    </fieldValue>\n"
+                "  </filter>\n"
+                "</RecordQueryRequest>"
+            )
+            query_result = self.datahub_api.query_records("ComponentMapping", query_xml)
+            if not query_result:
+                ui.print_error("Query returned no result")
+                return StepStatus.FAILED
+            ui.print_success("Test record queried successfully")
+
+            # Delete — extract record ID from query result
+            # DataHub query returns XML; parse for recordId
+            record_id = self._extract_record_id(query_result)
+            if record_id:
+                ui.print_info("Deleting test record...")
+                self.datahub_api.delete_record("ComponentMapping", record_id)
+                ui.print_success("Test record deleted")
+            else:
+                ui.print_warning("Could not extract record ID for cleanup; manual cleanup may be needed")
+
+            ui.print_success("DataHub CRUD validation passed")
+            return StepStatus.COMPLETED
+        except BoomiApiError as exc:
+            ui.print_error(f"CRUD validation failed: {exc}")
+            return StepStatus.FAILED
+
+    @staticmethod
+    def _extract_record_id(result: dict | str) -> str | None:
+        """Extract the first recordId from a DataHub query response."""
+        if isinstance(result, str):
+            # XML response — look for recordId attribute or element
+            import re
+            match = re.search(r'recordId="([^"]+)"', result)
+            if match:
+                return match.group(1)
+            match = re.search(r"<recordId>([^<]+)</recordId>", result)
+            if match:
+                return match.group(1)
+        elif isinstance(result, dict):
+            records = result.get("records", [])
+            if records:
+                return records[0].get("recordId")
+        return None
