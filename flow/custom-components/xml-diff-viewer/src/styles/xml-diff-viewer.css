@@ -1,0 +1,387 @@
+/* ==========================================================================
+   XmlDiffViewer — Boomi Flow Custom Component Styles
+   ========================================================================== */
+
+/* ---------- Root Container ---------- */
+.xml-diff-viewer {
+    border: 1px solid #d0d7de;
+    border-radius: 6px;
+    overflow: hidden;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+    font-size: 14px;
+    color: #24292f;
+    background: #ffffff;
+}
+
+/* ---------- Header ---------- */
+.xml-diff-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 10px 16px;
+    background: #f6f8fa;
+    border-bottom: 1px solid #d0d7de;
+}
+
+.xml-diff-header__left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.xml-diff-header__right {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+/* ---------- Badges ---------- */
+.xml-diff-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 1.5;
+}
+
+.xml-diff-badge--name {
+    background: #ddf4ff;
+    color: #0969da;
+}
+
+.xml-diff-badge--create {
+    background: #dafbe1;
+    color: #116329;
+}
+
+.xml-diff-badge--update {
+    background: #fff8c5;
+    color: #4d2d00;
+}
+
+/* ---------- Version Info ---------- */
+.xml-diff-version {
+    font-size: 12px;
+    color: #636c76;
+}
+
+/* ---------- Stats ---------- */
+.xml-diff-summary {
+    font-size: 12px;
+}
+
+.xml-diff-stat {
+    font-weight: 600;
+}
+
+.xml-diff-stat--add {
+    color: #116329;
+}
+
+.xml-diff-stat--del {
+    color: #82071e;
+}
+
+.xml-diff-stat--unchanged {
+    color: #636c76;
+    font-weight: 400;
+}
+
+/* ---------- Toolbar ---------- */
+.xml-diff-toolbar__controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    background: #f6f8fa;
+    border-bottom: 1px solid #d0d7de;
+    flex-wrap: wrap;
+}
+
+.xml-diff-toolbar__copy {
+    display: flex;
+    gap: 4px;
+    margin-left: auto;
+}
+
+/* ---------- Toggle (Split/Unified) ---------- */
+.xml-diff-toggle {
+    display: inline-flex;
+    border: 1px solid #d0d7de;
+    border-radius: 6px;
+    overflow: hidden;
+}
+
+.xml-diff-toggle__btn {
+    padding: 4px 12px;
+    font-size: 12px;
+    font-weight: 500;
+    border: none;
+    background: #ffffff;
+    color: #24292f;
+    cursor: pointer;
+    transition: background-color 0.15s ease;
+}
+
+.xml-diff-toggle__btn:hover {
+    background: #f3f4f6;
+}
+
+.xml-diff-toggle__btn--active {
+    background: #0969da;
+    color: #ffffff;
+}
+
+.xml-diff-toggle__btn--active:hover {
+    background: #0860ca;
+}
+
+/* ---------- Buttons ---------- */
+.xml-diff-btn {
+    padding: 4px 12px;
+    font-size: 12px;
+    font-weight: 500;
+    border: 1px solid #d0d7de;
+    border-radius: 6px;
+    background: #ffffff;
+    color: #24292f;
+    cursor: pointer;
+    transition: background-color 0.15s ease;
+    white-space: nowrap;
+}
+
+.xml-diff-btn:hover {
+    background: #f3f4f6;
+}
+
+.xml-diff-btn:focus-visible {
+    outline: 2px solid #0969da;
+    outline-offset: -2px;
+}
+
+.xml-diff-btn--active {
+    background: #ddf4ff;
+    border-color: #0969da;
+    color: #0969da;
+}
+
+.xml-diff-btn--copy {
+    font-size: 11px;
+}
+
+/* ---------- Diff Content ---------- */
+.xml-diff-content {
+    max-height: 500px;
+    overflow: auto;
+}
+
+.xml-diff-content pre {
+    margin: 0;
+    font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+    font-size: 12px;
+    line-height: 20px;
+}
+
+.xml-diff-content--wrap pre {
+    white-space: pre-wrap;
+    word-break: break-all;
+}
+
+.xml-diff-content--create {
+    /* No max-height for create view - show all content */
+}
+
+/* ---------- Code Fold ---------- */
+.xml-diff-fold-message {
+    display: inline-block;
+    padding: 2px 8px;
+    font-size: 11px;
+    color: #0969da;
+    cursor: pointer;
+}
+
+.xml-diff-fold-message:hover {
+    text-decoration: underline;
+}
+
+/* ---------- Syntax Highlighting (Prism) ---------- */
+.xml-diff-highlighted .token.tag {
+    color: #116329;
+}
+
+.xml-diff-highlighted .token.attr-name {
+    color: #0550ae;
+}
+
+.xml-diff-highlighted .token.attr-value {
+    color: #0a3069;
+}
+
+.xml-diff-highlighted .token.punctuation {
+    color: #24292f;
+}
+
+.xml-diff-highlighted .token.comment {
+    color: #6e7781;
+    font-style: italic;
+}
+
+.xml-diff-highlighted .token.prolog {
+    color: #6e7781;
+}
+
+.xml-diff-highlighted .token.doctype {
+    color: #6e7781;
+}
+
+.xml-diff-highlighted .token.cdata {
+    color: #6e7781;
+}
+
+/* ---------- Loading Skeleton ---------- */
+.xml-diff-loading .xml-diff-toolbar {
+    padding: 12px 16px;
+    background: #f6f8fa;
+    border-bottom: 1px solid #d0d7de;
+}
+
+.xml-diff-loading .xml-diff-content {
+    padding: 16px;
+}
+
+.xml-diff-skeleton {
+    background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+    background-size: 200% 100%;
+    animation: xml-diff-shimmer 1.5s infinite ease-in-out;
+    border-radius: 4px;
+    height: 16px;
+    margin-bottom: 8px;
+}
+
+.xml-diff-skeleton--title {
+    width: 200px;
+    height: 20px;
+}
+
+.xml-diff-skeleton--controls {
+    width: 300px;
+    height: 28px;
+    margin-top: 8px;
+}
+
+.xml-diff-skeleton--line {
+    height: 14px;
+}
+
+@keyframes xml-diff-shimmer {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}
+
+/* ---------- Error State ---------- */
+.xml-diff-error {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 32px 16px;
+    text-align: center;
+}
+
+.xml-diff-error__icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: #ffebe9;
+    color: #82071e;
+    font-size: 20px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 12px;
+}
+
+.xml-diff-error__message {
+    margin: 0 0 16px;
+    color: #636c76;
+    font-size: 14px;
+}
+
+.xml-diff-error__retry {
+    padding: 6px 16px;
+    font-size: 13px;
+    font-weight: 500;
+    border: 1px solid #d0d7de;
+    border-radius: 6px;
+    background: #ffffff;
+    color: #24292f;
+    cursor: pointer;
+}
+
+.xml-diff-error__retry:hover {
+    background: #f3f4f6;
+}
+
+/* ---------- Screen Reader Only ---------- */
+.xml-diff-sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border-width: 0;
+}
+
+/* ==========================================================================
+   Responsive
+   ========================================================================== */
+
+/* Tablet */
+@media (max-width: 1024px) {
+    .xml-diff-toolbar__controls {
+        flex-wrap: wrap;
+    }
+
+    .xml-diff-toolbar__copy {
+        margin-left: 0;
+        width: 100%;
+        margin-top: 4px;
+    }
+}
+
+/* Mobile */
+@media (max-width: 767px) {
+    .xml-diff-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .xml-diff-toolbar__controls {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .xml-diff-toggle {
+        display: none;
+    }
+
+    .xml-diff-content {
+        max-height: none;
+    }
+
+    .xml-diff-btn {
+        width: 100%;
+        text-align: center;
+    }
+
+    .xml-diff-toolbar__copy {
+        flex-direction: column;
+    }
+}
