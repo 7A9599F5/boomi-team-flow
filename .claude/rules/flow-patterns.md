@@ -20,6 +20,10 @@ globs:
 ### Developer Swimlane Pages (continued)
 - **Page 9**: Production Readiness Queue
 
+### Extension Editor Pages (Developer + Admin)
+- **Page 10**: Extension Manager
+- **Page 11**: Extension Copy Confirmation
+
 ### Admin Swimlane Pages
 - **Page 7**: Admin Approval Queue
 - **Page 8**: Mapping Viewer
@@ -77,6 +81,11 @@ globs:
   - `manageMappings` (Process F)
   - `generateComponentDiff` (Process G)
   - `listIntegrationPacks` (Process J)
+  - `listClientAccounts` (Process K)
+  - `getExtensions` (Process L)
+  - `updateExtensions` (Process M)
+  - `copyExtensionsTestToProd` (Process N)
+  - `updateMapExtension` (Process O)
 
 ### Auto-Generated Flow Types
 When using Boomi Integration Service connector, Flow auto-generates request/response types:

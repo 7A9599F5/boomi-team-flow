@@ -11,15 +11,15 @@ This is **not a traditional software codebase** — there is no build system, pa
 ## Architecture
 
 ```
-Flow Dashboard (3 swimlanes: Dev + Peer Review + Admin, 9 pages)
+Flow Dashboard (3 swimlanes: Dev + Peer Review + Admin, 11 pages)
   ↓ Message Actions (Flow Service)
-Integration Engine (13 processes A0–G + E2, E3, E4, E5, J on Public Boomi Cloud Atom)
+Integration Engine (18 processes A0–G, E2–E5, J, K–O on Public Boomi Cloud Atom)
   ↓                    ↓
 Platform API        DataHub
-(Partner API)       (ComponentMapping, DevAccountAccess, PromotionLog)
+(Partner API)       (ComponentMapping, DevAccountAccess, PromotionLog, ExtensionAccessMapping, ClientAccountConfig)
 ```
 
-**13 Integration Processes:**
+**18 Integration Processes:**
 - **A0** getDevAccounts — SSO group → dev account access lookup
 - **A** listDevPackages — query dev account's PackagedComponents
 - **B** resolveDependencies — recursive dependency traversal + mapping lookup
@@ -33,8 +33,13 @@ Platform API        DataHub
 - **F** manageMappings — CRUD on ComponentMapping records
 - **G** generateComponentDiff — fetch branch vs main component XML for diff rendering
 - **J** listIntegrationPacks — query Integration Packs with smart suggestion from history
+- **K** listClientAccounts — SSO group → accessible client accounts + environments
+- **L** getExtensions — read env extensions + map extension summaries, merge with access data
+- **M** updateExtensions — save env extension changes (partial update, access-validated)
+- **N** copyExtensionsTestToProd — copy non-connection env extensions from Test to Prod
+- **O** updateMapExtension — save map extension changes (Phase 2 editing; Phase 1 read-only)
 
-**13 Message Actions** (FSS Operations): one per process, plus `cancelTestDeployment` (E4 reuse). When adding a new action, update: FSS op table in `04-process-canvas-fundamentals.md`, message actions table in `14-flow-service.md`, listener list in `14-flow-service.md`, Flow types list in `15-flow-dashboard-developer.md`, troubleshooting counts in `18-troubleshooting.md`, and `22-api-automation-guide.md` FSS table.
+**19 Message Actions** (FSS Operations): one per process, plus `cancelTestDeployment` (E4 reuse). When adding a new action, update: FSS op table in `04-process-canvas-fundamentals.md`, message actions table in `14-flow-service.md`, listener list in `14-flow-service.md`, Flow types list in `15-flow-dashboard-developer.md`, troubleshooting counts in `18-troubleshooting.md`, and `22-api-automation-guide.md` FSS table.
 
 **Key design decisions** (see `docs/architecture.md`):
 - Message Actions over Data Actions (complex logic requires full process control)
@@ -47,27 +52,27 @@ Platform API        DataHub
 
 ```
 datahub/
-  models/              3 DataHub model specs (JSON) — ComponentMapping, DevAccountAccess, PromotionLog
+  models/              5 DataHub model specs (JSON) — ComponentMapping, DevAccountAccess, PromotionLog, ExtensionAccessMapping, ClientAccountConfig
   api-requests/        Golden record test XML templates
 integration/
-  profiles/            28 JSON request/response profiles (14 message actions × 2)
-  scripts/             7 Groovy scripts (dependency traversal, sorting, stripping, validation, rewriting, XML normalization, test deployment filtering)
-  api-requests/        20 XML/JSON Platform API templates (Component CRUD, PackagedComponent, DeployedPackage, IntegrationPack, Branch, MergeRequest)
+  profiles/            38 JSON request/response profiles (19 message actions × 2)
+  scripts/             10 Groovy scripts (dependency traversal, sorting, stripping, validation, rewriting, XML normalization, test deployment filtering, extension access cache, connection stripping for copy, extension data merging)
+  api-requests/        28 XML/JSON Platform API templates (Component CRUD, PackagedComponent, DeployedPackage, IntegrationPack, Branch, MergeRequest, Environment Extensions, Map Extensions)
   flow-service/        Flow Service specification (message actions, config, error codes)
 flow/
-  flow-structure.md    App structure — 3 swimlanes, 9 pages, Flow values, navigation
-  page-layouts/        9 page specs (Package Browser, Promotion Review, Status, Deployment, Peer Review Queue, Peer Review Detail, Admin Approval Queue, Mapping Viewer, Production Readiness)
-  custom-components/   Custom React component specs (XmlDiffViewer)
+  flow-structure.md    App structure — 3 swimlanes, 11 pages, Flow values, navigation
+  page-layouts/        11 page specs (Package Browser, Promotion Review, Status, Deployment, Peer Review Queue, Peer Review Detail, Admin Approval Queue, Mapping Viewer, Production Readiness, Extension Manager, Extension Copy Confirmation)
+  custom-components/   Custom React component specs (XmlDiffViewer, ExtensionEditor)
 docs/
   architecture.md      System design, decisions, constraints, error handling
-  build-guide/         22 focused build-step files + index (split from BUILD-GUIDE.md)
+  build-guide/         26 focused build-step files + index (split from BUILD-GUIDE.md)
 ```
 
 ## Key Files to Start With
 
 1. `docs/architecture.md` — system design and key decisions
-2. `docs/build-guide/index.md` — the implementation playbook (6 phases, 22 focused files)
-3. `integration/flow-service/flow-service-spec.md` — complete API contract for all 14 message actions
+2. `docs/build-guide/index.md` — the implementation playbook (6 phases, 26 focused files)
+3. `integration/flow-service/flow-service-spec.md` — complete API contract for all 19 message actions
 4. `flow/flow-structure.md` — dashboard navigation, Flow values, swimlanes
 
 ## Groovy Scripts
@@ -83,18 +88,23 @@ Located in `integration/scripts/`, these run as Data Process steps inside Integr
 | `rewrite-references.groovy` | Process C | Replace dev component IDs with prod IDs using mapping cache |
 | `normalize-xml.groovy` | Process G | Pretty-print component XML for consistent line-by-line diff comparison |
 | `filter-already-promoted.groovy` | Process E4 | Exclude test deployments already promoted to production |
+| `build-extension-access-cache.groovy` | Process D | Build ExtensionAccessMapping records from extensions + ComponentMapping + DevAccountAccess |
+| `strip-connections-for-copy.groovy` | Process N | Remove connections + PGP sections for Test-to-Prod copy |
+| `merge-extension-data.groovy` | Process L | Merge env extensions + map summaries + access mappings |
 
 ## DataHub Models
 
 - **ComponentMapping** — dev→prod component ID mapping. Match: `devComponentId` + `devAccountId`. Sources: `PROMOTION_ENGINE`, `ADMIN_SEEDING`
 - **DevAccountAccess** — SSO group → dev account access control. Match: `ssoGroupId` + `devAccountId`. Source: `ADMIN_CONFIG`
 - **PromotionLog** — audit trail per promotion run. Match: `promotionId`. Source: `PROMOTION_ENGINE`
+- **ExtensionAccessMapping** — cached authorization chain for extension editing. Match: `environmentId` + `prodComponentId`. Source: `PROMOTION_ENGINE`
+- **ClientAccountConfig** — client account registry with environment mapping. Match: `clientAccountId` + `ssoGroupId`. Source: `ADMIN_CONFIG`
 
 ## Conventions
 
 - **Commit messages**: conventional commits — `feat(scope):`, `fix(scope):`, `docs:`, etc.
 - **Spec files**: Markdown for documentation, JSON for data models/profiles, XML for API request templates, Groovy for scripts
-- **Naming**: processes use letter codes (A0, A–G, E5, J); message actions use camelCase (`getDevAccounts`, `executePromotion`, `withdrawPromotion`)
+- **Naming**: processes use letter codes (A0, A–G, E2–E5, J, K–O); message actions use camelCase (`getDevAccounts`, `executePromotion`, `withdrawPromotion`)
 - **Error codes**: uppercase snake_case (`MISSING_CONNECTION_MAPPINGS`, `COMPONENT_NOT_FOUND`, `BRANCH_LIMIT_REACHED`)
 - **SSO group names** — always use claim format `ABC_BOOMI_FLOW_CONTRIBUTOR`, `ABC_BOOMI_FLOW_ADMIN`, etc. Never use display format (`"Boomi Developers"`) as authorization values
 - **Branch limits** — operational threshold is 15, platform hard limit is 20. Grep for stale values (10, 18) when editing branch-related content
@@ -103,7 +113,7 @@ Located in `integration/scripts/`, these run as Data Process steps inside Integr
 ## Working with the Build Guide
 
 - **Count references are scattered** — when changing component counts (processes, profiles, pages, actions, types), grep `docs/build-guide/`, `.claude/skills/`, `.claude/rules/`, and `CHANGELOG.md` for stale numbers. Key files: `00-overview.md`, `index.md`, `14-flow-service.md`, `15-flow-dashboard-developer.md`, `18-troubleshooting.md`, `19-appendix-naming-and-inventory.md`, `22-api-automation-guide.md`
-- **Current component counts** (verify before editing): 85 total — 3 models, 2 connections, 19 HTTP ops, 6 DH ops, 26 profiles, 12 processes, 13 FSS ops, 1 Flow Service, 1 custom component, 1 Flow connector, 1 Flow app, 7 scripts, 20 API request templates
+- **Current component counts** (verify before editing): 124 total — 5 models, 2 connections, 27 HTTP ops, 10 DH ops, 38 profiles, 18 processes, 19 FSS ops, 1 Flow Service, 2 custom components, 1 Flow connector, 1 Flow app, 10 scripts, 28 API request templates
 - **BOM total must be recomputed** — the total in `00-overview.md` drifts when individual row counts change. Always sum the rows: Models + Connections + HTTP Ops + DH Ops + Profiles + Processes + FSS Ops + Flow Service + Custom Component + Flow Connector + Flow App
 - **Spec files are source of truth** — `datahub/models/*.json`, `integration/profiles/*.json`, `flow/flow-structure.md`, and `flow/page-layouts/` define the system. Build guide docs must match them.
 - **Nav footer pattern** — every build guide file ends with `Prev: [...] | Next: [...] | [Back to Index](index.md)`
