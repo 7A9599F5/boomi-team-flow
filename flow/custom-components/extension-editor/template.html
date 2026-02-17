@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ExtensionEditor — Local Dev</title>
+
+    <!-- Flow player provides React globally -->
+    <script crossorigin src="https://unpkg.com/react@16.12.0/umd/react.development.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@16.12.0/umd/react-dom.development.js"></script>
+
+    <!-- Minimal manywho stub for local testing -->
+    <script>
+        window.manywho = window.manywho || {};
+        window.manywho.component = window.manywho.component || {};
+        window.manywho.component.register = function (name, component) {
+            console.log('[Flow stub] Registered component:', name);
+            window.__registeredComponents = window.__registeredComponents || {};
+            window.__registeredComponents[name] = component;
+        };
+        window.manywho.model = window.manywho.model || {
+            getComponent: function () { return {}; },
+        };
+        window.manywho.state = window.manywho.state || {
+            getComponent: function () { return {}; },
+        };
+        window.manywho.styling = window.manywho.styling || {
+            getClasses: function () { return []; },
+        };
+    </script>
+</head>
+<body>
+    <div id="root" style="max-width: 1400px; margin: 0 auto; padding: 20px;">
+        <h2>ExtensionEditor — Local Development</h2>
+        <p>Component registered via <code>manywho.component.register()</code>. Check console for registration.</p>
+        <div id="extension-editor-mount"></div>
+    </div>
+
+    <script>
+        // Sample extension data matching Boomi EnvironmentExtensions API shape
+        var sampleExtensionData = JSON.stringify({
+            accountId: "ABC-DEV-PROD",
+            environmentId: "env-prod-001",
+            environmentName: "Production",
+            connections: {
+                "conn-abc-123": {
+                    name: "Salesforce CRM Connection",
+                    extensionGroupId: "grp-sfdc",
+                    properties: {
+                        "host": { name: "Host", value: "", useDefault: true, encrypted: false },
+                        "username": { name: "Username", value: "api-user@company.com", useDefault: false, encrypted: false },
+                        "password": { name: "Password", value: "***", useDefault: false, encrypted: true }
+                    }
+                },
+                "conn-def-456": {
+                    name: "SAP ERP Connection",
+                    extensionGroupId: "grp-sap",
+                    properties: {
+                        "host": { name: "Host", value: "sap.prod.internal", useDefault: false, encrypted: false },
+                        "port": { name: "Port", value: "8443", useDefault: false, encrypted: false }
+                    }
+                }
+            },
+            operations: {
+                "op-xyz-789": {
+                    name: "Get Orders Operation",
+                    extensionGroupId: "grp-orders",
+                    properties: {
+                        "maxRecords": { name: "Max Records", value: "500", useDefault: false, encrypted: false },
+                        "timeout": { name: "Timeout (ms)", value: "", useDefault: true, encrypted: false }
+                    }
+                }
+            },
+            processProperties: {
+                "pp-env-001": {
+                    name: "BASE_URL",
+                    value: "https://api.prod.company.com",
+                    useDefault: false,
+                    encrypted: false
+                },
+                "pp-env-002": {
+                    name: "API_KEY",
+                    value: "***",
+                    useDefault: false,
+                    encrypted: true
+                }
+            }
+        });
+
+        // Sample access mappings — which processes use which extensions
+        var sampleAccessMappings = JSON.stringify([
+            {
+                processId: "proc-order-001",
+                processName: "Order Processing",
+                extensionIds: ["conn-abc-123", "op-xyz-789", "pp-env-001", "pp-env-002"],
+                adminOnly: false
+            },
+            {
+                processId: "proc-invoice-002",
+                processName: "Invoice Generation",
+                extensionIds: ["conn-abc-123", "conn-def-456"],
+                adminOnly: false
+            },
+            {
+                processId: "proc-sap-003",
+                processName: "SAP Integration",
+                extensionIds: ["conn-def-456", "pp-env-001"],
+                adminOnly: true
+            }
+        ]);
+
+        document.addEventListener('DOMContentLoaded', function () {
+            if (window.__registeredComponents && window.__registeredComponents['ExtensionEditor']) {
+                var Component = window.__registeredComponents['ExtensionEditor'];
+                var mockProps = {
+                    id: 'test-extension-editor',
+                    flowKey: 'test-flow-key',
+                    objectData: [
+                        {
+                            internalId: 'data-1',
+                            externalId: 'ext-1',
+                            developerName: 'ExtensionEditorData',
+                            properties: [
+                                { developerName: 'extensionData', contentValue: sampleExtensionData, contentType: 'ContentString', objectData: null },
+                                { developerName: 'accessMappings', contentValue: sampleAccessMappings, contentType: 'ContentString', objectData: null },
+                                { developerName: 'isAdmin', contentValue: 'true', contentType: 'ContentBoolean', objectData: null },
+                                { developerName: 'userSsoGroups', contentValue: 'ABC_BOOMI_FLOW_ADMIN', contentType: 'ContentString', objectData: null }
+                            ]
+                        }
+                    ]
+                };
+                ReactDOM.render(
+                    React.createElement(Component, mockProps),
+                    document.getElementById('extension-editor-mount')
+                );
+            }
+        });
+    </script>
+</body>
+</html>
