@@ -58,6 +58,7 @@ integration/
   profiles/            38 JSON request/response profiles (19 message actions × 2)
   scripts/             10 Groovy scripts (dependency traversal, sorting, stripping, validation, rewriting, XML normalization, test deployment filtering, extension access cache, connection stripping for copy, extension data merging)
   api-requests/        27 XML/JSON Platform API templates (Component CRUD, PackagedComponent, DeployedPackage, IntegrationPack, Branch, MergeRequest, Environment Extensions, Map Extensions)
+    component-types/   13 per-type <bns:object> XML reference examples (process, profiles, connectors, maps, scripts, etc.)
   flow-service/        Flow Service specification (message actions, config, error codes)
 flow/
   flow-structure.md    App structure — 3 swimlanes, 11 pages, Flow values, navigation
@@ -99,6 +100,26 @@ Located in `integration/scripts/`, these run as Data Process steps inside Integr
 - **PromotionLog** — audit trail per promotion run. Match: `promotionId`. Source: `PROMOTION_ENGINE`
 - **ExtensionAccessMapping** — cached authorization chain for extension editing. Match: `environmentId` + `prodComponentId`. Source: `PROMOTION_ENGINE`
 - **ClientAccountConfig** — client account registry with environment mapping. Match: `clientAccountId` + `ssoGroupId`. Source: `ADMIN_CONFIG`
+
+## Boomi Component API Type Values
+
+When working with Component CRUD templates (`create-component.xml`, `update-component.xml`, `get-component.xml`), the `type` attribute on `<bns:Component>` uses these values. Per-type `<bns:object>` XML examples are in `integration/api-requests/component-types/`.
+
+| Component | API `type` value | Inner XML root | Promoted? |
+|-----------|-----------------|----------------|-----------|
+| Process | `process` | `<process>` | Yes |
+| JSON Profile | `profile.json` | `<JSONProfile>` | Yes |
+| XML Profile | `profile.xml` | `<XMLProfile>` | Yes |
+| Flat File Profile | `profile.flatfile` | `<FlatFileProfile>` | Yes |
+| EDI Profile | `profile.edi` | `<EDIProfile>` | Yes |
+| Database Profile | `profile.db` | `<DatabaseProfile>` | Yes |
+| Connection | `connector-settings` | `<GenericConnectorConfig>` | **No** |
+| Connector Operation | `connector-action` | `<GenericConnectorConfig>` | Yes |
+| Map | `map` | `<map>` | Yes |
+| Map Script | `scripting` (scriptType=mapscript) | `<scripting>` | Yes |
+| Process Script | `scripting` (scriptType=processscript) | `<scripting>` | Yes |
+| Process Route | `processroute` | `<processRoute>` | Yes |
+| Cross Ref Table | `crossref` | `<CrossRefTable>` | Yes |
 
 ## Conventions
 
