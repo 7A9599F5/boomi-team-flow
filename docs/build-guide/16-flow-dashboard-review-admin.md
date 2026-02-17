@@ -58,14 +58,16 @@ Admin authenticates via SSO ("Boomi Admins" group) and reviews promotions that h
 5. **Admin Comments** textarea below the detail panel. Optional, max 500 characters.
 5.5. **Hotfix Acknowledgment Checkbox** (conditional, shown when `isHotfix = "true"`): Required checkbox labeled "I acknowledge this is an emergency hotfix bypassing the test environment." Must be checked before the "Approve and Deploy" button is enabled. Positioned between the admin comments and the approve button.
 6. **"Approve and Deploy"** button (green, enabled when a row is selected):
+   - **Self-approval guard (UI-level):** Add a Decision step comparing `$User/Email` (lowercase) with `selectedPromotion.initiatedBy` (lowercase). If equal, show error banner: "You cannot approve your own promotion. A different admin must approve." The backend (Process D step 2.1) enforces this independently as defense-in-depth.
    - Confirmation modal summarizing process name, version, target, component count
    - On confirm: Message step with action = `packageAndDeploy`, inputs = `promotionId` + `deploymentRequest` + `adminComments` + `approvedBy`, outputs = `deploymentResults` + `deploymentId`
-   - Decision step: check success; display results or error
+   - Decision step: check success; handle `SELF_APPROVAL_NOT_ALLOWED` error specifically with a user-friendly message; display other results or errors
    - On success: Send approval email to **submitter + peer reviewer** (subject: `"Approved & Deployed: {processName} v{packageVersion}"`), refresh the approval queue
 7. **"Deny"** button (red, enabled when a row is selected):
    - Denial reason modal with required textarea
-   - On confirm: Update promotion status to ADMIN_REJECTED, send denial email to **submitter + peer reviewer** (subject: `"Admin Denied: {processName} v{packageVersion}"`, body includes denial reason and admin comments), refresh the queue
+   - On confirm: Delete the promotion branch (`DELETE /Branch/{branchId}` — 200 = deleted, 404 = already deleted, both are success), update promotion status to `ADMIN_REJECTED` with `branchId = null`, send denial email to **submitter + peer reviewer** (subject: `"Admin Denied: {processName} v{packageVersion}"`, body includes denial reason and admin comments), refresh the queue
 8. **"View Component Mappings"** link in the page header: Navigate to Page 8.
+9. **"View Production Readiness"** link (optional): Navigate to Page 9 (Production Readiness Queue) to see test deployments ready for production promotion. This provides a direct entry point for admins to review test deployment status.
 
 #### Page 8: Mapping Viewer (Admin Swimlane)
 
@@ -106,37 +108,17 @@ Admin views and manages dev-to-prod component ID mappings stored in the DataHub.
    - **Note**: The Peer Review Swimlane accepts both groups (OR logic). Any developer or admin can peer-review, but self-review is prevented at the backend level.
 4. Save the Identity connector configuration.
 
-### Step 5.4 -- Wire Navigation
-
-Connect all pages via Outcome elements on the Flow canvas.
-
-1. **Flow start** -> Page 1 (Package Browser) in the Developer swimlane.
-2. **Page 1** "Review for Promotion" button outcome -> Page 2 (Promotion Review).
-3. **Page 2** "Promote" button (after `executePromotion` Message step + success Decision) -> Page 3 (Promotion Status).
-4. **Page 2** "Cancel" button outcome -> Page 1.
-5. **Page 3** "Submit for Integration Pack Deployment" button outcome -> Page 4 (Deployment Submission).
-6. **Page 3** "Done" button outcome -> End flow.
-7. **Page 4** "Submit for Peer Review" button outcome -> Swimlane transition (Developer -> Peer Review) -> Page 5 (Peer Review Queue).
-8. **Page 4** "Cancel" button outcome -> Page 3.
-9. **Page 5** Row select -> Decision (self-review check) -> Page 6 (Peer Review Detail).
-10. **Page 6** "Approve" (after `submitPeerReview` success with decision=APPROVED) -> Swimlane transition (Peer Review -> Admin) -> Page 7 (Admin Approval Queue).
-11. **Page 6** "Reject" (after `submitPeerReview` success with decision=REJECTED) -> Email to submitter -> End flow.
-12. **Page 6** "Back to Peer Review Queue" link outcome -> Page 5.
-13. **Page 7** "Approve and Deploy" (after `packageAndDeploy` success) -> Refresh queue / End flow.
-14. **Page 7** "Deny" (after denial confirmation) -> Refresh queue / End flow.
-15. **Page 7** "View Component Mappings" link outcome -> Page 8 (Mapping Viewer).
-16. **Page 8** "Back to Admin Approval Queue" link outcome -> Page 7.
-
-For every Decision step, wire the **failure outcome** to a shared Error Page that displays `{responseObject.errorMessage}` with Back, Retry, and Home buttons.
+**Note:** The complete navigation wiring for all 9 pages (Step 5.4) is in [Phase 5a: Flow Dashboard — Developer Swimlane](15-flow-dashboard-developer.md). Refer to that file for the full canvas wiring checklist including Page 9 (Production Readiness Queue) navigation.
 
 **Verify:**
 
 1. Open the published Flow application URL in a browser.
-2. **Developer flow**: Authenticate as a user in the `Boomi Developers` SSO group. Select a dev account, browse packages, select a package, click "Review for Promotion", review the dependency tree, click "Promote to Primary Account", confirm, wait for results on the status page, and click "Submit for Integration Pack Deployment". Fill out the deployment form and submit. Confirm you see the "Submitted for peer review!" message and receive a confirmation email.
-3. **Peer review flow**: Authenticate as a **different** user in the `Boomi Developers` or `Boomi Admins` SSO group (or follow the link from the notification email). Verify the pending review appears in the Peer Review Queue (Page 5). Confirm the submitter's own submissions do NOT appear. Select the review, examine the detail page (Page 6), add comments, and click "Approve — Send to Admin Review". Confirm the success message and that both the admin group and submitter receive emails. Also test rejection: select a different review, reject with a reason, and verify the submitter receives the rejection email.
-4. **Self-review prevention**: Authenticate as the **same user who submitted**. Verify their own promotion does NOT appear in the Peer Review Queue.
-5. **Admin flow**: Authenticate as a user in the `Boomi Admins` SSO group (or follow the link from the peer approval email). Verify the peer-approved request appears in the Admin Approval Queue (Page 7) with the "Peer Reviewed By" column populated. Select it, review the detail panel including peer review information, add admin comments, and click "Approve and Deploy". Confirm the deployment succeeds and both the submitter and peer reviewer receive approval emails. Repeat with a denial to verify the denial flow and email.
+2. **Peer review flow**: Authenticate as a user in the `Boomi Developers` or `Boomi Admins` SSO group (different from the submitter). Verify the pending review appears in the Peer Review Queue (Page 5). Confirm the submitter's own submissions do NOT appear. Select the review, examine the detail page (Page 6), add comments, and click "Approve — Send to Admin Review". Confirm the success message and that both the admin group and submitter receive emails. Also test rejection: select a different review, reject with a reason, and verify the submitter receives the rejection email.
+3. **Self-review prevention**: Authenticate as the **same user who submitted**. Verify their own promotion does NOT appear in the Peer Review Queue.
+4. **Admin flow**: Authenticate as a user in the `Boomi Admins` SSO group (or follow the link from the peer approval email). Verify the peer-approved request appears in the Admin Approval Queue (Page 7) with the "Peer Reviewed By" column populated. Select it, review the detail panel including peer review information, add admin comments, and click "Approve and Deploy". Confirm the deployment succeeds and both the submitter and peer reviewer receive approval emails. Repeat with a denial to verify the denial flow and email.
+5. **Self-approval prevention**: Authenticate as the **same admin who submitted the original promotion**. Click "Approve and Deploy" and verify the backend returns `SELF_APPROVAL_NOT_ALLOWED` error. A different admin must approve.
 6. **Mapping Viewer**: From the Admin Approval Queue, click "View Component Mappings". Verify mappings load in the grid, filters work, CSV export downloads, and manual mapping create/update/delete operations succeed.
+7. **Production Readiness**: From Page 7, click "View Production Readiness" to navigate to Page 9. Verify test deployments are listed and the "Promote to Production" button navigates to Page 4 in production-from-test mode.
 
 ---
 

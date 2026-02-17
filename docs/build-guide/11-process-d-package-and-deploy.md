@@ -49,7 +49,8 @@ Create `PROMO - FSS Op - PackageAndDeploy` per Section 3.B, using `PROMO - Profi
 |----------|--------------|---------|
 | `branchId` | (from request) | Promotion branch to merge before packaging |
 | `promotionId` | (from request) | Promotion run ID for PromotionLog updates |
-| `mergeRequestId` | (set in step 2.5) | Merge request ID for execute and polling |
+| `mergeRequestId` | (set in step 2.5) | Merge request ID for merge execute and polling |
+| `adminEmail` | (from request context) | Admin user's email for self-approval check |
 | `packagedComponentId` | (set in step 3) | Created PackagedComponent ID |
 | `deploymentTarget` | (from request) | `"TEST"` or `"PRODUCTION"` |
 | `isHotfix` | (from request) | Emergency hotfix flag |
@@ -78,18 +79,25 @@ Create `PROMO - FSS Op - PackageAndDeploy` per Section 3.B, using `PROMO - Profi
    - DPP `testIntegrationPackId` = document path: `testIntegrationPackId`
    - DPP `testIntegrationPackName` = document path: `testIntegrationPackName`
 
-2.1. **Decision — Deployment Mode**
+2.1. **Admin Self-Approval Prevention**
+   - Before proceeding to any deployment mode, validate that the admin submitting the deployment did not initiate the original promotion.
+   - Query PromotionLog for the `promotionId` to retrieve the `initiatedBy` field.
+   - Compare: `adminEmail.toLowerCase() != initiatedBy.toLowerCase()`.
+   - If the same person: return error with `errorCode = "SELF_APPROVAL_NOT_ALLOWED"`, `errorMessage = "Admin cannot approve and deploy their own promotion"`. Do not proceed.
+   - This is a backend enforcement in addition to the UI-level Decision step on Page 7.
+
+2.2. **Decision — Deployment Mode**
    - The process supports 3 deployment modes based on `deploymentTarget`, `testPromotionId`, and `isHotfix`:
      - **Mode 1 — TEST** (`deploymentTarget = "TEST"`): Merge → package → deploy to test, preserve branch, update PromotionLog with test status
      - **Mode 2 — PRODUCTION from test** (`deploymentTarget = "PRODUCTION"` AND `testPromotionId` is non-empty): Skip merge (content already on main from test), package from main → deploy to production, delete branch
      - **Mode 3 — PRODUCTION hotfix** (`deploymentTarget = "PRODUCTION"` AND `isHotfix = "true"`): Merge → package → deploy to production, delete branch, flag as hotfix
    - Use a Decision shape on DPP `deploymentTarget`:
-     - **`TEST`** branch → step 2.2 (test-specific pre-processing)
+     - **`TEST`** branch → step 2.3 (test-specific pre-processing)
      - **`PRODUCTION`** branch → Decision on DPP `testPromotionId`:
        - Non-empty → step 2.4 (skip merge, jump to step 3)
        - Empty (hotfix) → step 2.5 (merge as normal)
 
-2.2. **TEST Mode Pre-Processing**
+2.3. **TEST Mode Pre-Processing**
    - No additional pre-processing needed — proceed to step 2.5 (merge) as normal
    - After merge + package + deploy, the process will:
      - Preserve the branch (skip step 8.5 DELETE)
@@ -204,6 +212,30 @@ Wrap the entire process (steps 2.5-8.5) in a **Try/Catch**:
 - **Integration Pack failure**: attempt `DELETE /Branch/{branchId}`, return error with `errorCode = "PROMOTION_FAILED"`
 - **Deployment failure**: per-environment — mark individual environments as failed in the `deployedEnvironments` array, but continue deploying to remaining environments. Set `deploymentStatus = "PARTIAL"`. Branch is still deleted in step 8.5 (after the deployment loop).
 - **Catch block**: In all catastrophic failure cases, attempt `DELETE /Branch/{branchId}` before returning the error response. Log delete failures but do not mask the original error.
+
+#### Branch Deletion on Rejection/Denial
+
+Promotion branches must be cleaned up not only on successful deployment but also when a promotion is rejected or denied. Without cleanup, rejected promotions leave orphaned branches that count against the platform branch limit (15 operational threshold, 20 hard limit).
+
+**Peer Rejection Path (Process E3 records PEER_REJECTED):**
+
+When Process E3 records a `PEER_REJECTED` decision:
+1. After updating the PromotionLog with `peerReviewStatus = "PEER_REJECTED"`, retrieve the `branchId` from the PromotionLog record.
+2. Call `DELETE /Branch/{branchId}` using `PROMO - HTTP Op - DELETE Branch` with URL parameter `{1}` = DPP `primaryAccountId`, `{2}` = the promotion's `branchId`.
+3. Handle responses: `200` = deleted successfully, `404` = branch already deleted (both are success).
+4. Update PromotionLog: set `branchId` = `null` to reflect that the branch no longer exists.
+5. Log delete failures but do not fail the peer review response — the review decision has already been recorded.
+
+**Admin Denial Path (Page 7 denial):**
+
+When an admin denies the deployment at Page 7:
+1. Before marking the promotion as `ADMIN_REJECTED`, retrieve the `branchId` from the PromotionLog record.
+2. Call `DELETE /Branch/{branchId}` using `PROMO - HTTP Op - DELETE Branch` with URL parameter `{1}` = DPP `primaryAccountId`, `{2}` = the promotion's `branchId`.
+3. Handle responses: `200` = deleted successfully, `404` = branch already deleted (both are success).
+4. Update PromotionLog: set `status = "ADMIN_REJECTED"`, `branchId` = `null`, `adminComments` = denial reason.
+5. Log delete failures but do not fail the denial response — the rejection decision takes priority.
+
+---
 
 **Verify — 3 deployment modes:**
 

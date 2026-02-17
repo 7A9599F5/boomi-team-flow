@@ -103,12 +103,12 @@ The `strip-env-config.groovy` script strips these elements by clearing their tex
 Three conditions must be met: (1) The atom must be running (check Runtime Management, Atom Status). (2) The `PROMO - Flow Service` must be deployed as a Packaged Component to the atom. (3) The atom must be a public Boomi cloud atom (not a private cloud or local atom). Private atoms cannot receive inbound Flow Service requests.
 
 **"Operation not found in Flow Service"**
-Each FSS Operation must be linked in the Message Actions tab of the `PROMO - Flow Service` component. Verify all 11 operations are listed: `PROMO - FSS Op - GetDevAccounts`, `PROMO - FSS Op - ListDevPackages`, `PROMO - FSS Op - ResolveDependencies`, `PROMO - FSS Op - ExecutePromotion`, `PROMO - FSS Op - PackageAndDeploy`, `PROMO - FSS Op - QueryStatus`, `PROMO - FSS Op - ManageMappings`, `PROMO - FSS Op - QueryPeerReviewQueue`, `PROMO - FSS Op - SubmitPeerReview`, `PROMO - FSS Op - ListIntegrationPacks`, `PROMO - FSS Op - GenerateComponentDiff`. If an operation is missing from the list, add it, re-save, re-package, and re-deploy.
+Each FSS Operation must be linked in the Message Actions tab of the `PROMO - Flow Service` component. Verify all 12 operations are listed: `PROMO - FSS Op - GetDevAccounts`, `PROMO - FSS Op - ListDevPackages`, `PROMO - FSS Op - ResolveDependencies`, `PROMO - FSS Op - ExecutePromotion`, `PROMO - FSS Op - PackageAndDeploy`, `PROMO - FSS Op - QueryStatus`, `PROMO - FSS Op - ManageMappings`, `PROMO - FSS Op - QueryPeerReviewQueue`, `PROMO - FSS Op - SubmitPeerReview`, `PROMO - FSS Op - ListIntegrationPacks`, `PROMO - FSS Op - GenerateComponentDiff`, `PROMO - FSS Op - QueryTestDeployments`. If an operation is missing from the list, add it, re-save, re-package, and re-deploy.
 
 **"Configuration value not set"**
 The `primaryAccountId` configuration value must be set after deployment via component configuration (Manage, Deployed Components, select the Flow Service, Configuration tab). This value is NOT set at build time -- it is set per deployment. If this value is empty, all HTTP operations using `{1}` in their URL will fail.
 
-**Diagnostic:** Check Runtime Management, Listeners tab. All 11 processes should appear as active listeners. If fewer than 11 appear, verify each FSS Operation is correctly linked and the deployment is current.
+**Diagnostic:** Check Runtime Management, Listeners tab. All 12 processes should appear as active listeners. If fewer than 12 appear, verify each FSS Operation is correctly linked and the deployment is current.
 
 ---
 
@@ -143,6 +143,65 @@ Verify Process C uses POST Component Update (`PROMO - HTTP Op - POST Component U
 
 **"State not restored after browser close"**
 Flow uses IndexedDB for client-side state caching. Verify the browser allows IndexedDB (some privacy modes disable it). The Integration process continues executing regardless of browser state -- the Flow Service is asynchronous. Reopening the same Flow URL should restore state. If it does not, check that the Flow is using the correct state ID in the URL hash.
+
+---
+
+---
+
+### Multi-Environment Deployment Issues
+
+**"Test deployment fails — atom not responding"**
+Verify the test environment's atom is running and accessible. Navigate to Runtime Management, Atom Status and check the test atom. If the atom is stopped or unreachable, restart it. Also verify the `environmentId` passed in the `targetEnvironments` array matches an actual environment associated with the test atom. Mismatched environment IDs cause silent deployment failures.
+
+**"Test deployment succeeds but wrong environment"**
+The `targetEnvironments` array in the `packageAndDeploy` request must contain the correct test environment ID. If a production environment ID is passed with `deploymentTarget = "TEST"`, the deployment will target the wrong environment. Always verify the environment ID matches the intended deployment target. The PromotionLog `targetEnvironment` field reflects the deployment mode, not which environment was targeted.
+
+**"Branch deleted prematurely before production promotion"**
+When deploying from test to production (`deploymentTarget = "PRODUCTION"` with `testPromotionId`), Process D expects the promotion branch to still exist. If the branch was manually deleted or cleaned up by a stale branch cleanup process, the production deployment will fail. Verify the branch exists via `GET /Branch/{branchId}` before initiating production promotion. If the branch is gone, the developer must re-execute the full promotion (Process C) and test deployment cycle.
+
+**"queryTestDeployments returns stale entries"**
+Process E4 queries PromotionLog for `targetEnvironment = "TEST"` AND `status = "TEST_DEPLOYED"` records without a matching production promotion. If a test deployment's branch has been manually deleted but the PromotionLog was not updated, the entry will still appear in the queue. Verify branch existence before promoting from the test queue. If the branch no longer exists, update the PromotionLog status to `TEST_DEPLOY_FAILED` to remove it from the queue.
+
+**"Hotfix deployment rejected — missing justification"**
+When `deploymentTarget = "PRODUCTION"` and `isHotfix = true`, the `hotfixJustification` field is required. If omitted, Process D returns `errorCode = HOTFIX_JUSTIFICATION_REQUIRED`. The Flow dashboard enforces this via a required text field on the hotfix submission page, but direct API calls may omit it. Always include a meaningful justification (up to 1000 characters).
+
+**"Hotfix with dependencies not present in production"**
+Emergency hotfixes bypass test deployment. If the hotfixed process references components that have never been promoted to production (no ComponentMapping records exist), the promotion will fail with `MISSING_CONNECTION_MAPPINGS` or `COMPONENT_NOT_FOUND`. Before submitting a hotfix, verify all dependencies have existing production mappings. If not, either seed the missing mappings via `manageMappings` or follow the standard test-to-production path instead.
+
+**"Production promotion fails — TEST_PROMOTION_NOT_FOUND"**
+When deploying from test to production, the `testPromotionId` must reference a valid PromotionLog record with `status = "TEST_DEPLOYED"`. If the referenced promotion has a different status (e.g., `TEST_DEPLOY_FAILED`) or does not exist, Process D returns `errorCode = TEST_PROMOTION_NOT_FOUND`. Verify the test promotion status before submitting for production.
+
+---
+
+### Error Code Cross-Reference
+
+Complete mapping of all error codes to their source processes, causes, and resolutions.
+
+| Error Code | Process(es) | Cause | Resolution |
+|------------|-------------|-------|------------|
+| `AUTH_FAILED` | All | API authentication failed — invalid or expired API token | Verify API token in HTTP Client connection; rotate if expired (see Token Rotation Procedure in flow-service-spec) |
+| `ACCOUNT_NOT_FOUND` | A, A0 | Dev account ID does not exist or is not a sub-account of the primary account | Verify `devAccountId` is a valid sub-account; check Partner API access |
+| `COMPONENT_NOT_FOUND` | B, C, G | Referenced component ID does not exist in the target account | Verify component exists in the dev account; check for renamed or deleted components |
+| `DATAHUB_ERROR` | E, E2, E3, E4, F | DataHub query or update operation failed | Check DataHub model deployment status; verify the model is Published and Deployed to the repository |
+| `API_RATE_LIMIT` | All (API calls) | Partner API rate limit exceeded (approximately 10 req/s) | Wait and retry; ensure 120ms gap between consecutive calls; check for parallel processes creating excessive load |
+| `DEPENDENCY_CYCLE` | B | Circular dependency detected during BFS traversal | Review component references in the dev account; break the circular reference |
+| `INVALID_REQUEST` | All | Request validation failed — missing required fields or invalid field values | Check required fields in the flow-service-spec for the specific action |
+| `PROMOTION_FAILED` | C | Component promotion failed during branch creation or component write | Review `errorMessage` for specific failure details; check component XML validity |
+| `PROMOTION_IN_PROGRESS` | C | Another promotion is already running for the same dev account (concurrency guard) | Wait for the current promotion to complete before starting a new one |
+| `DEPLOYMENT_FAILED` | D | Environment deployment failed — atom unreachable or environment invalid | Verify target environment exists and atom is running; check environment associations |
+| `MISSING_CONNECTION_MAPPINGS` | C | One or more connection references lack prod mappings in DataHub | Admin seeds missing mappings via `manageMappings` action or Mapping Viewer (Page 8); `missingConnectionMappings` array in response lists the specific missing mappings |
+| `BRANCH_LIMIT_REACHED` | C | 15+ active promotion branches exist in the primary account | Clean up completed branches; wait for pending reviews to complete; admin can delete stale branches via Platform API |
+| `SELF_REVIEW_NOT_ALLOWED` | E3 | Reviewer email matches promotion initiator email (case-insensitive) | A different team member must perform the peer review |
+| `ALREADY_REVIEWED` | E3 | Promotion has already been peer-reviewed (`peerReviewStatus` is not `PENDING_PEER_REVIEW`) | No action needed; check current promotion status via `queryStatus` |
+| `INVALID_REVIEW_STATE` | E3 | Promotion is not in the expected state for the review action (e.g., still IN_PROGRESS or already FAILED) | Verify the promotion completed successfully and is in PENDING_PEER_REVIEW status |
+| `INSUFFICIENT_TIER` | A0, C | User's SSO groups do not include a dashboard-access tier group | User must be assigned `ABC_BOOMI_FLOW_CONTRIBUTOR` or `ABC_BOOMI_FLOW_ADMIN` group in Azure AD/Entra |
+| `SELF_APPROVAL_NOT_ALLOWED` | D | Admin email matches the promotion initiator email (case-insensitive) | A different admin must approve and deploy the promotion |
+| `MERGE_FAILED` | D | Branch merge request returned `MERGE_FAILED` status | Review merge error details; may indicate conflicting changes on main; check branch status via `GET /Branch/{branchId}` |
+| `MERGE_TIMEOUT` | D | Merge request did not complete within 60 seconds (12 polling attempts at 5s intervals) | Retry the deployment; if persistent, check platform status and branch state manually |
+| `TEST_DEPLOY_FAILED` | D | Test environment deployment failed | Check test environment atom status; verify environment ID; retry the test deployment |
+| `HOTFIX_JUSTIFICATION_REQUIRED` | D | Emergency hotfix submitted without justification text | Provide `hotfixJustification` field (up to 1000 characters) in the request |
+| `INVALID_DEPLOYMENT_TARGET` | D | `deploymentTarget` field is not `"TEST"` or `"PRODUCTION"` | Correct the `deploymentTarget` value in the request |
+| `TEST_PROMOTION_NOT_FOUND` | D | `testPromotionId` references a non-existent or non-`TEST_DEPLOYED` promotion | Verify the test promotion exists and is in `TEST_DEPLOYED` status before promoting to production |
 
 ---
 

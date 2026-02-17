@@ -42,21 +42,36 @@ All models MUST include a `source` field to track record origin.
 
 ## Golden Record API Request XML Format
 
-### Standard Structure
+### Batch Upsert Structure
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
-<bns:SourceRecords xmlns:bns="..." xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
-  <bns:SourceRecord>
-    <bns:ModelFieldName1>value1</bns:ModelFieldName1>
-    <bns:ModelFieldName2>value2</bns:ModelFieldName2>
+<batch src="SOURCE_NAME">
+  <ModelName>
+    <fieldName1>value1</fieldName1>
+    <fieldName2>value2</fieldName2>
     ...
-  </bns:SourceRecord>
-</bns:SourceRecords>
+  </ModelName>
+</batch>
 ```
 
-### Required Attributes
-- `xmlns:bns` must match the DataHub model namespace
-- `xmlns:xsi` always set to `http://www.w3.org/2001/XMLSchema-instance`
+The `src` attribute on `<batch>` specifies the DataHub source name (e.g., `PROMOTION_ENGINE`, `ADMIN_SEEDING`).
+
+### Query Structure
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<RecordQueryRequest limit="200">
+  <view>
+    <fieldId>fieldName</fieldId>
+  </view>
+  <filter op="AND">
+    <fieldValue>
+      <fieldId>fieldName</fieldId>
+      <operator>EQUALS</operator>
+      <value>matchValue</value>
+    </fieldValue>
+  </filter>
+</RecordQueryRequest>
+```
 
 ### Field Order
 - Field order in XML MUST match the model definition order

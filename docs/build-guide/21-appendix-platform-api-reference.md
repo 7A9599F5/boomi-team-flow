@@ -15,29 +15,118 @@ All Partner API and DataHub API calls use HTTP Basic Authentication.
 
 All endpoints use the base URL `https://api.boomi.com`.
 
-| Endpoint Name | Method | URL Path | Content-Type | overrideAccount? | Template File |
-|---------------|--------|----------|-------------|-------------------|---------------|
-| GET Component | GET | `/partner/api/rest/v1/{accountId}/Component/{componentId}` | `application/xml` | Yes | `get-component.xml` |
-| POST Component (Create) | POST | `/partner/api/rest/v1/{accountId}/Component` | `application/xml` | No | `create-component.xml` |
-| POST Component (Update) | POST | `/partner/api/rest/v1/{accountId}/Component/{componentId}` | `application/xml` | No | `update-component.xml` |
-| GET ComponentReference | GET | `/partner/api/rest/v1/{accountId}/ComponentReference/{componentId}` | `application/xml` | Yes | `query-component-reference.xml` |
-| GET ComponentMetadata | GET | `/partner/api/rest/v1/{accountId}/ComponentMetadata/{componentId}` | `application/xml` | Yes | `query-component-metadata.xml` |
-| QUERY PackagedComponent | POST | `/partner/api/rest/v1/{accountId}/PackagedComponent/query` | `application/xml` | Yes | `query-packaged-components.xml` |
-| POST PackagedComponent | POST | `/partner/api/rest/v1/{accountId}/PackagedComponent` | `application/json` | No | `create-packaged-component.json` |
-| POST DeployedPackage | POST | `/partner/api/rest/v1/{accountId}/DeployedPackage` | `application/json` | No | `create-deployed-package.json` |
-| POST IntegrationPack | POST | `/partner/api/rest/v1/{accountId}/IntegrationPack` | `application/json` | No | `create-integration-pack.json` |
-| POST Branch | POST | `/partner/api/rest/v1/{accountId}/Branch` | `application/json` | No | `create-branch.json` |
-| QUERY Branch | POST | `/partner/api/rest/v1/{accountId}/Branch/query` | `application/json` | No | `query-branch.json` |
-| GET Branch | GET | `/partner/api/rest/v1/{accountId}/Branch/{branchId}` | `application/json` | No | `get-branch.json` |
-| DELETE Branch | DELETE | `/partner/api/rest/v1/{accountId}/Branch/{branchId}` | `application/json` | No | `delete-branch.json` |
-| POST MergeRequest | POST | `/partner/api/rest/v1/{accountId}/MergeRequest` | `application/json` | No | `create-merge-request.json` |
-| POST MergeRequest Execute | POST | `/partner/api/rest/v1/{accountId}/MergeRequest/execute/{mergeRequestId}` | `application/json` | No | `execute-merge-request.json` |
-| GET MergeRequest | GET | `/partner/api/rest/v1/{accountId}/MergeRequest/{mergeRequestId}` | `application/json` | No | `get-merge-request.json` |
-| QUERY IntegrationPack | POST | `/partner/api/rest/v1/{accountId}/IntegrationPack/query` | `application/xml` | No | `query-integration-packs.xml` |
-| POST Add To IntegrationPack | POST | `/partner/api/rest/v1/{accountId}/IntegrationPack/{packId}/PackagedComponent/{packageId}` | `application/json` | No | `add-to-integration-pack.json` |
-| POST ReleaseIntegrationPack | POST | `/partner/api/rest/v1/{accountId}/ReleaseIntegrationPack` | `application/json` | No | `release-integration-pack.json` |
+#### Component Operations
+
+| # | Endpoint Name | Method | URL Path | Content-Type | overrideAccount? | Used By | Template File |
+|---|---------------|--------|----------|-------------|-------------------|---------|---------------|
+| 1 | GET Component | GET | `/partner/api/rest/v1/{accountId}/Component/{componentId}` | `application/xml` | Yes | B, C, G | `get-component.xml` |
+| 2 | POST Component (Create) | POST | `/partner/api/rest/v1/{accountId}/Component` | `application/xml` | No | C | `create-component.xml` |
+| 3 | POST Component (Update) | POST | `/partner/api/rest/v1/{accountId}/Component/{componentId}` | `application/xml` | No | C | `update-component.xml` |
+| 4 | GET ComponentReference | GET | `/partner/api/rest/v1/{accountId}/ComponentReference/{componentId}` | `application/xml` | Yes | B | `query-component-reference.xml` |
+| 5 | GET ComponentMetadata | GET | `/partner/api/rest/v1/{accountId}/ComponentMetadata/{componentId}` | `application/xml` | Yes | A, B | `query-component-metadata.xml` |
+
+**Notes:**
+- **GET Component** with tilde syntax (`/Component/{id}~{branchId}`) reads from a specific branch (Process G)
+- **POST Component Create** with tilde syntax (`/Component~{branchId}`) creates on a specific branch (Process C)
+- **POST Component Update** with tilde syntax (`/Component/{id}~{branchId}`) updates on a specific branch (Process C)
+- All create/update operations use `folderFullPath="/Promoted{devFolderFullPath}"` to mirror dev folder structure
+
+#### Branch Operations
+
+| # | Endpoint Name | Method | URL Path | Content-Type | Used By | Template File |
+|---|---------------|--------|----------|-------------|---------|---------------|
+| 6 | POST Branch (Create) | POST | `/partner/api/rest/v1/{accountId}/Branch` | `application/json` | C | `create-branch.json` |
+| 7 | QUERY Branch | POST | `/partner/api/rest/v1/{accountId}/Branch/query` | `application/json` | C | `query-branch.json` |
+| 8 | GET Branch | GET | `/partner/api/rest/v1/{accountId}/Branch/{branchId}` | `application/json` | C | `get-branch.json` |
+| 9 | DELETE Branch | DELETE | `/partner/api/rest/v1/{accountId}/Branch/{branchId}` | `application/json` | C, D | `delete-branch.json` |
+
+**Notes:**
+- **POST Branch** returns `branchId` and a `ready` field. Poll with **GET Branch** until `ready = true` (5s intervals, max 6 retries)
+- **QUERY Branch** with empty filter returns all branches -- used for branch limit check (threshold: 15)
+- **DELETE Branch** is idempotent: both `200` (deleted) and `404` (already deleted) are treated as success
+- Branch limit: 15 soft threshold (checked before creation), 20 hard platform limit
+
+#### Merge Operations
+
+| # | Endpoint Name | Method | URL Path | Content-Type | Used By | Template File |
+|---|---------------|--------|----------|-------------|---------|---------------|
+| 10 | POST MergeRequest (Create) | POST | `/partner/api/rest/v1/{accountId}/MergeRequest` | `application/json` | D | `create-merge-request.json` |
+| 11 | POST MergeRequest (Execute) | POST | `/partner/api/rest/v1/{accountId}/MergeRequest/execute/{mergeRequestId}` | `application/json` | D | `execute-merge-request.json` |
+| 12 | GET MergeRequest (Poll Status) | GET | `/partner/api/rest/v1/{accountId}/MergeRequest/{mergeRequestId}` | `application/json` | D | `get-merge-request.json` |
+
+**Notes:**
+- **POST MergeRequest** uses `strategy = "OVERRIDE"` and `priorityBranch = "{branchId}"` to ensure promotion branch content wins
+- **POST MergeRequest Execute** triggers the merge with `action = "MERGE"`
+- **GET MergeRequest** is used for status polling: check every 5 seconds, max 12 retries (60 seconds)
+- Merge stages: `DRAFTING` -> `DRAFTED` -> `REVIEWING` -> `MERGING` -> `MERGED` (success) or `FAILED_TO_MERGE` (failure)
+
+#### Packaging Operations
+
+| # | Endpoint Name | Method | URL Path | Content-Type | Used By | Template File |
+|---|---------------|--------|----------|-------------|---------|---------------|
+| 13 | QUERY PackagedComponent | POST | `/partner/api/rest/v1/{accountId}/PackagedComponent/query` | `application/xml` | A | `query-packaged-components.xml` |
+| 14 | POST PackagedComponent (Create) | POST | `/partner/api/rest/v1/{accountId}/PackagedComponent` | `application/json` | D | `create-packaged-component.json` |
+| 15 | QUERY DeployedPackage | POST | `/partner/api/rest/v1/{accountId}/DeployedPackage/query` | `application/json` | (future) | — |
+
+**Notes:**
+- **QUERY PackagedComponent** uses `overrideAccount` to read from dev sub-accounts (Process A)
+- **POST PackagedComponent** creates a versioned package from a component on main; requires `componentId`, `packageVersion`, and `shareable = true`
+- **QUERY DeployedPackage** can verify deployment status; not currently used in active processes but available for future troubleshooting
+
+#### Integration Pack Operations
+
+| # | Endpoint Name | Method | URL Path | Content-Type | Used By | Template File |
+|---|---------------|--------|----------|-------------|---------|---------------|
+| 16 | POST IntegrationPack (Create) | POST | `/partner/api/rest/v1/{accountId}/IntegrationPack` | `application/json` | D | `create-integration-pack.json` |
+| 17 | QUERY IntegrationPack | POST | `/partner/api/rest/v1/{accountId}/IntegrationPack/query` | `application/xml` | J | `query-integration-packs.xml` |
+| 18 | POST Add To IntegrationPack | POST | `/partner/api/rest/v1/{accountId}/IntegrationPack/{packId}/PackagedComponent/{packageId}` | `application/json` | D | `add-to-integration-pack.json` |
+| 19 | POST ReleaseIntegrationPack | POST | `/partner/api/rest/v1/{accountId}/ReleaseIntegrationPack` | `application/json` | D | `release-integration-pack.json` |
+
+**Notes:**
+- **POST IntegrationPack** creates a new MULTI-type Integration Pack with `name` and `description`
+- **QUERY IntegrationPack** filters by `installationType = "MULTI"` to get manageable packs
+- **POST Add To IntegrationPack** links a PackagedComponent to an Integration Pack via URL path (no request body)
+- **POST ReleaseIntegrationPack** creates a versioned release with `integrationPackId`, `version`, and `notes`
+
+#### Deployment Operations
+
+| # | Endpoint Name | Method | URL Path | Content-Type | Used By | Template File |
+|---|---------------|--------|----------|-------------|---------|---------------|
+| 20 | POST DeployedPackage (Create) | POST | `/partner/api/rest/v1/{accountId}/DeployedPackage` | `application/json` | D | `create-deployed-package.json` |
+| 21 | GET Environment | GET | `/partner/api/rest/v1/{accountId}/Environment/{environmentId}` | `application/json` | (config) | — |
+
+**Notes:**
+- **POST DeployedPackage** deploys a released Integration Pack to a target environment
+- **GET Environment** can be used to validate environment IDs during configuration; not called at runtime
+- Deploy with 120ms gap between consecutive deployment calls to stay within rate limits
 
 > All template files are in `integration/api-requests/`.
+
+### Template File Inventory
+
+Cross-reference of template files to endpoints:
+
+| Template File | Endpoint | Format |
+|---------------|----------|--------|
+| `get-component.xml` | GET Component | XML |
+| `create-component.xml` | POST Component (Create) | XML |
+| `update-component.xml` | POST Component (Update) | XML |
+| `query-component-reference.xml` | GET ComponentReference | XML |
+| `query-component-metadata.xml` | GET ComponentMetadata | XML |
+| `create-branch.json` | POST Branch | JSON |
+| `query-branch.json` | QUERY Branch | JSON |
+| `get-branch.json` | GET Branch | JSON |
+| `delete-branch.json` | DELETE Branch | JSON |
+| `create-merge-request.json` | POST MergeRequest | JSON |
+| `execute-merge-request.json` | POST MergeRequest Execute | JSON |
+| `get-merge-request.json` | GET MergeRequest | JSON |
+| `query-packaged-components.xml` | QUERY PackagedComponent | XML |
+| `create-packaged-component.json` | POST PackagedComponent | JSON |
+| `create-integration-pack.json` | POST IntegrationPack | JSON |
+| `query-integration-packs.xml` | QUERY IntegrationPack | XML |
+| `add-to-integration-pack.json` | POST Add To IntegrationPack | JSON |
+| `release-integration-pack.json` | POST ReleaseIntegrationPack | JSON |
+| `create-deployed-package.json` | POST DeployedPackage | JSON |
 
 ### Rate Limiting
 
@@ -273,79 +362,102 @@ The `type` field in Component and ComponentMetadata objects uses these values:
 #### 1. GET Component (with overrideAccount)
 
 ```bash
-# Linux/macOS
 curl -s -u "BOOMI_TOKEN.user@company.com:your-api-token" \
   -H "Accept: application/xml" \
   "https://api.boomi.com/partner/api/rest/v1/{accountId}/Component/{componentId}?overrideAccount={devAccountId}"
 ```
 
-```powershell
-# Windows
-$cred = [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes("BOOMI_TOKEN.user@company.com:your-api-token"))
-$headers = @{ Authorization = "Basic $cred"; Accept = "application/xml" }
-Invoke-RestMethod -Uri "https://api.boomi.com/partner/api/rest/v1/{accountId}/Component/{componentId}?overrideAccount={devAccountId}" `
-  -Method GET -Headers $headers
-```
-
-#### 2. POST Component (Create)
+#### 2. GET Component (from branch -- tilde syntax)
 
 ```bash
-# Linux/macOS
 curl -s -u "BOOMI_TOKEN.user@company.com:your-api-token" \
-  -H "Content-Type: application/xml" \
   -H "Accept: application/xml" \
-  -X POST "https://api.boomi.com/partner/api/rest/v1/{accountId}/Component" \
+  "https://api.boomi.com/partner/api/rest/v1/{accountId}/Component/{componentId}~{branchId}"
+```
+
+#### 3. POST Component (Create on branch)
+
+```bash
+curl -s -u "BOOMI_TOKEN.user@company.com:your-api-token" \
+  -H "Content-Type: application/xml" -H "Accept: application/xml" \
+  -X POST "https://api.boomi.com/partner/api/rest/v1/{accountId}/Component~{branchId}" \
   -d '<bns:Component xmlns:bns="http://api.platform.boomi.com/" name="{componentName}" type="{componentType}" folderFullPath="/Promoted{devFolderFullPath}">
   <bns:object><!-- component XML --></bns:object>
 </bns:Component>'
 ```
 
-```powershell
-# Windows
-$cred = [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes("BOOMI_TOKEN.user@company.com:your-api-token"))
-$headers = @{ Authorization = "Basic $cred"; "Content-Type" = "application/xml"; Accept = "application/xml" }
-$body = @"
-<bns:Component xmlns:bns="http://api.platform.boomi.com/" name="{componentName}" type="{componentType}" folderFullPath="/Promoted{devFolderFullPath}">
-  <bns:object><!-- component XML --></bns:object>
-</bns:Component>
-"@
-Invoke-RestMethod -Uri "https://api.boomi.com/partner/api/rest/v1/{accountId}/Component" `
-  -Method POST -Headers $headers -Body $body
-```
-
-#### 3. POST Component (Update)
+#### 4. POST Component (Update on branch)
 
 ```bash
-# Linux/macOS
 curl -s -u "BOOMI_TOKEN.user@company.com:your-api-token" \
-  -H "Content-Type: application/xml" \
-  -H "Accept: application/xml" \
-  -X POST "https://api.boomi.com/partner/api/rest/v1/{accountId}/Component/{prodComponentId}" \
+  -H "Content-Type: application/xml" -H "Accept: application/xml" \
+  -X POST "https://api.boomi.com/partner/api/rest/v1/{accountId}/Component/{prodComponentId}~{branchId}" \
   -d '<bns:Component xmlns:bns="http://api.platform.boomi.com/" componentId="{prodComponentId}" name="{componentName}" type="{componentType}" folderFullPath="/Promoted{devFolderFullPath}">
   <bns:object><!-- stripped, reference-rewritten component XML --></bns:object>
 </bns:Component>'
 ```
 
-```powershell
-# Windows
-$cred = [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes("BOOMI_TOKEN.user@company.com:your-api-token"))
-$headers = @{ Authorization = "Basic $cred"; "Content-Type" = "application/xml"; Accept = "application/xml" }
-$body = @"
-<bns:Component xmlns:bns="http://api.platform.boomi.com/" componentId="{prodComponentId}" name="{componentName}" type="{componentType}" folderFullPath="/Promoted{devFolderFullPath}">
-  <bns:object><!-- stripped, reference-rewritten component XML --></bns:object>
-</bns:Component>
-"@
-Invoke-RestMethod -Uri "https://api.boomi.com/partner/api/rest/v1/{accountId}/Component/{prodComponentId}" `
-  -Method POST -Headers $headers -Body $body
-```
-
-#### 4. POST PackagedComponent/query (with overrideAccount)
+#### 5. POST Branch (Create)
 
 ```bash
-# Linux/macOS
 curl -s -u "BOOMI_TOKEN.user@company.com:your-api-token" \
-  -H "Content-Type: application/xml" \
-  -H "Accept: application/xml" \
+  -H "Content-Type: application/json" -H "Accept: application/json" \
+  -X POST "https://api.boomi.com/partner/api/rest/v1/{accountId}/Branch" \
+  -d '{"name": "promo-{promotionId}", "description": "Promotion branch for {promotionId}"}'
+```
+
+#### 6. GET Branch (Poll readiness)
+
+```bash
+curl -s -u "BOOMI_TOKEN.user@company.com:your-api-token" \
+  -H "Accept: application/json" \
+  "https://api.boomi.com/partner/api/rest/v1/{accountId}/Branch/{branchId}"
+```
+
+> Poll every 5 seconds until `ready = true` (max 6 retries, 30 seconds).
+
+#### 7. DELETE Branch
+
+```bash
+curl -s -u "BOOMI_TOKEN.user@company.com:your-api-token" \
+  -X DELETE "https://api.boomi.com/partner/api/rest/v1/{accountId}/Branch/{branchId}"
+```
+
+> Idempotent: both `200` and `404` are success.
+
+#### 8. POST MergeRequest (Create)
+
+```bash
+curl -s -u "BOOMI_TOKEN.user@company.com:your-api-token" \
+  -H "Content-Type: application/json" -H "Accept: application/json" \
+  -X POST "https://api.boomi.com/partner/api/rest/v1/{accountId}/MergeRequest" \
+  -d '{"source": "{branchId}", "strategy": "OVERRIDE", "priorityBranch": "{branchId}"}'
+```
+
+#### 9. POST MergeRequest Execute
+
+```bash
+curl -s -u "BOOMI_TOKEN.user@company.com:your-api-token" \
+  -H "Content-Type: application/json" -H "Accept: application/json" \
+  -X POST "https://api.boomi.com/partner/api/rest/v1/{accountId}/MergeRequest/execute/{mergeRequestId}" \
+  -d '{"action": "MERGE"}'
+```
+
+#### 10. GET MergeRequest (Poll Status)
+
+```bash
+curl -s -u "BOOMI_TOKEN.user@company.com:your-api-token" \
+  -H "Accept: application/json" \
+  "https://api.boomi.com/partner/api/rest/v1/{accountId}/MergeRequest/{mergeRequestId}"
+```
+
+> Poll every 5 seconds until `stage` equals `MERGED` (success) or `FAILED_TO_MERGE` (failure). Max 12 retries (60 seconds). Merge stages: `DRAFTING` -> `DRAFTED` -> `REVIEWING` -> `MERGING` -> `MERGED`.
+
+#### 11. QUERY PackagedComponent (with overrideAccount)
+
+```bash
+curl -s -u "BOOMI_TOKEN.user@company.com:your-api-token" \
+  -H "Content-Type: application/xml" -H "Accept: application/xml" \
   -X POST "https://api.boomi.com/partner/api/rest/v1/{accountId}/PackagedComponent/query?overrideAccount={devAccountId}" \
   -d '<QueryFilter xmlns="http://api.platform.boomi.com/">
   <expression operator="and">
@@ -358,29 +470,83 @@ curl -s -u "BOOMI_TOKEN.user@company.com:your-api-token" \
 </QueryFilter>'
 ```
 
-```powershell
-# Windows
-$cred = [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes("BOOMI_TOKEN.user@company.com:your-api-token"))
-$headers = @{ Authorization = "Basic $cred"; "Content-Type" = "application/xml"; Accept = "application/xml" }
-$body = @"
-<QueryFilter xmlns="http://api.platform.boomi.com/">
-  <expression operator="and">
-    <nestedExpression>
-      <argument>componentType</argument>
-      <operator>EQUALS</operator>
-      <property>process</property>
-    </nestedExpression>
-  </expression>
-</QueryFilter>
-"@
-Invoke-RestMethod -Uri "https://api.boomi.com/partner/api/rest/v1/{accountId}/PackagedComponent/query?overrideAccount={devAccountId}" `
-  -Method POST -Headers $headers -Body $body
-```
-
-#### 5. DataHub Record Query
+#### 12. POST PackagedComponent (Create)
 
 ```bash
-# Linux/macOS
+curl -s -u "BOOMI_TOKEN.user@company.com:your-api-token" \
+  -H "Content-Type: application/json" -H "Accept: application/json" \
+  -X POST "https://api.boomi.com/partner/api/rest/v1/{accountId}/PackagedComponent" \
+  -d '{
+  "componentId": "{prodComponentId}",
+  "packageVersion": "{version}",
+  "notes": "Promotion package",
+  "shareable": true
+}'
+```
+
+#### 13. POST IntegrationPack (Create)
+
+```bash
+curl -s -u "BOOMI_TOKEN.user@company.com:your-api-token" \
+  -H "Content-Type: application/json" -H "Accept: application/json" \
+  -X POST "https://api.boomi.com/partner/api/rest/v1/{accountId}/IntegrationPack" \
+  -d '{"name": "{packName}", "description": "{packDescription}"}'
+```
+
+#### 14. QUERY IntegrationPack
+
+```bash
+curl -s -u "BOOMI_TOKEN.user@company.com:your-api-token" \
+  -H "Content-Type: application/xml" -H "Accept: application/xml" \
+  -X POST "https://api.boomi.com/partner/api/rest/v1/{accountId}/IntegrationPack/query" \
+  -d '<QueryFilter xmlns="http://api.platform.boomi.com/">
+  <expression operator="and">
+    <nestedExpression>
+      <argument>installationType</argument>
+      <operator>EQUALS</operator>
+      <property>MULTI</property>
+    </nestedExpression>
+  </expression>
+</QueryFilter>'
+```
+
+#### 15. POST Add To IntegrationPack
+
+```bash
+# No request body -- linking via URL path
+curl -s -u "BOOMI_TOKEN.user@company.com:your-api-token" \
+  -H "Accept: application/json" -H "Content-Type: application/json" \
+  -X POST "https://api.boomi.com/partner/api/rest/v1/{accountId}/IntegrationPack/{integrationPackId}/PackagedComponent/{packageId}"
+```
+
+#### 16. POST ReleaseIntegrationPack
+
+```bash
+curl -s -u "BOOMI_TOKEN.user@company.com:your-api-token" \
+  -H "Content-Type: application/json" -H "Accept: application/json" \
+  -X POST "https://api.boomi.com/partner/api/rest/v1/{accountId}/ReleaseIntegrationPack" \
+  -d '{
+  "integrationPackId": "{integrationPackId}",
+  "version": "{releaseVersion}",
+  "notes": "Release notes for this version"
+}'
+```
+
+#### 17. POST DeployedPackage (Create)
+
+```bash
+curl -s -u "BOOMI_TOKEN.user@company.com:your-api-token" \
+  -H "Content-Type: application/json" -H "Accept: application/json" \
+  -X POST "https://api.boomi.com/partner/api/rest/v1/{accountId}/DeployedPackage" \
+  -d '{
+  "packageId": "{releasedPackageId}",
+  "environmentId": "{environmentId}"
+}'
+```
+
+#### 18. DataHub Record Query
+
+```bash
 curl -s -u "BOOMI_TOKEN.user@company.com:your-api-token" \
   -H "Content-Type: application/xml" \
   -X POST "https://api.boomi.com/partner/api/rest/v1/{accountId}/DataHub/record/query" \
@@ -409,43 +575,9 @@ curl -s -u "BOOMI_TOKEN.user@company.com:your-api-token" \
 </RecordQueryRequest>'
 ```
 
-```powershell
-# Windows
-$cred = [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes("BOOMI_TOKEN.user@company.com:your-api-token"))
-$headers = @{ Authorization = "Basic $cred"; "Content-Type" = "application/xml" }
-$body = @"
-<RecordQueryRequest limit="200">
-  <view>
-    <fieldId>devComponentId</fieldId>
-    <fieldId>devAccountId</fieldId>
-    <fieldId>prodComponentId</fieldId>
-    <fieldId>componentName</fieldId>
-    <fieldId>componentType</fieldId>
-    <fieldId>prodLatestVersion</fieldId>
-    <fieldId>lastPromotedAt</fieldId>
-  </view>
-  <filter op="AND">
-    <fieldValue>
-      <fieldId>devComponentId</fieldId>
-      <operator>EQUALS</operator>
-      <value>{devComponentId}</value>
-    </fieldValue>
-    <fieldValue>
-      <fieldId>devAccountId</fieldId>
-      <operator>EQUALS</operator>
-      <value>{devAccountId}</value>
-    </fieldValue>
-  </filter>
-</RecordQueryRequest>
-"@
-Invoke-RestMethod -Uri "https://api.boomi.com/partner/api/rest/v1/{accountId}/DataHub/record/query" `
-  -Method POST -Headers $headers -Body $body
-```
-
-#### 6. DataHub Record Update
+#### 19. DataHub Record Update
 
 ```bash
-# Linux/macOS
 curl -s -u "BOOMI_TOKEN.user@company.com:your-api-token" \
   -H "Content-Type: application/xml" \
   -X POST "https://api.boomi.com/partner/api/rest/v1/{accountId}/DataHub/record/create" \
@@ -464,133 +596,36 @@ curl -s -u "BOOMI_TOKEN.user@company.com:your-api-token" \
 </batch>'
 ```
 
-```powershell
-# Windows
-$cred = [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes("BOOMI_TOKEN.user@company.com:your-api-token"))
-$headers = @{ Authorization = "Basic $cred"; "Content-Type" = "application/xml" }
-$body = @"
-<batch src="PROMOTION_ENGINE">
-  <ComponentMapping>
-    <devComponentId>{devComponentId}</devComponentId>
-    <devAccountId>{devAccountId}</devAccountId>
-    <prodComponentId>{prodComponentId}</prodComponentId>
-    <componentName>{componentName}</componentName>
-    <componentType>{componentType}</componentType>
-    <prodAccountId>{primaryAccountId}</prodAccountId>
-    <prodLatestVersion>{version}</prodLatestVersion>
-    <lastPromotedAt>{timestamp}</lastPromotedAt>
-    <lastPromotedBy>{userEmail}</lastPromotedBy>
-  </ComponentMapping>
-</batch>
-"@
-Invoke-RestMethod -Uri "https://api.boomi.com/partner/api/rest/v1/{accountId}/DataHub/record/create" `
-  -Method POST -Headers $headers -Body $body
-```
+### Process-to-Endpoint Matrix
 
-#### 7. QUERY IntegrationPack
+Quick lookup: which processes call which endpoints.
 
-```bash
-# Linux/macOS
-curl -s -u "BOOMI_TOKEN.user@company.com:your-api-token" \
-  -H "Content-Type: application/xml" \
-  -H "Accept: application/xml" \
-  -X POST "https://api.boomi.com/partner/api/rest/v1/{accountId}/IntegrationPack/query" \
-  -d '<QueryFilter xmlns="http://api.platform.boomi.com/">
-  <expression operator="and">
-    <nestedExpression>
-      <argument>installationType</argument>
-      <operator>EQUALS</operator>
-      <property>MULTI</property>
-    </nestedExpression>
-  </expression>
-</QueryFilter>'
-```
-
-```powershell
-# Windows
-$cred = [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes("BOOMI_TOKEN.user@company.com:your-api-token"))
-$headers = @{ Authorization = "Basic $cred"; "Content-Type" = "application/xml"; Accept = "application/xml" }
-$body = @"
-<QueryFilter xmlns="http://api.platform.boomi.com/">
-  <expression operator="and">
-    <nestedExpression>
-      <argument>installationType</argument>
-      <operator>EQUALS</operator>
-      <property>MULTI</property>
-    </nestedExpression>
-  </expression>
-</QueryFilter>
-"@
-Invoke-RestMethod -Uri "https://api.boomi.com/partner/api/rest/v1/{accountId}/IntegrationPack/query" `
-  -Method POST -Headers $headers -Body $body
-```
-
-#### 8. POST Add To IntegrationPack
-
-```bash
-# Linux/macOS — no request body, linking via URL
-curl -s -u "BOOMI_TOKEN.user@company.com:your-api-token" \
-  -H "Accept: application/json" \
-  -H "Content-Type: application/json" \
-  -X POST "https://api.boomi.com/partner/api/rest/v1/{accountId}/IntegrationPack/{integrationPackId}/PackagedComponent/{packageId}"
-```
-
-```powershell
-# Windows
-$cred = [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes("BOOMI_TOKEN.user@company.com:your-api-token"))
-$headers = @{ Authorization = "Basic $cred"; Accept = "application/json"; "Content-Type" = "application/json" }
-Invoke-RestMethod -Uri "https://api.boomi.com/partner/api/rest/v1/{accountId}/IntegrationPack/{integrationPackId}/PackagedComponent/{packageId}" `
-  -Method POST -Headers $headers
-```
-
-#### 9. POST ReleaseIntegrationPack
-
-```bash
-# Linux/macOS
-curl -s -u "BOOMI_TOKEN.user@company.com:your-api-token" \
-  -H "Content-Type: application/json" \
-  -H "Accept: application/json" \
-  -X POST "https://api.boomi.com/partner/api/rest/v1/{accountId}/ReleaseIntegrationPack" \
-  -d '{
-  "integrationPackId": "{integrationPackId}",
-  "version": "{releaseVersion}",
-  "notes": "Release notes for this version"
-}'
-```
-
-```powershell
-# Windows
-$cred = [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes("BOOMI_TOKEN.user@company.com:your-api-token"))
-$headers = @{ Authorization = "Basic $cred"; "Content-Type" = "application/json"; Accept = "application/json" }
-$body = @"
-{
-  "integrationPackId": "{integrationPackId}",
-  "version": "{releaseVersion}",
-  "notes": "Release notes for this version"
-}
-"@
-Invoke-RestMethod -Uri "https://api.boomi.com/partner/api/rest/v1/{accountId}/ReleaseIntegrationPack" `
-  -Method POST -Headers $headers -Body $body
-```
-
-#### 10. GET MergeRequest (Poll Status)
-
-```bash
-# Linux/macOS
-curl -s -u "BOOMI_TOKEN.user@company.com:your-api-token" \
-  -H "Accept: application/json" \
-  "https://api.boomi.com/partner/api/rest/v1/{accountId}/MergeRequest/{mergeRequestId}"
-```
-
-```powershell
-# Windows
-$cred = [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes("BOOMI_TOKEN.user@company.com:your-api-token"))
-$headers = @{ Authorization = "Basic $cred"; Accept = "application/json" }
-Invoke-RestMethod -Uri "https://api.boomi.com/partner/api/rest/v1/{accountId}/MergeRequest/{mergeRequestId}" `
-  -Method GET -Headers $headers
-```
-
-> Poll every 2 seconds until `stage` equals `MERGED` (success) or `FAILED_TO_MERGE` (failure). Merge stages: `DRAFTING` -> `DRAFTED` -> `REVIEWING` -> `MERGING` -> `MERGED`.
+| Endpoint | A0 | A | B | C | D | E | E2 | E3 | E4 | F | G | J |
+|----------|----|---|---|---|---|---|----|----|----|---|---|---|
+| GET Component | | | | X | | | | | | | X | |
+| POST Component Create | | | | X | | | | | | | | |
+| POST Component Update | | | | X | | | | | | | | |
+| GET ComponentReference | | | X | | | | | | | | | |
+| GET ComponentMetadata | | X | X | | | | | | | | | |
+| POST Branch | | | | X | | | | | | | | |
+| QUERY Branch | | | | X | | | | | | | | |
+| GET Branch | | | | X | | | | | | | | |
+| DELETE Branch | | | | X | X | | | | | | | |
+| POST MergeRequest | | | | | X | | | | | | | |
+| POST MergeRequest Execute | | | | | X | | | | | | | |
+| GET MergeRequest | | | | | X | | | | | | | |
+| QUERY PackagedComponent | | X | | | | | | | | | | |
+| POST PackagedComponent | | | | | X | | | | | | | |
+| POST IntegrationPack | | | | | X | | | | | | | |
+| QUERY IntegrationPack | | | | | | | | | | | | X |
+| POST Add To IntegrationPack | | | | | X | | | | | | | |
+| POST ReleaseIntegrationPack | | | | | X | | | | | | | |
+| POST DeployedPackage | | | | | X | | | | | | | |
+| DH Query ComponentMapping | | | | X | | | | | | X | | |
+| DH Update ComponentMapping | | | | X | | | | | | X | | |
+| DH Query DevAccountAccess | X | | | | | | | | | | | |
+| DH Query PromotionLog | | | | X | X | X | X | X | X | | | X |
+| DH Update PromotionLog | | | | X | X | | | X | | | | |
 
 ---
 Prev: [Appendix B: DPP Catalog](20-appendix-dpp-catalog.md) | [Back to Index](index.md)

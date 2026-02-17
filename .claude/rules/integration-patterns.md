@@ -20,6 +20,7 @@ globs:
 - **E**: queryStatus — read PromotionLog from DataHub
 - **E2**: queryPeerReviewQueue — query PENDING_PEER_REVIEW promotions, exclude own
 - **E3**: submitPeerReview — record peer approve/reject with self-review prevention
+- **E4**: queryTestDeployments — query TEST_DEPLOYED promotions ready for production promotion
 - **F**: manageMappings — CRUD on ComponentMapping records
 - **G**: generateComponentDiff — fetch branch vs main component XML for diff rendering
 - **J**: listIntegrationPacks — query Integration Packs with smart suggestion from history
@@ -46,14 +47,15 @@ globs:
 3. **Process B** (depends on A) — dependency resolution
 4. **Process C** (depends on B) — promotion execution
 5. **Process E** (no dependencies) — status queries
-6. **Process E2** (depends on E) — peer review queue
-7. **Process E3** (depends on E2) — peer review submission
-8. **Process F** (no dependencies) — mapping management
-9. **Process G** (depends on C) — component diff generation
-10. **Process J** (no dependencies) — Integration Pack listing
-11. **Process D** (depends on C) — final packaging and deployment
+6. **Process E4** (depends on E) — test deployment queries
+7. **Process E2** (depends on E) — peer review queue
+8. **Process E3** (depends on E2) — peer review submission
+9. **Process F** (no dependencies) — mapping management
+10. **Process G** (depends on C) — component diff generation
+11. **Process J** (no dependencies) — Integration Pack listing
+12. **Process D** (depends on C) — final packaging and deployment
 
 ### Why This Order Matters
 - Process C creates the promotion branch; Processes G and D depend on branch operations
-- Processes E2 and E3 extend Process E's status query logic for 2-layer approval
+- Processes E2, E3, and E4 extend Process E's status query logic for 2-layer approval and test deployment tracking
 - Process B must exist before C (dependency tree feeds into promotion)

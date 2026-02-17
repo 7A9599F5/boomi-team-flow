@@ -480,4 +480,298 @@ Test rejection at each stage of the multi-environment workflow.
 ---
 
 ---
+
+### Test 11 -- Component Diff Generation (Process G)
+
+Validate that Process G fetches branch and main component XML and returns normalized output for diff rendering.
+
+#### 11a. Diff for Updated Component
+
+After a successful promotion (Test 2 or Test 4), generate a diff for a component that was updated (not created):
+
+1. Call `generateComponentDiff` with:
+   - `branchId`: the promotion branch ID from the executePromotion response
+   - `prodComponentId`: a component that existed before promotion (action = "UPDATE")
+   - `componentName`: the component's display name
+   - `componentAction`: `"UPDATE"`
+
+**Pass criteria:**
+- `success` is `true`
+- `branchXml` contains the normalized XML from the promotion branch (non-empty)
+- `mainXml` contains the normalized XML from main branch (non-empty)
+- `branchVersion` > `mainVersion`
+- Both XML strings are well-formed and consistently formatted (indentation, attribute ordering)
+
+#### 11b. Diff for New Component
+
+Generate a diff for a component that was newly created during promotion:
+
+1. Call `generateComponentDiff` with:
+   - `branchId`: the promotion branch ID
+   - `prodComponentId`: a component that was created during promotion (action = "CREATE")
+   - `componentAction`: `"CREATE"`
+
+**Pass criteria:**
+- `success` is `true`
+- `branchXml` contains the normalized component XML (non-empty)
+- `mainXml` is an empty string (no prior version on main)
+- `mainVersion` is `0`
+
+#### 11c. Diff for Non-Existent Component
+
+Call `generateComponentDiff` with an invalid `prodComponentId`:
+
+**Pass criteria:**
+- `success` is `false`
+- `errorCode` is `COMPONENT_NOT_FOUND`
+- `errorMessage` describes which component ID was not found
+
+---
+
+### Test 12 -- Integration Pack Listing (Process J)
+
+Validate that Process J retrieves Integration Packs with filtering and smart suggestion.
+
+#### 12a. List All Packs
+
+Call `listIntegrationPacks` with no filters (or `packPurpose = "ALL"`):
+
+**Pass criteria:**
+- `success` is `true`
+- `integrationPacks` array contains all MULTI-type Integration Packs in the primary account
+- Each entry has `packId`, `packName`, `packDescription`, `installationType`
+
+#### 12b. Filter by Purpose
+
+Call `listIntegrationPacks` with `packPurpose = "TEST"`:
+
+**Pass criteria:**
+- `integrationPacks` array contains only packs with names ending in `"- TEST"`
+
+Call again with `packPurpose = "PRODUCTION"`:
+
+**Pass criteria:**
+- `integrationPacks` array contains only packs without the `"- TEST"` suffix
+
+#### 12c. Smart Suggestion
+
+After completing at least one deployment (Test 8 or Test 9), call `listIntegrationPacks` with `suggestForProcess` set to the deployed process name:
+
+**Pass criteria:**
+- `suggestedPackId` is populated and matches the most recently used pack for that process
+- `suggestedPackName` matches the pack name
+
+#### 12d. No Packs Available
+
+Call `listIntegrationPacks` against an account with no Integration Packs (or filter to a purpose with no matching packs):
+
+**Pass criteria:**
+- `success` is `true`
+- `integrationPacks` is an empty array
+- `suggestedPackId` is absent or null
+
+---
+
+### Test 13 -- Mapping Management (Process F)
+
+Validate CRUD operations on ComponentMapping records via the `manageMappings` action.
+
+#### 13a. Create Mapping
+
+Call `manageMappings` with `action = "query"` and `devComponentId` set to a known unmapped component:
+
+**Pass criteria:** `mappings` array is empty (no existing mapping).
+
+Then seed a mapping by calling the DataHub API directly (admin seeding workflow) or by promoting the component. After seeding, call `manageMappings` with `action = "query"` and the same `devComponentId`:
+
+**Pass criteria:**
+- `mappings` array contains exactly 1 record
+- `devComponentId` and `prodComponentId` are correctly populated
+- `componentName` and `componentType` match the seeded values
+
+#### 13b. Update Mapping
+
+Call `manageMappings` with `action = "update"`, providing the `devComponentId` and a corrected `prodComponentId`:
+
+**Pass criteria:**
+- `success` is `true`
+- Re-query shows the updated `prodComponentId`
+- Record count remains 1 (no duplicate created)
+
+#### 13c. Delete Mapping
+
+Call `manageMappings` with `action = "delete"` and the `devComponentId`:
+
+**Pass criteria:**
+- `success` is `true`
+- Re-query returns empty `mappings` array
+
+#### 13d. Query Non-Existent Mapping
+
+Call `manageMappings` with `action = "query"` and a `devComponentId` that has no mapping:
+
+**Pass criteria:**
+- `success` is `true`
+- `mappings` array is empty (not an error)
+
+---
+
+### Test 14 -- Test Deployment Queue (Process E4)
+
+Validate that Process E4 returns test-deployed promotions ready for production promotion.
+
+#### 14a. Query After Test Deployment
+
+After completing a test deployment (Test 8 steps 1-4), call `queryTestDeployments`:
+
+**Pass criteria:**
+- `success` is `true`
+- `testDeployments` array contains the test-deployed promotion
+- Entry includes: `promotionId`, `processName`, `devAccountId`, `initiatedBy`, `testDeployedAt`, `testIntegrationPackId`, `testIntegrationPackName`, `branchId`, `branchName`
+- `branchId` is non-null (branch preserved from test phase)
+
+#### 14b. Exclusion After Production Promotion
+
+After promoting a test deployment to production (Test 8 steps 5-10), call `queryTestDeployments` again:
+
+**Pass criteria:**
+- The previously test-deployed promotion no longer appears in `testDeployments` (it has been promoted to production and should be excluded)
+
+#### 14c. Filter by Dev Account
+
+Call `queryTestDeployments` with `devAccountId` set to a specific dev account:
+
+**Pass criteria:**
+- `testDeployments` array contains only promotions from that dev account
+
+#### 14d. No Test Deployments
+
+Call `queryTestDeployments` when no promotions are in TEST_DEPLOYED status:
+
+**Pass criteria:**
+- `success` is `true`
+- `testDeployments` is an empty array
+
+---
+
+### Test 15 -- Negative / Error Path Tests
+
+Validate that the system returns correct error codes and messages for known failure scenarios.
+
+#### 15a. MISSING_CONNECTION_MAPPINGS
+
+**Setup:** Identify a process that references a connection with no ComponentMapping record in DataHub (no admin-seeded mapping exists for the connection's dev component ID).
+
+**Trigger:** Call `executePromotion` with the process's dependency tree.
+
+**Expected result:**
+- `success` is `false`
+- `errorCode` is `MISSING_CONNECTION_MAPPINGS`
+- `errorMessage` describes which connection mappings are missing
+- `missingConnectionMappings` array is populated with entries containing `devComponentId`, `name`, `type`, `devAccountId`
+- No branch is created (pre-validation fails before branch creation)
+
+#### 15b. SELF_REVIEW_NOT_ALLOWED
+
+**Setup:** Complete a promotion and submit it for peer review. Note the `initiatedBy` email.
+
+**Trigger:** Call `submitPeerReview` with `reviewerEmail` set to the same email as `initiatedBy` (test with matching case and different case to verify case-insensitive comparison).
+
+**Expected result:**
+- `success` is `false`
+- `errorCode` is `SELF_REVIEW_NOT_ALLOWED`
+- `errorMessage` indicates the reviewer cannot review their own submission
+- PromotionLog `peerReviewStatus` remains `PENDING_PEER_REVIEW` (no state change)
+
+#### 15c. BRANCH_LIMIT_REACHED
+
+**Setup:** Create 15+ active promotion branches in the primary account (or mock the branch count query to return 15+).
+
+**Trigger:** Call `executePromotion` with a new package.
+
+**Expected result:**
+- `success` is `false`
+- `errorCode` is `BRANCH_LIMIT_REACHED`
+- `errorMessage` indicates the branch limit has been reached and suggests waiting for pending reviews to complete
+- No new branch is created
+
+#### 15d. PROMOTION_IN_PROGRESS
+
+**Setup:** Start a promotion for a dev account (leave it in IN_PROGRESS status).
+
+**Trigger:** Call `executePromotion` again for the same dev account before the first promotion completes.
+
+**Expected result:**
+- `success` is `false`
+- `errorCode` is `PROMOTION_IN_PROGRESS`
+- `errorMessage` indicates a promotion is already in progress for this account
+- No new branch is created (concurrency guard blocks the second promotion)
+
+#### 15e. ALREADY_REVIEWED
+
+**Setup:** Complete a promotion, submit for peer review, and have a peer reviewer approve it.
+
+**Trigger:** Call `submitPeerReview` again for the same `promotionId` (from a different reviewer).
+
+**Expected result:**
+- `success` is `false`
+- `errorCode` is `ALREADY_REVIEWED`
+- `errorMessage` indicates the promotion has already been peer-reviewed
+- PromotionLog `peerReviewStatus` remains `PEER_APPROVED` (no state change)
+
+#### 15f. COMPONENT_NOT_FOUND
+
+**Setup:** Construct a component list containing a non-existent component ID.
+
+**Trigger:** Call `resolveDependencies` with `rootComponentId` set to the invalid ID.
+
+**Expected result:**
+- `success` is `false`
+- `errorCode` is `COMPONENT_NOT_FOUND`
+- `errorMessage` identifies the missing component ID
+
+---
+
+### Test 16 -- Multi-Environment Deployment Paths
+
+Validate the 3 distinct deployment paths end-to-end.
+
+#### 16a. Test Deployment Path
+
+1. Execute a promotion via `executePromotion` — record `branchId` and `promotionId`.
+2. Call `packageAndDeploy` with `deploymentTarget = "TEST"`.
+
+**Pass criteria:**
+- Response: `branchPreserved = true`, `deploymentTarget = "TEST"`
+- PromotionLog: `status = "TEST_DEPLOYED"`, `targetEnvironment = "TEST"`, `testDeployedAt` populated
+- PromotionLog: `testIntegrationPackId` and `testIntegrationPackName` populated
+- Branch preserved: `GET /Branch/{branchId}` returns 200
+
+#### 16b. Promote from Test to Production
+
+After Test 16a completes:
+
+1. Call `queryTestDeployments` — verify the test deployment appears.
+2. Call `packageAndDeploy` with `deploymentTarget = "PRODUCTION"` and `testPromotionId` set to the test deployment's `promotionId`.
+
+**Pass criteria:**
+- Response: `branchPreserved = false`, `deploymentTarget = "PRODUCTION"`
+- PromotionLog (production record): `status = "DEPLOYED"`, `targetEnvironment = "PRODUCTION"`, `testPromotionId` links back to test record
+- Branch deleted: `GET /Branch/{branchId}` returns 404
+- Test deployment excluded from `queryTestDeployments` results
+
+#### 16c. Emergency Hotfix Path
+
+1. Execute a promotion via `executePromotion`.
+2. Call `packageAndDeploy` with `deploymentTarget = "PRODUCTION"`, `isHotfix = true`, `hotfixJustification = "Critical production bug fix"`.
+
+**Pass criteria:**
+- Response: `branchPreserved = false`, `isHotfix = true`
+- PromotionLog: `status = "DEPLOYED"`, `targetEnvironment = "PRODUCTION"`, `isHotfix = "true"`, `hotfixJustification` populated
+- Branch deleted
+- No `testPromotionId` (test phase bypassed)
+
+---
+
+---
 Prev: [Phase 5b: Flow Dashboard — Review & Admin](16-flow-dashboard-review-admin.md) | Next: [Troubleshooting](18-troubleshooting.md) | [Back to Index](index.md)

@@ -88,7 +88,7 @@ F (Mapping CRUD) → A0 (Get Dev Accounts) → E (Query Status) → E2 (Query Pe
 | Directory | Contents | Used In |
 |-----------|----------|---------|
 | `/datahub/models/` | DataHub model specifications (3 JSON files) | Phase 1 |
-| `/datahub/api-requests/` | Test XML for DataHub CRUD validation (2 files) | Phase 1, 6 |
+| `/datahub/api-requests/` | Test XML for DataHub CRUD validation (3 files) | Phase 1, 6 |
 | `/integration/profiles/` | JSON request/response profiles (24 files, 12 processes × 2) | Phase 3 |
 | `/integration/scripts/` | Groovy scripts for XML manipulation (6 files) | Phase 3 |
 | `/integration/api-requests/` | API request templates (19 files) | Phase 2, 3 |

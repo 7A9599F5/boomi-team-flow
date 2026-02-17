@@ -186,18 +186,19 @@ else → READONLY (no dashboard access)
 
 ## Promotion Engine Logic (Process C)
 
-1. **Check branch limit:** Query `POST /Branch/query` count; if >= 15, fail with `BRANCH_LIMIT_REACHED`
-2. **Create promotion branch:** `POST /Branch` with name `promo-{promotionId}`; poll `GET /Branch/{branchId}` until `ready=true`
-3. Create PromotionLog (IN_PROGRESS) — store `branchId` and `branchName`
-4. Sort components bottom-up by type hierarchy (profiles → connections → operations → maps → processes)
-5. **Connection Validation Phase:**
+1. **Concurrency guard:** Query DataHub PromotionLog for existing IN_PROGRESS promotions on the same `devAccountId`; if found, fail with `CONCURRENT_PROMOTION` to prevent parallel promotions creating duplicate components
+2. **Check branch limit:** Query `POST /Branch/query` count; if >= 15, fail with `BRANCH_LIMIT_REACHED`
+3. **Create promotion branch:** `POST /Branch` with name `promo-{promotionId}`; poll `GET /Branch/{branchId}` until `ready=true`
+4. Create PromotionLog (IN_PROGRESS) — store `branchId` and `branchName`
+5. Sort components bottom-up by type hierarchy (profiles → connections → operations → maps → processes)
+6. **Connection Validation Phase:**
    a. Batch query DataHub for all connection mappings for this devAccountId
    b. For each connection in dependency tree, check mapping exists
    c. Collect ALL missing mappings (do not stop on first)
    d. If ANY missing → FAIL with full error report (MISSING_CONNECTION_MAPPINGS)
    e. If ALL found → pre-load into componentMappingCache
-6. Filter connections OUT of promotion list
-7. For each remaining non-connection component:
+7. Filter connections OUT of promotion list
+8. For each remaining non-connection component:
    a. GET component XML from dev (with overrideAccount)
    b. Extract folderFullPath from response
    c. Strip environment-specific values (passwords, hosts, URLs, encrypted values)
@@ -205,9 +206,9 @@ else → READONLY (no dashboard access)
    e. Construct target path: /Promoted{devFolderFullPath}
    f. CREATE or UPDATE on promotion branch via `Component/{id}~{branchId}`
    g. On error: mark dependents as SKIPPED
-8. Update PromotionLog (COMPLETED/FAILED) — include `branchId` in response
-9. Return results (including branchId, branchName, connectionsSkipped count, and any missingConnectionMappings)
-10. **On failure:** `DELETE /Branch/{branchId}` to clean up
+9. Update PromotionLog (COMPLETED/FAILED) — include `branchId` in response
+10. Return results (including branchId, branchName, connectionsSkipped count, and any missingConnectionMappings)
+11. **On failure:** `DELETE /Branch/{branchId}` to clean up
 
 ## Error Handling
 - Per-component failure isolation

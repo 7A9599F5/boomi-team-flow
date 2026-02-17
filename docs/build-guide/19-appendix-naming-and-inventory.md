@@ -24,7 +24,7 @@
 
 All components promoted by the system are placed in this folder hierarchy. Boomi auto-creates folders that do not exist.
 
-### Complete 78-Component Inventory Checklist
+### Complete 82-Component Inventory Checklist
 
 ```
 Phase 1 -- DataHub Models (3):
@@ -65,7 +65,7 @@ Phase 2 -- DataHub Operations (6):
 [ ] 29. PROMO - DH Op - Query PromotionLog
 [ ] 30. PROMO - DH Op - Update PromotionLog
 
-Phase 3 -- JSON Profiles (22):
+Phase 3 -- JSON Profiles (24):
 [ ] 31. PROMO - Profile - GetDevAccountsRequest
 [ ] 32. PROMO - Profile - GetDevAccountsResponse
 [ ] 33. PROMO - Profile - ListDevPackagesRequest
@@ -88,38 +88,42 @@ Phase 3 -- JSON Profiles (22):
 [ ] 50. PROMO - Profile - ListIntegrationPacksResponse
 [ ] 51. PROMO - Profile - GenerateComponentDiffRequest
 [ ] 52. PROMO - Profile - GenerateComponentDiffResponse
+[ ] 53. PROMO - Profile - QueryTestDeploymentsRequest
+[ ] 54. PROMO - Profile - QueryTestDeploymentsResponse
 
-Phase 3 -- Integration Processes (11):
-[ ] 53. PROMO - Get Dev Accounts
-[ ] 54. PROMO - List Dev Packages
-[ ] 55. PROMO - Resolve Dependencies
-[ ] 56. PROMO - Execute Promotion
-[ ] 57. PROMO - Package and Deploy
-[ ] 58. PROMO - Query Status
-[ ] 59. PROMO - Mapping CRUD
-[ ] 60. PROMO - Query Peer Review Queue
-[ ] 61. PROMO - Submit Peer Review
-[ ] 62. PROMO - List Integration Packs
-[ ] 63. PROMO - Generate Component Diff
+Phase 3 -- Integration Processes (12):
+[ ] 55. PROMO - Get Dev Accounts
+[ ] 56. PROMO - List Dev Packages
+[ ] 57. PROMO - Resolve Dependencies
+[ ] 58. PROMO - Execute Promotion
+[ ] 59. PROMO - Package and Deploy
+[ ] 60. PROMO - Query Status
+[ ] 61. PROMO - Mapping CRUD
+[ ] 62. PROMO - Query Peer Review Queue
+[ ] 63. PROMO - Submit Peer Review
+[ ] 64. PROMO - List Integration Packs
+[ ] 65. PROMO - Generate Component Diff
+[ ] 66. PROMO - Query Test Deployments
 
-Phase 4 -- Flow Service Components (12):
-[ ] 64. PROMO - FSS Op - GetDevAccounts
-[ ] 65. PROMO - FSS Op - ListDevPackages
-[ ] 66. PROMO - FSS Op - ResolveDependencies
-[ ] 67. PROMO - FSS Op - ExecutePromotion
-[ ] 68. PROMO - FSS Op - PackageAndDeploy
-[ ] 69. PROMO - FSS Op - QueryStatus
-[ ] 70. PROMO - FSS Op - ManageMappings
-[ ] 71. PROMO - FSS Op - QueryPeerReviewQueue
-[ ] 72. PROMO - FSS Op - SubmitPeerReview
-[ ] 73. PROMO - FSS Op - ListIntegrationPacks
-[ ] 74. PROMO - FSS Op - GenerateComponentDiff
-[ ] 75. PROMO - Flow Service
+Phase 4 -- Flow Service Components (13):
+[ ] 67. PROMO - FSS Op - GetDevAccounts
+[ ] 68. PROMO - FSS Op - ListDevPackages
+[ ] 69. PROMO - FSS Op - ResolveDependencies
+[ ] 70. PROMO - FSS Op - ExecutePromotion
+[ ] 71. PROMO - FSS Op - PackageAndDeploy
+[ ] 72. PROMO - FSS Op - QueryStatus
+[ ] 73. PROMO - FSS Op - ManageMappings
+[ ] 74. PROMO - FSS Op - QueryPeerReviewQueue
+[ ] 75. PROMO - FSS Op - SubmitPeerReview
+[ ] 76. PROMO - FSS Op - ListIntegrationPacks
+[ ] 77. PROMO - FSS Op - GenerateComponentDiff
+[ ] 78. PROMO - FSS Op - QueryTestDeployments
+[ ] 79. PROMO - Flow Service
 
 Phase 5 -- Flow Dashboard (3):
-[ ] 76. XmlDiffViewer (Custom Component)
-[ ] 77. Promotion Service Connector
-[ ] 78. Promotion Dashboard
+[ ] 80. XmlDiffViewer (Custom Component)
+[ ] 81. Promotion Service Connector
+[ ] 82. Promotion Dashboard
 ```
 
 ---

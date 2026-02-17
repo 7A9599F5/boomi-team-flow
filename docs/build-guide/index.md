@@ -22,7 +22,7 @@ This guide walks through building every component of the Promotion System step b
 | 13 | [Process G: Component Diff & Build Order](13-process-g-component-diff.md) | Process G — branch vs main XML diff + normalize-xml.groovy + build order checklist |
 | 14 | [Phase 4: Flow Service Component](14-flow-service.md) | Create Flow Service (12 actions), deploy, configure, verify listeners |
 | 15 | [Phase 5a: Flow Dashboard — Developer Swimlane](15-flow-dashboard-developer.md) | Install connector + Pages 1-4 (Developer Swimlane) |
-| 16 | [Phase 5b: Flow Dashboard — Review & Admin](16-flow-dashboard-review-admin.md) | Pages 5-8, SSO config, wire navigation, XmlDiffViewer custom component |
+| 16 | [Phase 5b: Flow Dashboard — Review & Admin](16-flow-dashboard-review-admin.md) | Pages 5-9, SSO config, wire navigation, XmlDiffViewer custom component |
 | 17 | [Phase 6: Testing](17-testing.md) | Smoke test + 7 test scenarios |
 | 18 | [Troubleshooting](18-troubleshooting.md) | Per-phase troubleshooting + diagnostic commands |
 | 19 | [Appendix A: Naming & Inventory](19-appendix-naming-and-inventory.md) | Naming patterns + component inventory checklist |
