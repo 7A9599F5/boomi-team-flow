@@ -11,23 +11,24 @@ This is **not a traditional software codebase** — there is no build system, pa
 ## Architecture
 
 ```
-Flow Dashboard (3 swimlanes: Dev + Peer Review + Admin, 8 pages)
+Flow Dashboard (3 swimlanes: Dev + Peer Review + Admin, 9 pages)
   ↓ Message Actions (Flow Service)
-Integration Engine (11 processes A0–G + E2, E3, J on Public Boomi Cloud Atom)
+Integration Engine (12 processes A0–G + E2, E3, E4, J on Public Boomi Cloud Atom)
   ↓                    ↓
 Platform API        DataHub
 (Partner API)       (ComponentMapping, DevAccountAccess, PromotionLog)
 ```
 
-**11 Integration Processes:**
+**12 Integration Processes:**
 - **A0** getDevAccounts — SSO group → dev account access lookup
 - **A** listDevPackages — query dev account's PackagedComponents
 - **B** resolveDependencies — recursive dependency traversal + mapping lookup
 - **C** executePromotion — create branch → promote to branch (tilde syntax) → strip env config → rewrite refs
-- **D** packageAndDeploy — merge branch → main, create PackagedComponent, Integration Pack, deploy, delete branch
+- **D** packageAndDeploy — 3-mode deploy (test/production-from-test/hotfix), merge, package, Integration Pack, deploy
 - **E** queryStatus — read PromotionLog from DataHub (supports reviewStage filter)
 - **E2** queryPeerReviewQueue — query PENDING_PEER_REVIEW promotions, exclude own
 - **E3** submitPeerReview — record peer approve/reject with self-review prevention
+- **E4** queryTestDeployments — query test-deployed promotions ready for production
 - **F** manageMappings — CRUD on ComponentMapping records
 - **G** generateComponentDiff — fetch branch vs main component XML for diff rendering
 - **J** listIntegrationPacks — query Integration Packs with smart suggestion from history
@@ -46,13 +47,13 @@ datahub/
   models/              3 DataHub model specs (JSON) — ComponentMapping, DevAccountAccess, PromotionLog
   api-requests/        Golden record test XML templates
 integration/
-  profiles/            22 JSON request/response profiles (11 message actions × 2)
+  profiles/            24 JSON request/response profiles (12 message actions × 2)
   scripts/             6 Groovy scripts (dependency traversal, sorting, stripping, validation, rewriting, XML normalization)
   api-requests/        13 XML/JSON Platform API templates (Component CRUD, PackagedComponent, DeployedPackage, IntegrationPack, Branch, MergeRequest)
   flow-service/        Flow Service specification (message actions, config, error codes)
 flow/
-  flow-structure.md    App structure — 3 swimlanes, 8 pages, Flow values, navigation
-  page-layouts/        8 page specs (Package Browser, Promotion Review, Status, Deployment, Peer Review Queue, Peer Review Detail, Admin Approval Queue, Mapping Viewer)
+  flow-structure.md    App structure — 3 swimlanes, 9 pages, Flow values, navigation
+  page-layouts/        9 page specs (Package Browser, Promotion Review, Status, Deployment, Peer Review Queue, Peer Review Detail, Admin Approval Queue, Mapping Viewer, Production Readiness)
   custom-components/   Custom React component specs (XmlDiffViewer)
 docs/
   architecture.md      System design, decisions, constraints, error handling
@@ -63,7 +64,7 @@ docs/
 
 1. `docs/architecture.md` — system design and key decisions
 2. `docs/build-guide/index.md` — the implementation playbook (6 phases, 22 focused files)
-3. `integration/flow-service/flow-service-spec.md` — complete API contract for all 11 message actions
+3. `integration/flow-service/flow-service-spec.md` — complete API contract for all 12 message actions
 4. `flow/flow-structure.md` — dashboard navigation, Flow values, swimlanes
 
 ## Groovy Scripts
@@ -91,3 +92,10 @@ Located in `integration/scripts/`, these run as Data Process steps inside Integr
 - **Spec files**: Markdown for documentation, JSON for data models/profiles, XML for API request templates, Groovy for scripts
 - **Naming**: processes use letter codes (A0, A–G, J); message actions use camelCase (`getDevAccounts`, `executePromotion`)
 - **Error codes**: uppercase snake_case (`MISSING_CONNECTION_MAPPINGS`, `COMPONENT_NOT_FOUND`, `BRANCH_LIMIT_REACHED`)
+
+## Working with the Build Guide
+
+- **Count references are scattered** — when changing component counts (processes, profiles, pages, actions, types), grep the entire `docs/build-guide/` directory for stale numbers. Key files: `00-overview.md`, `index.md`, `14-flow-service.md`, `15-flow-dashboard-developer.md`, `18-troubleshooting.md`
+- **Spec files are source of truth** — `datahub/models/*.json`, `integration/profiles/*.json`, `flow/flow-structure.md`, and `flow/page-layouts/` define the system. Build guide docs must match them.
+- **Nav footer pattern** — every build guide file ends with `Prev: [...] | Next: [...] | [Back to Index](index.md)`
+- **Verify plan items against current state** — planned changes may already be implemented in the codebase
