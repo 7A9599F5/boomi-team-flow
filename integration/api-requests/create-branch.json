@@ -8,6 +8,12 @@
     "All terminal paths (approve, reject, deny) must DELETE the branch",
     "Components are promoted to the branch via tilde syntax: POST /Component/{id}~{branchId}"
   ],
+  "_available_fields_not_used": [
+    "packageId (string) — branch from a specific PackagedComponent version instead of HEAD. Mutually exclusive with parentId.",
+    "parentId (string) — branch from a specific component version (by componentId). Mutually exclusive with packageId.",
+    "deploymentId (string) — branch from a specific deployment snapshot.",
+    "These fields are unused in this project because Process C always branches from HEAD (current main state)."
+  ],
   "_lifecycle": [
     "1. CREATE: POST /Branch → returns branchId",
     "2. POLL: GET /Branch/{branchId} until ready=true",
@@ -36,5 +42,6 @@
     "errorCode": "BRANCH_LIMIT_REACHED",
     "errorMessage": "Too many active promotions. Please wait for pending reviews to complete."
   },
-  "name": "promo-{promotionId}"
+  "name": "promo-{promotionId}",
+  "description": "Promotion branch for {promotionId}"
 }

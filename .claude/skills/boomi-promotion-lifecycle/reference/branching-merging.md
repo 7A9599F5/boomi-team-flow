@@ -20,7 +20,7 @@ Body: <QueryFilter xmlns='http://api.platform.boomi.com/'/>
 }
 ```
 
-**Why 18, not 20?** Leave buffer for other operations (manual branches, concurrent promotions).
+**Why 15, not 20?** Reserve 5 slots for buffer — concurrent promotions and manual branches need headroom.
 
 ---
 
@@ -31,7 +31,8 @@ POST /partner/api/rest/v1/{primaryAccountId}/Branch
 Content-Type: application/json
 
 {
-  "name": "promo-abc123"
+  "name": "promo-abc123",
+  "description": "Promotion branch for abc123"
 }
 ```
 
@@ -42,12 +43,15 @@ Content-Type: application/json
   "branchId": "branch-uuid-456",
   "name": "promo-abc123",
   "ready": false,
+  "stage": "CREATING",
   "createdDate": "2026-02-16T10:00:00Z",
   "createdBy": "admin@company.com"
 }
 ```
 
-**Key Field:** `ready: false` — branch is NOT immediately writable.
+**Key Fields:**
+- `ready: false` — branch is NOT immediately writable
+- `stage: "CREATING"` — transitions to `"NORMAL"` when `ready=true`
 
 ---
 

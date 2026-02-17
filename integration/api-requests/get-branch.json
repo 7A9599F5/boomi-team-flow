@@ -23,7 +23,13 @@
     "branchId": "string — unique branch ID",
     "name": "string — branch name (e.g., promo-{promotionId})",
     "ready": "boolean — true when branch is ready for component writes",
+    "stage": "string — branch lifecycle stage: CREATING (initial) or NORMAL (ready for operations)",
     "createdDate": "string — ISO 8601 timestamp",
     "createdBy": "string — email of creator"
-  }
+  },
+  "_stage_notes": [
+    "New branches start with stage=CREATING while Boomi provisions the branch",
+    "Stage transitions to NORMAL when ready=true — the branch is fully provisioned",
+    "For polling purposes, check ready=true rather than stage=NORMAL (ready is the documented gate)"
+  ]
 }

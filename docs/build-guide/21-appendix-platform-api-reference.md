@@ -41,7 +41,8 @@ All endpoints use the base URL `https://api.boomi.com`.
 | 9 | DELETE Branch | DELETE | `/partner/api/rest/v1/{accountId}/Branch/{branchId}` | `application/json` | C, D | `delete-branch.json` |
 
 **Notes:**
-- **POST Branch** returns `branchId` and a `ready` field. Poll with **GET Branch** until `ready = true` (5s intervals, max 6 retries)
+- **POST Branch** accepts `name` (required) and `description` (optional). Optionally accepts `packageId` to branch from a specific PackagedComponent version (unused in this project — we always branch from HEAD). Returns `branchId`, `ready`, and `stage` fields. Poll with **GET Branch** until `ready = true` (5s intervals, max 6 retries)
+- **GET Branch** response includes `stage` field: `CREATING` (initial) → `NORMAL` (ready). Use `ready=true` as the polling gate.
 - **QUERY Branch** with empty filter returns all branches -- used for branch limit check (threshold: 15)
 - **DELETE Branch** is idempotent: both `200` (deleted) and `404` (already deleted) are treated as success
 - Branch limit: 15 soft threshold (checked before creation), 20 hard platform limit

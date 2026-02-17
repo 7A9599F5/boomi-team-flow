@@ -164,7 +164,8 @@ curl -X POST \
   -H "Authorization: Basic $(echo -n ${BOOMI_USERNAME}:${BOOMI_API_TOKEN} | base64)" \
   -H "Content-Type: application/json" \
   -d '{
-    "name": "promo-12345"
+    "name": "promo-12345",
+    "description": "Promotion branch for 12345"
   }'
 ```
 
@@ -174,7 +175,8 @@ curl -X POST \
   "@type": "Branch",
   "branchId": "branch-uuid-abc123",
   "name": "promo-12345",
-  "ready": false
+  "ready": false,
+  "stage": "CREATING"
 }
 ```
 

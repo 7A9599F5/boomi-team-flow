@@ -283,7 +283,7 @@ For detailed documentation:
 
 1. **Always poll branch ready state** — don't write components until `ready: true`
 2. **Always delete branches** — on ALL terminal paths (approve, reject, deny, failure)
-3. **Check branch count before creation** — enforce soft limit (18) to avoid hitting hard limit (20)
+3. **Check branch count before creation** — enforce soft limit (15) to avoid hitting hard limit (20)
 4. **Validate connection mappings first** — fail fast if mappings are missing
 5. **Use OVERRIDE merge strategy** — `priorityBranch: sourceBranchId` ensures predictable merges
 6. **shareable: true is REQUIRED** — PackagedComponents must have `shareable: true` to include in Integration Packs

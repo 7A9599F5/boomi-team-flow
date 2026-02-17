@@ -50,9 +50,9 @@ if (response.numberOfResults >= 15) {
 }
 ```
 
-**Why Soft Limit = 18 (not 20):**
+**Why Soft Limit = 15 (not 20):**
 - Hard limit is 20 branches per account
-- Reserve 2 slots for buffer (avoid race conditions)
+- Reserve 5 slots for buffer (avoid race conditions with concurrent promotions)
 - Prevent blocking all promotions if limit is reached
 
 ---
@@ -69,9 +69,15 @@ POST /partner/api/rest/v1/{accountId}/Branch
 **Request Body:**
 ```json
 {
-  "name": "promo-{promotionId}"
+  "name": "promo-{promotionId}",
+  "description": "Promotion branch for {promotionId}"
 }
 ```
+
+**Optional Fields (not used in this project):**
+- `packageId`: Branch from a specific PackagedComponent version (mutually exclusive with `parentId`)
+- `parentId`: Branch from a specific component version by componentId (mutually exclusive with `packageId`)
+- `deploymentId`: Branch from a specific deployment snapshot
 
 **Response:**
 ```json
@@ -80,6 +86,7 @@ POST /partner/api/rest/v1/{accountId}/Branch
   "branchId": "branch-uuid-abc123",
   "name": "promo-12345",
   "ready": false,
+  "stage": "CREATING",
   "createdDate": "2024-11-20T10:00:00Z",
   "createdBy": "user@boomi.com"
 }
@@ -88,6 +95,7 @@ POST /partner/api/rest/v1/{accountId}/Branch
 **Key Fields:**
 - `branchId`: UUID to use in tilde syntax operations
 - `ready`: Initially `false` — must poll until `true` before promoting
+- `stage`: Starts as `CREATING`, transitions to `NORMAL` when `ready=true`
 
 **Branch Naming Convention:**
 ```
@@ -112,7 +120,8 @@ GET /partner/api/rest/v1/{accountId}/Branch/{branchId}
   "@type": "Branch",
   "branchId": "branch-uuid-abc123",
   "name": "promo-12345",
-  "ready": false
+  "ready": false,
+  "stage": "CREATING"
 }
 ```
 
@@ -122,7 +131,8 @@ GET /partner/api/rest/v1/{accountId}/Branch/{branchId}
   "@type": "Branch",
   "branchId": "branch-uuid-abc123",
   "name": "promo-12345",
-  "ready": true
+  "ready": true,
+  "stage": "NORMAL"
 }
 ```
 
@@ -307,8 +317,10 @@ DELETE /partner/api/rest/v1/{accountId}/Branch/{branchId}
 
 **Response:**
 ```http
-HTTP/1.1 204 No Content
+HTTP/1.1 200 OK
 ```
+
+**Note:** DELETE returns `200` on success (not `204`). A `404` response (branch already deleted) should also be treated as success for idempotent cleanup.
 
 **When to Delete:**
 
@@ -584,7 +596,7 @@ try {
 ### Branch Management
 
 **DO:**
-- ✅ Check branch count before creating (enforce soft limit: 18)
+- ✅ Check branch count before creating (enforce soft limit: 15)
 - ✅ Use unique, identifiable branch names (`promo-{promotionId}`)
 - ✅ Poll `ready` state before promoting components
 - ✅ Delete branches immediately after merge or rejection
