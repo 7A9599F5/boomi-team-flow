@@ -2,9 +2,11 @@
 from __future__ import annotations
 
 from setup.engine import StepStatus, StepType
+from setup.generators.profile_xml import generate_profile_xml
+from setup.generators.script_xml import SCRIPT_NAME_MAP, generate_script_xml
 from setup.state import SetupState
 from setup.steps.base import BaseStep
-from setup.templates.loader import list_profiles, load_template
+from setup.templates.loader import list_profiles, load_profile_schema, load_template
 from setup.ui import console as ui
 from setup.ui.prompts import collect_component_id, guide_and_wait, guide_and_confirm
 
@@ -40,6 +42,12 @@ FSS_OPS = [
     ("generateComponentDiff", "PROMO - FSS Op - GenerateComponentDiff"),
     ("listIntegrationPacks", "PROMO - FSS Op - ListIntegrationPacks"),
     ("cancelTestDeployment", "PROMO - FSS Op - CancelTestDeployment"),
+    # Phase 7: Extension Editor
+    ("listClientAccounts", "PROMO - FSS Op - ListClientAccounts"),
+    ("getExtensions", "PROMO - FSS Op - GetExtensions"),
+    ("updateExtensions", "PROMO - FSS Op - UpdateExtensions"),
+    ("copyExtensionsTestToProd", "PROMO - FSS Op - CopyExtensionsTestToProd"),
+    ("updateMapExtension", "PROMO - FSS Op - UpdateMapExtension"),
 ]
 
 # Ordered list of processes for manual build (letter_code, display_name, build_guide_file)
@@ -57,6 +65,12 @@ PROCESS_BUILD_ORDER = [
     ("B", "PROMO - Process B - ResolveDependencies", "09-process-b-resolve-dependencies.md"),
     ("C", "PROMO - Process C - ExecutePromotion", "10-process-c-execute-promotion.md"),
     ("D", "PROMO - Process D - PackageAndDeploy", "11-process-d-package-and-deploy.md"),
+    # Phase 7: Extension Editor
+    ("K", "PROMO - Process K - ListClientAccounts", "16-process-k-list-client-accounts.md"),
+    ("L", "PROMO - Process L - GetExtensions", "16-process-l-get-extensions.md"),
+    ("M", "PROMO - Process M - UpdateExtensions", "16-process-m-update-extensions.md"),
+    ("N", "PROMO - Process N - CopyExtensionsTestToProd", "16-process-n-copy-extensions.md"),
+    ("O", "PROMO - Process O - UpdateMapExtension", "16-process-o-update-map-extension.md"),
 ]
 
 
@@ -149,7 +163,7 @@ class CreateProfiles(BaseStep):
         remaining = state.get_remaining_items(self.step_id, all_profiles)
 
         if not remaining:
-            ui.print_success("All 28 profiles already created.")
+            ui.print_success(f"All {len(all_profiles)} profiles already created.")
             return StepStatus.COMPLETED
 
         ui.print_info(f"Creating {len(remaining)} of {len(all_profiles)} profiles...")
@@ -164,15 +178,12 @@ class CreateProfiles(BaseStep):
                 state.mark_step_item_complete(self.step_id, stem)
                 continue
 
-            # Load the JSON schema for this profile
-            schema_json = load_template(f"integration/profiles/{stem}.json")
+            # Generate proper Boomi Component XML from the JSON schema
+            schema = load_profile_schema(stem)
+            profile_xml = generate_profile_xml(schema, display_name)
 
             try:
-                result = self.platform_api.create_component(
-                    f'<Component name="{display_name}" type="profile" subType="JSON">'
-                    f"<object><![CDATA[{schema_json}]]></object>"
-                    f"</Component>"
-                )
+                result = self.platform_api.create_component(profile_xml)
                 comp_id = (
                     result.get("componentId", result.get("@id", ""))
                     if isinstance(result, dict)
@@ -190,6 +201,74 @@ class CreateProfiles(BaseStep):
                 return StepStatus.FAILED
 
         ui.print_success(f"All {len(all_profiles)} profiles created.")
+        return StepStatus.COMPLETED
+
+
+# ---- Step 3.1b: CreateScripts ----------------------------------------------
+
+class CreateScripts(BaseStep):
+    """Automatically create all 10 Groovy process scripts via Platform API."""
+
+    @property
+    def step_id(self) -> str:
+        return "3.1b"
+
+    @property
+    def name(self) -> str:
+        return "Create Groovy Scripts"
+
+    @property
+    def step_type(self) -> StepType:
+        return StepType.AUTO
+
+    @property
+    def depends_on(self) -> list[str]:
+        return ["3.1"]
+
+    def execute(self, state: SetupState, dry_run: bool = False) -> StepStatus:
+        ui.print_step(self.step_id, self.name, self.step_type.value)
+
+        all_stems = list(SCRIPT_NAME_MAP.keys())
+        remaining = state.get_remaining_items(self.step_id, all_stems)
+
+        if not remaining:
+            ui.print_success(f"All {len(all_stems)} scripts already created.")
+            return StepStatus.COMPLETED
+
+        ui.print_info(f"Creating {len(remaining)} of {len(all_stems)} scripts...")
+
+        for i, stem in enumerate(remaining, 1):
+            display_name = SCRIPT_NAME_MAP[stem]
+            ui.print_progress(
+                len(all_stems) - len(remaining) + i, len(all_stems), display_name
+            )
+
+            if dry_run:
+                state.mark_step_item_complete(self.step_id, stem)
+                continue
+
+            groovy_content = load_template(f"integration/scripts/{stem}.groovy")
+            script_xml = generate_script_xml(groovy_content, display_name)
+
+            try:
+                result = self.platform_api.create_component(script_xml)
+                comp_id = (
+                    result.get("componentId", result.get("@id", ""))
+                    if isinstance(result, dict)
+                    else str(result)
+                )
+                if comp_id:
+                    state.store_component_id("scripts", stem, comp_id)
+                    state.mark_step_item_complete(self.step_id, stem)
+                    ui.print_success(f"Created {display_name} -> {comp_id}")
+                else:
+                    ui.print_error(f"No component ID returned for {display_name}")
+                    return StepStatus.FAILED
+            except Exception as exc:
+                ui.print_error(f"Failed to create {display_name}: {exc}")
+                return StepStatus.FAILED
+
+        ui.print_success(f"All {len(all_stems)} scripts created.")
         return StepStatus.COMPLETED
 
 
@@ -212,7 +291,7 @@ class DiscoverFssTemplate(BaseStep):
 
     @property
     def depends_on(self) -> list[str]:
-        return ["3.1"]
+        return ["3.1b"]
 
     def execute(self, state: SetupState, dry_run: bool = False) -> StepStatus:
         ui.print_step(self.step_id, self.name, self.step_type.value)
@@ -281,7 +360,7 @@ class CreateFssOps(BaseStep):
         remaining = state.get_remaining_items(self.step_id, all_ops)
 
         if not remaining:
-            ui.print_success("All 14 FSS operations already created.")
+            ui.print_success(f"All {len(all_ops)} FSS operations already created.")
             return StepStatus.COMPLETED
 
         ops_lookup = dict(FSS_OPS)
@@ -363,7 +442,7 @@ class BuildProcesses(BaseStep):
         remaining = state.get_remaining_items(self.step_id, all_codes)
 
         if not remaining:
-            ui.print_success("All 12 processes already built.")
+            ui.print_success(f"All {len(PROCESS_BUILD_ORDER)} processes already built.")
             return StepStatus.COMPLETED
 
         ui.print_info(
@@ -420,6 +499,12 @@ def _show_process_context(state: SetupState, code: str) -> None:
         "E5": "withdrawPromotion",
         "G": "generateComponentDiff",
         "J": "listIntegrationPacks",
+        # Phase 7: Extension Editor
+        "K": "listClientAccounts",
+        "L": "getExtensions",
+        "M": "updateExtensions",
+        "N": "copyExtensionsTestToProd",
+        "O": "updateMapExtension",
     }
     action = action_map.get(code)
     if action:
@@ -478,28 +563,41 @@ class VerifyPhase3(BaseStep):
         # Count profiles
         profiles = state.data.get("component_ids", {}).get("profiles", {})
         profile_count = len(profiles)
-        if profile_count >= 28:
-            ui.print_success(f"Profiles: {profile_count}/28")
+        expected_profiles = len(list_profiles())
+        if profile_count >= expected_profiles:
+            ui.print_success(f"Profiles: {profile_count}/{expected_profiles}")
         else:
-            ui.print_error(f"Profiles: {profile_count}/28 — expected 28")
+            ui.print_error(f"Profiles: {profile_count}/{expected_profiles} — expected {expected_profiles}")
+            passed = False
+
+        # Count scripts
+        scripts = state.data.get("component_ids", {}).get("scripts", {})
+        script_count = len(scripts)
+        expected_scripts = len(SCRIPT_NAME_MAP)
+        if script_count >= expected_scripts:
+            ui.print_success(f"Scripts: {script_count}/{expected_scripts}")
+        else:
+            ui.print_error(f"Scripts: {script_count}/{expected_scripts} — expected {expected_scripts}")
             passed = False
 
         # Count FSS operations
         fss_ops = state.data.get("component_ids", {}).get("fss_operations", {})
         fss_count = len(fss_ops)
-        if fss_count >= 14:
-            ui.print_success(f"FSS operations: {fss_count}/14")
+        expected_fss = len(FSS_OPS)
+        if fss_count >= expected_fss:
+            ui.print_success(f"FSS operations: {fss_count}/{expected_fss}")
         else:
-            ui.print_error(f"FSS operations: {fss_count}/14 — expected 14")
+            ui.print_error(f"FSS operations: {fss_count}/{expected_fss} — expected {expected_fss}")
             passed = False
 
         # Count processes
         processes = state.data.get("component_ids", {}).get("processes", {})
         proc_count = len(processes)
-        if proc_count >= 12:
-            ui.print_success(f"Processes: {proc_count}/12")
+        expected_procs = len(PROCESS_BUILD_ORDER)
+        if proc_count >= expected_procs:
+            ui.print_success(f"Processes: {proc_count}/{expected_procs}")
         else:
-            ui.print_error(f"Processes: {proc_count}/12 — expected 12")
+            ui.print_error(f"Processes: {proc_count}/{expected_procs} — expected {expected_procs}")
             passed = False
 
         if passed:
