@@ -47,9 +47,9 @@ datahub/
   models/              3 DataHub model specs (JSON) — ComponentMapping, DevAccountAccess, PromotionLog
   api-requests/        Golden record test XML templates
 integration/
-  profiles/            24 JSON request/response profiles (12 message actions × 2)
-  scripts/             6 Groovy scripts (dependency traversal, sorting, stripping, validation, rewriting, XML normalization)
-  api-requests/        13 XML/JSON Platform API templates (Component CRUD, PackagedComponent, DeployedPackage, IntegrationPack, Branch, MergeRequest)
+  profiles/            26 JSON request/response profiles (13 message actions × 2)
+  scripts/             7 Groovy scripts (dependency traversal, sorting, stripping, validation, rewriting, XML normalization, test deployment filtering)
+  api-requests/        20 XML/JSON Platform API templates (Component CRUD, PackagedComponent, DeployedPackage, IntegrationPack, Branch, MergeRequest)
   flow-service/        Flow Service specification (message actions, config, error codes)
 flow/
   flow-structure.md    App structure — 3 swimlanes, 9 pages, Flow values, navigation
@@ -64,7 +64,7 @@ docs/
 
 1. `docs/architecture.md` — system design and key decisions
 2. `docs/build-guide/index.md` — the implementation playbook (6 phases, 22 focused files)
-3. `integration/flow-service/flow-service-spec.md` — complete API contract for all 12 message actions
+3. `integration/flow-service/flow-service-spec.md` — complete API contract for all 13 message actions
 4. `flow/flow-structure.md` — dashboard navigation, Flow values, swimlanes
 
 ## Groovy Scripts
@@ -79,6 +79,7 @@ Located in `integration/scripts/`, these run as Data Process steps inside Integr
 | `validate-connection-mappings.groovy` | Process C | Pre-promotion batch validation that all connection mappings exist |
 | `rewrite-references.groovy` | Process C | Replace dev component IDs with prod IDs using mapping cache |
 | `normalize-xml.groovy` | Process G | Pretty-print component XML for consistent line-by-line diff comparison |
+| `filter-already-promoted.groovy` | Process E4 | Exclude test deployments already promoted to production |
 
 ## DataHub Models
 
@@ -92,10 +93,12 @@ Located in `integration/scripts/`, these run as Data Process steps inside Integr
 - **Spec files**: Markdown for documentation, JSON for data models/profiles, XML for API request templates, Groovy for scripts
 - **Naming**: processes use letter codes (A0, A–G, J); message actions use camelCase (`getDevAccounts`, `executePromotion`)
 - **Error codes**: uppercase snake_case (`MISSING_CONNECTION_MAPPINGS`, `COMPONENT_NOT_FOUND`, `BRANCH_LIMIT_REACHED`)
+- **SSO group names** — always use claim format `ABC_BOOMI_FLOW_CONTRIBUTOR`, `ABC_BOOMI_FLOW_ADMIN`, etc. Never use display format (`"Boomi Developers"`) as authorization values
+- **Branch limits** — operational threshold is 15, platform hard limit is 20. Grep for stale values (10, 18) when editing branch-related content
 
 ## Working with the Build Guide
 
-- **Count references are scattered** — when changing component counts (processes, profiles, pages, actions, types), grep the entire `docs/build-guide/` directory for stale numbers. Key files: `00-overview.md`, `index.md`, `14-flow-service.md`, `15-flow-dashboard-developer.md`, `18-troubleshooting.md`
+- **Count references are scattered** — when changing component counts (processes, profiles, pages, actions, types), grep `docs/build-guide/`, `.claude/skills/`, `.claude/rules/`, and `CHANGELOG.md` for stale numbers. Key files: `00-overview.md`, `index.md`, `14-flow-service.md`, `15-flow-dashboard-developer.md`, `18-troubleshooting.md`, `19-appendix-naming-and-inventory.md`
 - **Spec files are source of truth** — `datahub/models/*.json`, `integration/profiles/*.json`, `flow/flow-structure.md`, and `flow/page-layouts/` define the system. Build guide docs must match them.
 - **Nav footer pattern** — every build guide file ends with `Prev: [...] | Next: [...] | [Back to Index](index.md)`
 - **Verify plan items against current state** — planned changes may already be implemented in the codebase
