@@ -4,6 +4,16 @@
 
 The Promotion Status page displays the results of the promotion execution. It shows which components were successfully created/updated, which failed, and which need credential reconfiguration. Users can submit the promotion for deployment or end the flow.
 
+## Direct Navigation Guard
+
+Before any page content loads, a Decision step validates required Flow values:
+
+- **Check:** `promotionId` is not null/empty
+- **If missing:** Redirect to Page 1 (Package Browser) with toast message: "No active promotion"
+- **If present:** Continue to page load behavior below
+
+This prevents users from bookmarking or manually navigating to this page without an active promotion context.
+
 ## Page Load Behavior
 
 1. **Arrival condition:** User navigates here after `executePromotion` Message step completes

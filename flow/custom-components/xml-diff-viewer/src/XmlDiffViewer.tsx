@@ -39,13 +39,16 @@ export const XmlDiffViewer: React.FC<IWrappedComponentProps> = ({
         }));
     }, [defaultViewMode]);
 
-    // Show loading state when Flow is fetching data
+    // Extract diff data (may be null during loading/error states)
+    const data: IDiffData | null = state?.loading ? null : extractDiffData(objectData);
+
+    // Hooks must be called unconditionally — compute stats even when data is null
+    const stats = useDiffStats(data?.mainXml ?? '', data?.branchXml ?? '');
+
+    // Early returns AFTER all hooks
     if (state?.loading) {
         return <LoadingState />;
     }
-
-    // Extract and validate diff data from objectData
-    const data: IDiffData | null = extractDiffData(objectData);
 
     if (!data) {
         return <ErrorState message="No component data available" />;
@@ -54,9 +57,6 @@ export const XmlDiffViewer: React.FC<IWrappedComponentProps> = ({
     if (!data.branchXml) {
         return <ErrorState message="Branch XML data is missing" />;
     }
-
-    // Compute diff statistics
-    const stats = useDiffStats(data.mainXml, data.branchXml);
 
     const handleViewModeChange = (mode: ViewMode) => {
         setToolbar((prev) => ({ ...prev, viewMode: mode }));

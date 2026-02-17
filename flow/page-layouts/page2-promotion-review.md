@@ -4,6 +4,16 @@
 
 The Promotion Review page displays a resolved dependency tree for the selected package, showing all components that will be created or updated in the primary account. Users review the impact and execute the promotion.
 
+## Direct Navigation Guard
+
+Before any page content loads, a Decision step validates required Flow values:
+
+- **Check:** `selectedPackage` is not null/empty
+- **If missing:** Redirect to Page 1 (Package Browser) with toast message: "Please select a package first"
+- **If present:** Continue to page load behavior below
+
+This prevents users from bookmarking or manually navigating to this page without first selecting a package on Page 1.
+
 ## Page Load Behavior
 
 1. **Automatic Message step execution:** `resolveDependencies`

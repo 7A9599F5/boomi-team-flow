@@ -4,6 +4,15 @@
 
 The Production Readiness Queue shows test deployments that are ready to be promoted to production. This page is the bridge between the test deployment phase and the production review workflow. Developers return here after validating components in the test environment, select a test deployment, and initiate the production promotion — which then follows the standard peer review → admin approval path.
 
+## Navigation Entry Points
+
+This page can be reached from:
+- **Page 4 (Deployment Submission):** After a successful test deployment, via the "View in Production Readiness" button
+- **Direct navigation:** From the dashboard sidebar/menu (always accessible to Developer swimlane users)
+- **Page 1 (Package Browser):** Via a "Tested Deployments" link in the navigation header (if implemented)
+
+No navigation guard is required for this page because it does not depend on prior page state. The page loads its own data independently via the `queryTestDeployments` message step.
+
 ## Page Load Behavior
 
 1. **Authorization:** Same as Developer swimlane — SSO group "ABC_BOOMI_FLOW_CONTRIBUTOR" OR "ABC_BOOMI_FLOW_ADMIN"

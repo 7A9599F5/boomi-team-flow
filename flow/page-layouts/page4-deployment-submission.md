@@ -37,6 +37,16 @@ The Deployment Submission page handles three deployment modes based on the `targ
 - **Post-submit:** Swimlane transition → Peer Review → Admin Approval
 - **Email:** "EMERGENCY HOTFIX — Peer Review Needed" notification with justification included
 
+## Direct Navigation Guard
+
+Before any page content loads, a Decision step validates required Flow values:
+
+- **Check:** `promotionId` AND `branchId` are not null/empty
+- **If missing:** Redirect to Page 3 (Promotion Status) if `promotionId` exists but `branchId` is missing; otherwise redirect to Page 1 (Package Browser) with toast message: "No active promotion for deployment"
+- **If present:** Continue to page load behavior below
+
+This prevents users from bookmarking or manually navigating to this page without the required promotion and branch context.
+
 ## Page Load Behavior
 
 1. **Arrival condition:** User navigates here from Page 3 (Promotion Status) via "Submit for Deployment" button

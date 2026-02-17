@@ -243,6 +243,14 @@ The Package Browser is the entry point for the developer flow. Users select a de
 - Tap card to select
 - Button fixed at bottom of screen
 
+## Error Handling
+
+All pages in the Flow dashboard follow these error handling patterns:
+
+- **Transient errors** (network timeout, HTTP 429 rate limit, 5xx server errors): Display an inline error banner with a "Retry" button that re-executes the failed Message step. Include the error code when available.
+- **Permanent errors** (e.g., `COMPONENT_NOT_FOUND`, `MISSING_CONNECTION_MAPPINGS`, `BRANCH_LIMIT_REACHED`): Display the error details with a "Contact Admin" action and contextual recovery links — for example, a link back to the Package Browser for re-selection or the Status page for checking promotion progress.
+- **Contextual recovery:** Every error state should offer at least one navigation path (e.g., "Return to Package Browser", "View Promotion Status") so users are never stranded on a dead-end error screen.
+
 ## Accessibility
 
 - **Keyboard navigation:** Tab through combobox → grid rows → button
