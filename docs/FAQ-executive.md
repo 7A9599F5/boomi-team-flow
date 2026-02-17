@@ -112,7 +112,9 @@ An **emergency hotfix** path (Dev → Production) is also available when a criti
 
 ### What is an "Integration Pack" and why does it need approval?
 
-An Integration Pack is Boomi's mechanism for bundling multiple related components into a single deployable unit. Deploying an Integration Pack makes the processes live — meaning they will start handling real data. The system uses separate Integration Packs for test and production environments. Test deployments can proceed without reviews, but production deployment requires both a peer review and an admin approval before it occurs.
+In Boomi, a **package** is a versioned, immutable snapshot of an individual process or API Service component — think of it as a release candidate for a single piece of work. An **Integration Pack** bundles one or more of these packages into a complete, deployable solution. Where a package represents a single building block, an Integration Pack is the finished product that gets installed and run.
+
+Deploying an Integration Pack makes the bundled processes live — meaning they will start handling real data. The system uses separate Integration Packs for test and production environments. Test deployments can proceed without reviews, but production deployment requires both a peer review and an admin approval before it occurs.
 
 ### How are connections (database credentials, API keys, etc.) handled?
 
@@ -250,7 +252,7 @@ Because everything is built with standard Boomi components (processes, Flow page
 | **Component** | Any buildable item in Boomi — a process, connection, data map, profile, etc. |
 | **DataHub** | Boomi's master data management feature, used here as a lightweight database |
 | **Flow** | Boomi's low-code web application builder (the dashboard UI) |
-| **Integration Pack** | A bundle of related Boomi components that can be deployed as a single unit |
+| **Integration Pack** | A bundle of one or more packaged processes or API Service components, deployed as a complete solution |
 | **iPaaS** | Integration Platform as a Service — a cloud service for connecting applications |
 | **Message Action** | A named API endpoint within a Boomi Flow Service that triggers a backend process |
 | **Packaged Component** | A versioned, immutable snapshot of a Boomi component ready for deployment |
