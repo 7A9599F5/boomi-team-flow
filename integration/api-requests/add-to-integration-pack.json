@@ -1,0 +1,11 @@
+{
+  "_comment": "POST https://api.boomi.com/partner/api/rest/v1/{primaryAccountId}/IntegrationPack/{integrationPackId}/PackagedComponent/{packageId}",
+  "_notes": [
+    "Adds a PackagedComponent to an Integration Pack",
+    "No request body — linking is done via URL parameters",
+    "URL parameter {integrationPackId}: DPP integrationPackId",
+    "URL parameter {packageId}: DPP packagedComponentId (the packageId from POST PackagedComponent response)",
+    "Must be called AFTER creating both the IntegrationPack and PackagedComponent",
+    "Must be called BEFORE releasing the Integration Pack"
+  ]
+}

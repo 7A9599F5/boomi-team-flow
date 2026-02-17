@@ -1,0 +1,12 @@
+{
+  "_comment": "POST https://api.boomi.com/partner/api/rest/v1/{primaryAccountId}/ReleaseIntegrationPack",
+  "_notes": [
+    "Releases an Integration Pack, creating a deployable snapshot",
+    "Must be called AFTER adding all PackagedComponents to the pack",
+    "After release, changes to the pack require a new release",
+    "Response includes the released packageId used for deployment"
+  ],
+  "integrationPackId": "{integrationPackId}",
+  "version": "{releaseVersion}",
+  "notes": "{releaseNotes}"
+}

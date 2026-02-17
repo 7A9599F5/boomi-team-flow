@@ -1,0 +1,10 @@
+{
+  "_comment": "GET https://api.boomi.com/partner/api/rest/v1/{primaryAccountId}/MergeRequest/{mergeRequestId}",
+  "_notes": [
+    "Retrieves the current status of a merge request",
+    "No request body — GET request with mergeRequestId in the URL",
+    "Used to poll merge status after calling POST MergeRequest Execute",
+    "Poll until stage=MERGED (success) or stage=FAILED_TO_MERGE (failure)",
+    "Merge stages: DRAFTING → DRAFTED → REVIEWING → MERGING → MERGED | FAILED_TO_MERGE"
+  ]
+}

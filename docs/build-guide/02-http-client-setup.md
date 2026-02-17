@@ -1,6 +1,6 @@
 ## Phase 2: Integration Connections & Operations
 
-This phase creates the connection and operation components that all integration processes depend on. There are 2 connections and 21 operations total (15 HTTP Client + 6 DataHub).
+This phase creates the connection and operation components that all integration processes depend on. There are 2 connections and 25 operations total (19 HTTP Client + 6 DataHub).
 
 ### Step 2.1 -- Create HTTP Client Connection (Partner API)
 
@@ -30,7 +30,7 @@ This phase creates the connection and operation components that all integration 
 
 ### Step 2.2 -- Create HTTP Client Operations
 
-Create 15 HTTP Client operations. Each uses the `PROMO - Partner API Connection` from Step 2.1.
+Create 19 HTTP Client operations. Each uses the `PROMO - Partner API Connection` from Step 2.1.
 
 #### Quick Reference Table
 
@@ -51,8 +51,12 @@ Create 15 HTTP Client operations. Each uses the `PROMO - Partner API Connection`
 | 13 | PROMO - HTTP Op - POST MergeRequest Execute | POST | `/partner/api/rest/v1/{1}/MergeRequest/execute/{2}` | `application/json` | `execute-merge-request.json` |
 | 14 | PROMO - HTTP Op - GET Branch | GET | `/partner/api/rest/v1/{1}/Branch/{2}` | `application/json` | `get-branch.json` |
 | 15 | PROMO - HTTP Op - DELETE Branch | DELETE | `/partner/api/rest/v1/{1}/Branch/{2}` | `application/json` | `delete-branch.json` |
+| 16 | PROMO - HTTP Op - QUERY IntegrationPack | POST | `/partner/api/rest/v1/{1}/IntegrationPack/query` | `application/xml` | `query-integration-packs.xml` |
+| 17 | PROMO - HTTP Op - POST Add To IntegrationPack | POST | `/partner/api/rest/v1/{1}/IntegrationPack/{2}/PackagedComponent/{3}` | `application/json` | `add-to-integration-pack.json` |
+| 18 | PROMO - HTTP Op - POST ReleaseIntegrationPack | POST | `/partner/api/rest/v1/{1}/ReleaseIntegrationPack` | `application/json` | `release-integration-pack.json` |
+| 19 | PROMO - HTTP Op - GET MergeRequest | GET | `/partner/api/rest/v1/{1}/MergeRequest/{2}` | `application/json` | `get-merge-request.json` |
 
-> Operations 1-6 use `application/xml` for both Content-Type and Accept headers (Platform API XML endpoints). Operations 7-9 use `application/json` for both headers (JSON-based endpoints).
+> Operations 1-6 use `application/xml` for both Content-Type and Accept headers (Platform API XML endpoints). Operations 7-9 use `application/json` for both headers (JSON-based endpoints). Operation 16 uses `application/xml` (query endpoint). Operations 17-19 use `application/json`.
 
 #### Step 2.2.1 -- PROMO - HTTP Op - GET Component
 
@@ -275,7 +279,7 @@ Creates a new Integration Pack when `createNewPack=true` in the deployment reque
 | **Response Codes - Error** | `400`, `429`, `503` |
 | **Timeout (ms)** | `120000` |
 
-5. After creation, add the PackagedComponent to the pack, then release via `POST /ReleaseIntegrationPack`. Set `installationType: "MULTI"` for multi-install packs. See `/integration/api-requests/create-integration-pack.json` for the template.
+5. After creation, add the PackagedComponent to the pack (operation 17), then release via `PROMO - HTTP Op - POST ReleaseIntegrationPack` (operation 18). Set `installationType: "MULTI"` for multi-install packs. See `/integration/api-requests/create-integration-pack.json` for the template.
 6. **Save**.
 
 #### Step 2.2.10 -- PROMO - HTTP Op - POST Branch
@@ -420,6 +424,102 @@ Deletes a promotion branch. Called on all terminal paths (approve, reject, deny,
 | **Timeout (ms)** | `120000` |
 
 5. Idempotent: both `200` (deleted) and `404` (already deleted) are treated as success. See `/integration/api-requests/delete-branch.json` for lifecycle paths.
+6. **Save**.
+
+#### Step 2.2.16 -- PROMO - HTTP Op - QUERY IntegrationPack
+
+Queries Integration Packs in the primary account. Used by Process J to populate the Integration Pack selector.
+
+1. **Build --> New Component --> Connector --> Operation --> HTTP Client**.
+2. Name: `PROMO - HTTP Op - QUERY IntegrationPack`.
+3. Connection: `PROMO - Partner API Connection`.
+4. Configure:
+
+| Tab / Setting | Value |
+|---------------|-------|
+| **Action** | Send |
+| **HTTP Method** | POST |
+| **Request URL** | `/partner/api/rest/v1/{1}/IntegrationPack/query` |
+| **Request URL Parameters** | `{1}` = DPP `primaryAccountId` |
+| **Query Parameters** | (none) |
+| **Request Headers** | `Accept: application/xml`, `Content-Type: application/xml` |
+| **Response Codes - Success** | `200` |
+| **Response Codes - Error** | `400`, `429`, `503` |
+| **Timeout (ms)** | `120000` |
+
+5. The request body is a `QueryFilter` element. See `/integration/api-requests/query-integration-packs.xml` for the filter structure. Filters by `installationType = MULTI`. Handle pagination using `queryToken` via `/IntegrationPack/queryMore`.
+6. **Save**.
+
+#### Step 2.2.17 -- PROMO - HTTP Op - POST Add To IntegrationPack
+
+Adds a PackagedComponent to an Integration Pack. No request body — the linking is done via URL parameters.
+
+1. **Build --> New Component --> Connector --> Operation --> HTTP Client**.
+2. Name: `PROMO - HTTP Op - POST Add To IntegrationPack`.
+3. Connection: `PROMO - Partner API Connection`.
+4. Configure:
+
+| Tab / Setting | Value |
+|---------------|-------|
+| **Action** | Send |
+| **HTTP Method** | POST |
+| **Request URL** | `/partner/api/rest/v1/{1}/IntegrationPack/{2}/PackagedComponent/{3}` |
+| **Request URL Parameters** | `{1}` = DPP `primaryAccountId`; `{2}` = DPP `integrationPackId`; `{3}` = DPP `packagedComponentId` |
+| **Query Parameters** | (none) |
+| **Request Headers** | `Accept: application/json`, `Content-Type: application/json` |
+| **Response Codes - Success** | `200` |
+| **Response Codes - Error** | `400`, `404`, `429`, `503` |
+| **Timeout (ms)** | `120000` |
+
+5. No request body required. The URL itself links the PackagedComponent to the Integration Pack. See `/integration/api-requests/add-to-integration-pack.json` for documentation.
+6. **Save**.
+
+#### Step 2.2.18 -- PROMO - HTTP Op - POST ReleaseIntegrationPack
+
+Releases an Integration Pack, creating a deployable snapshot. Must be called after adding all PackagedComponents.
+
+1. **Build --> New Component --> Connector --> Operation --> HTTP Client**.
+2. Name: `PROMO - HTTP Op - POST ReleaseIntegrationPack`.
+3. Connection: `PROMO - Partner API Connection`.
+4. Configure:
+
+| Tab / Setting | Value |
+|---------------|-------|
+| **Action** | Send |
+| **HTTP Method** | POST |
+| **Request URL** | `/partner/api/rest/v1/{1}/ReleaseIntegrationPack` |
+| **Request URL Parameters** | `{1}` = DPP `primaryAccountId` |
+| **Query Parameters** | (none) |
+| **Request Headers** | `Accept: application/json`, `Content-Type: application/json` |
+| **Response Codes - Success** | `200` |
+| **Response Codes - Error** | `400`, `404`, `429`, `503` |
+| **Timeout (ms)** | `120000` |
+
+5. Request body includes `integrationPackId`, `version`, and `notes`. See `/integration/api-requests/release-integration-pack.json` for the template. The response returns a `packageId` used for subsequent deployment.
+6. **Save**.
+
+#### Step 2.2.19 -- PROMO - HTTP Op - GET MergeRequest
+
+Retrieves the status of a merge request. Used to poll after executing a merge until `stage=MERGED`.
+
+1. **Build --> New Component --> Connector --> Operation --> HTTP Client**.
+2. Name: `PROMO - HTTP Op - GET MergeRequest`.
+3. Connection: `PROMO - Partner API Connection`.
+4. Configure:
+
+| Tab / Setting | Value |
+|---------------|-------|
+| **Action** | Send |
+| **HTTP Method** | GET |
+| **Request URL** | `/partner/api/rest/v1/{1}/MergeRequest/{2}` |
+| **Request URL Parameters** | `{1}` = DPP `primaryAccountId`; `{2}` = DPP `mergeRequestId` |
+| **Query Parameters** | (none) |
+| **Request Headers** | `Accept: application/json` |
+| **Response Codes - Success** | `200` |
+| **Response Codes - Error** | `400`, `404`, `429`, `503` |
+| **Timeout (ms)** | `120000` |
+
+5. Poll with 2-second delay until `stage=MERGED` (success) or `stage=FAILED_TO_MERGE` (failure). Merge stages progress: `DRAFTING` → `DRAFTED` → `REVIEWING` → `MERGING` → `MERGED`. See `/integration/api-requests/get-merge-request.json` for documentation.
 6. **Save**.
 
 ---
