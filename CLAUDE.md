@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **Boomi Dev-to-Prod Component Promotion System** — a specification repository for a multi-account Boomi workflow that promotes packaged processes from dev sub-accounts to a primary (production) account via Platform API, maintaining single master components with incremental versions. A 2-layer approval workflow (peer review + admin review) gates Integration Pack deployment.
 
-This is **not a traditional software codebase** — there is no build system, package manager, or test runner. It is an architectural specification and implementation guide for a Boomi iPaaS solution. "Building" means configuring Boomi AtomSphere (DataHub models, Integration processes, Flow dashboard) following the BUILD-GUIDE.
+This is **not a traditional software codebase** — there is no build system, package manager, or test runner. It is an architectural specification and implementation guide for a Boomi iPaaS solution. "Building" means configuring Boomi AtomSphere (DataHub models, Integration processes, Flow dashboard) following the [Build Guide](docs/build-guide/index.md).
 
 ## Architecture
 
@@ -56,13 +56,13 @@ flow/
   custom-components/   Custom React component specs (XmlDiffViewer)
 docs/
   architecture.md      System design, decisions, constraints, error handling
-  BUILD-GUIDE.md       6-phase step-by-step implementation guide (primary reference for building)
+  build-guide/         22 focused build-step files + index (split from BUILD-GUIDE.md)
 ```
 
 ## Key Files to Start With
 
 1. `docs/architecture.md` — system design and key decisions
-2. `docs/BUILD-GUIDE.md` — the implementation playbook (6 phases, 3000+ lines)
+2. `docs/build-guide/index.md` — the implementation playbook (6 phases, 22 focused files)
 3. `integration/flow-service/flow-service-spec.md` — complete API contract for all 11 message actions
 4. `flow/flow-structure.md` — dashboard navigation, Flow values, swimlanes
 
