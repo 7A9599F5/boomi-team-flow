@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<RecordQueryRequest limit="200">
+  <view>
+    <fieldId>promotionId</fieldId>
+    <fieldId>devAccountId</fieldId>
+    <fieldId>prodAccountId</fieldId>
+    <fieldId>initiatedBy</fieldId>
+    <fieldId>initiatedAt</fieldId>
+    <fieldId>processName</fieldId>
+    <fieldId>componentsTotal</fieldId>
+    <fieldId>componentsCreated</fieldId>
+    <fieldId>componentsUpdated</fieldId>
+    <fieldId>targetEnvironment</fieldId>
+    <fieldId>status</fieldId>
+    <fieldId>testDeployedAt</fieldId>
+    <fieldId>testIntegrationPackId</fieldId>
+    <fieldId>testIntegrationPackName</fieldId>
+    <fieldId>branchId</fieldId>
+    <fieldId>branchName</fieldId>
+    <fieldId>devPackageId</fieldId>
+  </view>
+  <filter op="AND">
+    <fieldValue>
+      <fieldId>targetEnvironment</fieldId>
+      <operator>EQUALS</operator>
+      <value>TEST</value>
+    </fieldValue>
+    <fieldValue>
+      <fieldId>status</fieldId>
+      <operator>EQUALS</operator>
+      <value>TEST_DEPLOYED</value>
+    </fieldValue>
+  </filter>
+</RecordQueryRequest>

@@ -1,7 +1,7 @@
 {
   "modelName": "PromotionLog",
   "rootElement": "PromotionLog",
-  "description": "Audit log for each promotion run. Tracks metadata, status, and detailed results for every component promotion from dev to production. Provides compliance trail and debugging information.",
+  "description": "Audit log for each promotion run. Tracks metadata, status, and detailed results for every component promotion from dev to test or production environments. Supports 3 deployment paths: Dev→Test (direct), Test→Production (with review), and emergency hotfix Dev→Production (with review). Provides compliance trail and debugging information.",
   "fields": [
     {
       "name": "promotionId",
@@ -55,7 +55,7 @@
     {
       "name": "status",
       "type": "String",
-      "description": "Current status lifecycle: IN_PROGRESS → COMPLETED → PENDING_PEER_REVIEW → PEER_APPROVED → PENDING_ADMIN_REVIEW → ADMIN_APPROVED → DEPLOYED. Rejection branches: PENDING_PEER_REVIEW → PEER_REJECTED, PENDING_ADMIN_REVIEW → ADMIN_REJECTED. Legacy/error: FAILED",
+      "description": "Current status lifecycle: IN_PROGRESS → COMPLETED → TEST_DEPLOYING → TEST_DEPLOYED (for test deployments) or IN_PROGRESS → COMPLETED → PENDING_PEER_REVIEW → PEER_APPROVED → PENDING_ADMIN_REVIEW → ADMIN_APPROVED → DEPLOYED (for production deployments). Test deployment branches: COMPLETED → TEST_DEPLOYING → TEST_DEPLOYED or TEST_DEPLOY_FAILED. Rejection branches: PENDING_PEER_REVIEW → PEER_REJECTED, PENDING_ADMIN_REVIEW → ADMIN_REJECTED. Legacy/error: FAILED",
       "required": true,
       "matchField": false
     },
@@ -191,6 +191,62 @@
       "description": "Root process name — used for Integration Pack suggestions on future promotions of the same process",
       "required": false,
       "matchField": false
+    },
+    {
+      "name": "targetEnvironment",
+      "type": "String",
+      "description": "Target deployment environment: TEST or PRODUCTION",
+      "required": true,
+      "matchField": false
+    },
+    {
+      "name": "isHotfix",
+      "type": "String",
+      "description": "'true' or 'false' — flags emergency production bypass that skips test environment",
+      "required": false,
+      "matchField": false
+    },
+    {
+      "name": "hotfixJustification",
+      "type": "String",
+      "description": "Required when isHotfix='true'. Freetext justification for emergency bypass (up to 1000 characters)",
+      "required": false,
+      "matchField": false
+    },
+    {
+      "name": "testPromotionId",
+      "type": "String",
+      "description": "On PRODUCTION records: links back to the TEST promotion that preceded it. Null for direct-to-production hotfixes and for TEST records themselves",
+      "required": false,
+      "matchField": false
+    },
+    {
+      "name": "testDeployedAt",
+      "type": "Date",
+      "description": "When test deployment completed (format: yyyy-MM-dd'T'HH:mm:ss.SSS'Z')",
+      "required": false,
+      "matchField": false
+    },
+    {
+      "name": "testIntegrationPackId",
+      "type": "String",
+      "description": "Test Integration Pack ID — populated after successful test deployment",
+      "required": false,
+      "matchField": false
+    },
+    {
+      "name": "testIntegrationPackName",
+      "type": "String",
+      "description": "Human-readable Test Integration Pack name — populated after successful test deployment",
+      "required": false,
+      "matchField": false
+    },
+    {
+      "name": "promotedFromTestBy",
+      "type": "String",
+      "description": "SSO user email who initiated the test→production promotion",
+      "required": false,
+      "matchField": false
     }
   ],
   "matchRules": [
@@ -204,9 +260,9 @@
     {
       "name": "PROMOTION_ENGINE",
       "type": "contribute-only",
-      "description": "Written by promotion engine at start (IN_PROGRESS), updated at completion (COMPLETED/FAILED), and updated by peer review (Process E2) and admin review (Process E3) during the 2-layer approval workflow"
+      "description": "Written by promotion engine at start (IN_PROGRESS), updated at completion (COMPLETED/FAILED), updated during test deployment lifecycle (TEST_DEPLOYING/TEST_DEPLOYED/TEST_DEPLOY_FAILED), and updated by peer review (Process E2) and admin review (Process E3) during the 2-layer approval workflow"
     }
   ],
   "dataQualitySteps": [],
-  "notes": "This model provides complete audit trail for compliance and troubleshooting. The promotion engine creates a record at the start of each promotion (status=IN_PROGRESS) and updates it when complete. After promotion completes, the record enters a 2-layer approval workflow: peer review (peerReviewStatus) followed by admin review (adminReviewStatus). Self-review prevention is enforced at the backend level (reviewer cannot equal initiatedBy). The resultDetail field stores structured JSON for detailed analysis of individual component outcomes. The branchId field tracks the Boomi Branching promotion branch lifecycle — set on creation, cleared after cleanup. The processName and integrationPackId fields enable smart Integration Pack suggestions for repeat promotions."
+  "notes": "This model provides complete audit trail for compliance and troubleshooting. The promotion engine creates a record at the start of each promotion (status=IN_PROGRESS) and updates it when complete. For test deployments (targetEnvironment=TEST), the record transitions through TEST_DEPLOYING → TEST_DEPLOYED and the branch is preserved for future production review. For production deployments, the record enters a 2-layer approval workflow: peer review (peerReviewStatus) followed by admin review (adminReviewStatus). Emergency hotfixes (isHotfix=true) go directly to production with full reviews but skip the test-first requirement — hotfixJustification is required. When a test deployment is promoted to production, the new PRODUCTION record links back via testPromotionId. Self-review prevention is enforced at the backend level (reviewer cannot equal initiatedBy). The resultDetail field stores structured JSON for detailed analysis of individual component outcomes. The branchId field tracks the Boomi Branching promotion branch lifecycle — set on creation, cleared after cleanup (note: for test deployments, the branch persists through the test→production lifecycle for diff/audit purposes). The processName and integrationPackId fields enable smart Integration Pack suggestions for repeat promotions."
 }
