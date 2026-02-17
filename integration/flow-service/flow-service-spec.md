@@ -13,7 +13,7 @@
 
 ## Message Actions
 
-The Flow Service exposes 11 message actions, each linked to a corresponding Integration process.
+The Flow Service exposes 12 message actions, each linked to a corresponding Integration process.
 
 ### 1. getDevAccounts
 
@@ -168,7 +168,7 @@ else → effectiveTier = "READONLY" (no dashboard access — should not reach th
 **Response Profile**: `PROMO - Profile - PackageAndDeployResponse`
 **Service Type**: Message Action
 
-**Description**: Creates a shareable PackagedComponent, optionally creates/updates an Integration Pack, releases it, and deploys to specified target environments.
+**Description**: Creates a shareable PackagedComponent, optionally creates/updates an Integration Pack, releases it, and deploys to specified target environments. Supports 3 deployment modes: TEST (merge branch, package, deploy to test pack, preserve branch), PRODUCTION from test (skip merge — content already on main, package, deploy to prod pack, delete branch), and PRODUCTION hotfix (merge branch, package, deploy to prod pack, delete branch).
 
 **Request Fields**:
 - `prodComponentId` (string, required - root process component)
@@ -185,6 +185,12 @@ else → effectiveTier = "READONLY" (no dashboard access — should not reach th
 - `devPackageId` (string, required) — Source dev package ID
 - `devPackageCreator` (string) — Boomi user who created the dev package
 - `devPackageVersion` (string) — Version of the dev package
+- `deploymentTarget` (string, required: "TEST" | "PRODUCTION") — determines the deployment mode
+- `isHotfix` (boolean, default false) — flags emergency production bypass
+- `hotfixJustification` (string, conditional — required when isHotfix=true) — justification text (up to 1000 characters)
+- `testPromotionId` (string, optional) — populated when deploying from a completed test deployment; links back to the TEST PromotionLog record
+- `testIntegrationPackId` (string, optional) — for test deployments, the target test Integration Pack ID
+- `testIntegrationPackName` (string, optional) — for test deployments, the target test Integration Pack name
 
 **Response Fields**:
 - `success` (boolean)
@@ -196,8 +202,42 @@ else → effectiveTier = "READONLY" (no dashboard access — should not reach th
   - `environmentName` (string)
   - `deployed` (boolean)
   - `errorMessage` (string, optional)
+- `deploymentTarget` (string) — echoed from request
+- `branchPreserved` (boolean) — true when branch is kept alive (test deployments only)
+- `isHotfix` (boolean) — echoed from request
 - `errorCode` (string, optional)
 - `errorMessage` (string, optional)
+
+#### Deployment Modes
+
+**Mode 1: TEST deployment** (`deploymentTarget="TEST"`):
+1. Merge branch to main (MergeRequest OVERRIDE — same as current)
+2. Create PackagedComponent from main
+3. Create/use Test Integration Pack (separate from production)
+4. Release Test Integration Pack
+5. Deploy to test environment(s)
+6. **DO NOT delete branch** — preserve for production review diffing
+7. Update PromotionLog: `status=TEST_DEPLOYED`, `testDeployedAt=now`, `testIntegrationPackId/Name`
+8. Response: `branchPreserved=true`
+
+**Mode 2: PRODUCTION deployment from test** (`deploymentTarget="PRODUCTION"`, `testPromotionId` populated):
+1. **Skip merge** — content already on main from test deployment
+2. Create PackagedComponent from main (new version)
+3. Create/use Production Integration Pack
+4. Release Production Integration Pack
+5. Deploy to production environment(s)
+6. **Delete branch** (the one preserved from test phase)
+7. Update PromotionLog: `status=DEPLOYED`, `integrationPackId/Name`, `prodPackageId`
+8. Response: `branchPreserved=false`
+
+**Mode 3: PRODUCTION hotfix** (`deploymentTarget="PRODUCTION"`, `isHotfix=true`):
+1. Merge branch to main (same as current)
+2. Create PackagedComponent
+3. Create/use Production Integration Pack
+4. Release, deploy to production
+5. Delete branch
+6. Update PromotionLog: `status=DEPLOYED`, `isHotfix="true"`, `hotfixJustification`
+7. Response: `branchPreserved=false`, `isHotfix=true`
 
 ---
 
@@ -384,10 +424,11 @@ Connections are shared resources pre-configured in the parent account's `#Connec
 **Response Profile**: `PROMO - Profile - ListIntegrationPacksResponse`
 **Service Type**: Message Action
 
-**Description**: Queries the primary account for existing MULTI-type Integration Packs and returns them for the pack selector on Page 4. Optionally suggests the most recently used pack for a given process name by querying PromotionLog for the latest DEPLOYED record matching `processName`.
+**Description**: Queries the primary account for existing MULTI-type Integration Packs and returns them for the pack selector on Page 4. Supports filtering by pack purpose (TEST or PRODUCTION) based on naming convention (packs with "- TEST" suffix are test packs). Optionally suggests the most recently used pack for a given process name and target environment by querying PromotionLog for the latest DEPLOYED or TEST_DEPLOYED record matching `processName`.
 
 **Request Fields**:
 - `suggestForProcess` (string, optional) — process name to look up suggestion for
+- `packPurpose` (string, optional: "TEST" | "PRODUCTION" | "ALL", default "ALL") — filters Integration Packs by purpose. TEST returns packs with "- TEST" suffix. PRODUCTION returns packs without "- TEST" suffix. ALL returns all packs.
 
 **Response Fields**:
 - `success` (boolean)
@@ -398,6 +439,43 @@ Connections are shared resources pre-configured in the parent account's `#Connec
   - `installationType` (string)
 - `suggestedPackId` (string, optional) — most recently used pack ID for this process
 - `suggestedPackName` (string, optional) — name of the suggested pack
+- `errorCode` (string, optional)
+- `errorMessage` (string, optional)
+
+---
+
+### 12. queryTestDeployments
+
+**Action Name**: `queryTestDeployments`
+**Linked Process**: Process E4 - Query Test Deployments
+**Flow Service Operation**: `PROMO - FSS Op - QueryTestDeployments`
+**Request Profile**: `PROMO - Profile - QueryTestDeploymentsRequest`
+**Response Profile**: `PROMO - Profile - QueryTestDeploymentsResponse`
+**Service Type**: Message Action
+
+**Description**: Queries PromotionLog records that have been deployed to test (`targetEnvironment="TEST"` AND `status="TEST_DEPLOYED"`) and have not yet been promoted to production (no matching PRODUCTION record with the same `testPromotionId`). Returns test deployments ready for production promotion.
+
+**Request Fields**:
+- `devAccountId` (string, optional) — filter by source dev account
+- `initiatedBy` (string, optional) — filter by submitter email
+
+**Response Fields**:
+- `success` (boolean)
+- `testDeployments` (array)
+  - `promotionId` (string)
+  - `processName` (string)
+  - `devAccountId` (string)
+  - `initiatedBy` (string) — submitter email
+  - `initiatedAt` (datetime) — original promotion timestamp
+  - `packageVersion` (string)
+  - `componentsTotal` (integer)
+  - `componentsCreated` (integer)
+  - `componentsUpdated` (integer)
+  - `testDeployedAt` (datetime) — when test deployment completed
+  - `testIntegrationPackId` (string) — Test Integration Pack ID
+  - `testIntegrationPackName` (string) — Test Integration Pack name
+  - `branchId` (string) — preserved promotion branch ID
+  - `branchName` (string) — preserved branch name
 - `errorCode` (string, optional)
 - `errorMessage` (string, optional)
 
@@ -440,7 +518,7 @@ The Flow Service requires one configuration value to be set at deployment:
 ### Step 3: Verify Deployment
 
 1. Navigate to "Runtime Management" → "Listeners"
-2. Verify all 11 processes are visible and running:
+2. Verify all 12 processes are visible and running:
    - `PROMO - FSS Op - GetDevAccounts`
    - `PROMO - FSS Op - ListDevPackages`
    - `PROMO - FSS Op - ResolveDependencies`
@@ -452,6 +530,7 @@ The Flow Service requires one configuration value to be set at deployment:
    - `PROMO - FSS Op - SubmitPeerReview`
    - `PROMO - FSS Op - GenerateComponentDiff`
    - `PROMO - FSS Op - ListIntegrationPacks`
+   - `PROMO - FSS Op - QueryTestDeployments`
 3. Note the full service URL: `https://{cloud-base-url}/fs/PromotionService`
 
 ---
@@ -474,7 +553,7 @@ After deploying the Flow Service, configure the Flow application to connect to i
 ### Step 2: Retrieve Connector Configuration
 
 1. Click "Retrieve Connector Configuration Data"
-2. Flow will automatically discover all 11 message actions
+2. Flow will automatically discover all 12 message actions
 3. Auto-generated Flow Types will be created (see below)
 
 ### Step 3: Set Configuration Value
@@ -515,6 +594,8 @@ When you retrieve the connector configuration, Flow automatically generates requ
 20. `generateComponentDiff RESPONSE - generateComponentDiffResponse`
 21. `listIntegrationPacks REQUEST - listIntegrationPacksRequest`
 22. `listIntegrationPacks RESPONSE - listIntegrationPacksResponse`
+23. `queryTestDeployments REQUEST - queryTestDeploymentsRequest`
+24. `queryTestDeployments RESPONSE - queryTestDeploymentsResponse`
 
 These types are used throughout the Flow application to ensure type safety when calling the Flow Service operations.
 
@@ -591,6 +672,10 @@ Decision: Check Success
 | `ALREADY_REVIEWED` | Promotion has already been peer-reviewed | No action needed; check current status |
 | `INVALID_REVIEW_STATE` | Promotion is not in the expected state for this review action | Verify the promotion status before retrying |
 | `INSUFFICIENT_TIER` | User's SSO groups do not include a dashboard-access tier (CONTRIBUTOR or ADMIN) | User must be assigned ABC_BOOMI_FLOW_CONTRIBUTOR or ABC_BOOMI_FLOW_ADMIN group |
+| `TEST_DEPLOY_FAILED` | Test environment deployment failed | Check test environment status and retry |
+| `HOTFIX_JUSTIFICATION_REQUIRED` | Emergency hotfix missing justification text | Provide hotfix justification before proceeding |
+| `INVALID_DEPLOYMENT_TARGET` | deploymentTarget must be "TEST" or "PRODUCTION" | Correct the deployment target value |
+| `TEST_PROMOTION_NOT_FOUND` | testPromotionId references a non-existent or non-TEST_DEPLOYED promotion | Verify the test promotion exists and is in TEST_DEPLOYED status |
 
 **Error Handling Best Practices**:
 
@@ -657,6 +742,7 @@ Decision: Check Success
 | Version | Date | Changes |
 |---------|------|---------|
 | 1.0.0 | 2026-02-16 | Initial Flow Service specification |
+| 1.1.0 | 2026-02-16 | Multi-environment deployment: 3 deployment modes (TEST, PRODUCTION from test, PRODUCTION hotfix), new queryTestDeployments action, packPurpose filter on listIntegrationPacks |
 
 ---
 
