@@ -1,0 +1,7 @@
+{
+  "clientAccountId": "string",
+  "environmentId": "string",
+  "extensionPayload": "string",
+  "userSsoGroups": ["string"],
+  "userEmail": "string"
+}

@@ -1,0 +1,8 @@
+{
+  "clientAccountId": "string",
+  "environmentId": "string",
+  "mapExtensionId": "string",
+  "mapExtensionPayload": "string",
+  "userSsoGroups": ["string"],
+  "userEmail": "string"
+}

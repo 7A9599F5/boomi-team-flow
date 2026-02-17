@@ -1,0 +1,6 @@
+{
+  "clientAccountId": "string",
+  "environmentId": "string",
+  "userSsoGroups": ["string"],
+  "userEmail": "string"
+}

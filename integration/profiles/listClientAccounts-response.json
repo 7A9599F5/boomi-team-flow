@@ -1,0 +1,13 @@
+{
+  "success": true,
+  "clientAccounts": [
+    {
+      "clientAccountId": "string",
+      "clientAccountName": "string",
+      "testEnvironmentId": "string",
+      "testEnvironmentName": "string",
+      "prodEnvironmentId": "string",
+      "prodEnvironmentName": "string"
+    }
+  ]
+}

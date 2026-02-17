@@ -1,0 +1,8 @@
+{
+  "success": true,
+  "sectionsExcluded": "string",
+  "fieldsCopied": 0,
+  "encryptedFieldsSkipped": 0,
+  "testEnvironmentId": "string",
+  "prodEnvironmentId": "string"
+}

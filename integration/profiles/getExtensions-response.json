@@ -1,0 +1,12 @@
+{
+  "success": true,
+  "environmentId": "string",
+  "extensionData": "string",
+  "accessMappings": "string",
+  "mapExtensionSummaries": "string",
+  "componentCount": 0,
+  "connectionCount": 0,
+  "processPropertyCount": 0,
+  "dynamicPropertyCount": 0,
+  "mapExtensionCount": 0
+}

@@ -1,0 +1,13 @@
+{
+  "success": true,
+  "updatedFieldCount": 0,
+  "environmentId": "string",
+  "errors": [
+    {
+      "componentId": "string",
+      "componentName": "string",
+      "errorCode": "string",
+      "errorMessage": "string"
+    }
+  ]
+}
