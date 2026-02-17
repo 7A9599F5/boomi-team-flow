@@ -104,10 +104,38 @@ Boomi enforces a hard limit of 20 branches per account. The system manages this 
 - Deleting branches on ALL terminal paths (approve, reject, deny)
 - Tracking `branchId` in PromotionLog (set to null after cleanup)
 
+### Why Two-Axis SSO Groups
+
+Authorization uses a two-axis model based on Azure AD/Entra SSO group names:
+
+**Axis 1 — Team groups** (account visibility):
+- Named `ABC_BOOMI_FLOW_DEVTEAMA`, `ABC_BOOMI_FLOW_DEVTEAMB`, etc.
+- Mapped to dev sub-accounts via DevAccountAccess DataHub model
+- Process A0 queries DataHub filtering by the user's team groups to determine which dev accounts they can see
+
+**Axis 2 — Tier groups** (dashboard access and capabilities):
+- `ABC_BOOMI_FLOW_ADMIN` — full dashboard access, bypasses team check (sees all accounts)
+- `ABC_BOOMI_FLOW_CONTRIBUTOR` — Developer + Peer Review swimlane access, account visibility governed by team groups
+- `ABC_BOOMI_FLOW_READONLY` / `ABC_BOOMI_FLOW_OPERATOR` — AtomSphere access only, zero dashboard access
+
+**Tier resolution algorithm** (Process A0, re-validated in Process C):
+```
+if userSsoGroups contains "ABC_BOOMI_FLOW_ADMIN" → ADMIN
+else if userSsoGroups contains "ABC_BOOMI_FLOW_CONTRIBUTOR" → CONTRIBUTOR
+else → READONLY (no dashboard access)
+```
+
+**Key design points:**
+- Tiers are resolved at runtime from SSO group names — not stored in DataHub
+- ADMIN bypasses the team check entirely and returns ALL active DevAccountAccess records
+- Non-dashboard tiers (READONLY, OPERATOR) cannot reach the dashboard; the algorithm handles them as a fallback
+- Defense-in-depth: Process C re-validates the tier from the `userSsoGroups` array passed in the executePromotion request, rejecting with `INSUFFICIENT_TIER` if below CONTRIBUTOR
+- Per-button tier gating is unnecessary — swimlane authorization already enforces CONTRIBUTOR/ADMIN access
+
 ## Constraints
 - Flow State is temporary/auto-purged — not usable for persistent storage
 - Starting fresh — no pre-existing components to seed
-- Multiple dev sub-accounts — SSO groups determine access
+- Multiple dev sub-accounts — two-axis SSO model: team groups for account visibility, tier groups for dashboard access
 - Existing private cloud atom handles current work; new public cloud atom for Flow Services
 - Azure AD/Entra SSO already configured in Flow
 - Partner API enabled on primary account
@@ -124,9 +152,10 @@ Boomi enforces a hard limit of 20 branches per account. The system manages this 
 - Sources: PROMOTION_ENGINE (contribute-only), ADMIN_SEEDING (contribute-only, for admin-seeded connection mappings)
 
 ### DevAccountAccess
-- Purpose: Maps SSO groups to dev account IDs
+- Purpose: Maps team-specific SSO groups (e.g., `ABC_BOOMI_FLOW_DEVTEAMA`) to dev account IDs
 - Match: Exact on `ssoGroupId` + `devAccountId`
 - Source: ADMIN_CONFIG (admin-seeded)
+- Note: Provides the team-axis of the two-axis SSO model. Tier-level access (CONTRIBUTOR, ADMIN) is resolved at runtime from SSO group names in Process A0 — not stored here
 
 ### PromotionLog
 - Purpose: Audit trail for each promotion run, including 2-layer approval workflow state
