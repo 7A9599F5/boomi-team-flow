@@ -24,7 +24,7 @@
 
 All components promoted by the system are placed in this folder hierarchy. Boomi auto-creates folders that do not exist.
 
-### Complete 89-Component Inventory Checklist
+### Complete 124-Component Inventory Checklist
 
 ```
 Phase 1 -- DataHub Models (3):
@@ -131,6 +131,55 @@ Phase 5 -- Flow Dashboard (3):
 [ ] 87. XmlDiffViewer (Custom Component)
 [ ] 88. Promotion Service Connector
 [ ] 89. Promotion Dashboard
+
+Phase 7 -- DataHub Models (+2):
+[ ] 90. ExtensionAccessMapping
+[ ] 91. ClientAccountConfig
+
+Phase 7 -- HTTP Client Operations (+8):
+[ ] 92.  PROMO - HTTP Op - QUERY Account
+[ ] 93.  PROMO - HTTP Op - QUERY Environment
+[ ] 94.  PROMO - HTTP Op - GET EnvironmentExtensions
+[ ] 95.  PROMO - HTTP Op - UPDATE EnvironmentExtensions
+[ ] 96.  PROMO - HTTP Op - QUERY EnvironmentMapExtensionsSummary
+[ ] 97.  PROMO - HTTP Op - GET EnvironmentMapExtension
+[ ] 98.  PROMO - HTTP Op - UPDATE EnvironmentMapExtension
+[ ] 99.  PROMO - HTTP Op - QUERY ComponentReference
+
+Phase 7 -- DataHub Operations (+4):
+[ ] 100. PROMO - DH Op - Query ExtensionAccessMapping
+[ ] 101. PROMO - DH Op - Upsert ExtensionAccessMapping
+[ ] 102. PROMO - DH Op - Query ClientAccountConfig
+[ ] 103. PROMO - DH Op - Upsert ClientAccountConfig
+
+Phase 7 -- JSON Profiles (+10):
+[ ] 104. PROMO - Profile - ListClientAccountsRequest
+[ ] 105. PROMO - Profile - ListClientAccountsResponse
+[ ] 106. PROMO - Profile - GetExtensionsRequest
+[ ] 107. PROMO - Profile - GetExtensionsResponse
+[ ] 108. PROMO - Profile - UpdateExtensionsRequest
+[ ] 109. PROMO - Profile - UpdateExtensionsResponse
+[ ] 110. PROMO - Profile - CopyExtensionsTestToProdRequest
+[ ] 111. PROMO - Profile - CopyExtensionsTestToProdResponse
+[ ] 112. PROMO - Profile - UpdateMapExtensionRequest
+[ ] 113. PROMO - Profile - UpdateMapExtensionResponse
+
+Phase 7 -- Integration Processes (+5):
+[ ] 114. PROMO - List Client Accounts
+[ ] 115. PROMO - Get Extensions
+[ ] 116. PROMO - Update Extensions
+[ ] 117. PROMO - Copy Extensions Test to Prod
+[ ] 118. PROMO - Update Map Extension
+
+Phase 7 -- FSS Operations (+5):
+[ ] 119. PROMO - FSS Op - ListClientAccounts
+[ ] 120. PROMO - FSS Op - GetExtensions
+[ ] 121. PROMO - FSS Op - UpdateExtensions
+[ ] 122. PROMO - FSS Op - CopyExtensionsTestToProd
+[ ] 123. PROMO - FSS Op - UpdateMapExtension
+
+Phase 7 -- Custom Component (+1):
+[ ] 124. ExtensionEditor
 ```
 
 ---

@@ -69,6 +69,13 @@ Step 10: FSS Operations (13)
 Step 11: Integration Processes (12)
 Step 12: Flow Service
 Step 13: Package + Deploy Flow Service
+Step 14: Phase 7 DataHub Models (2) -> Publish -> Deploy
+Step 15: Phase 7 HTTP Client Operations (8)
+Step 16: Phase 7 DataHub Operations (4)
+Step 17: Phase 7 JSON Profiles (10)
+Step 18: Phase 7 FSS Operations (5)
+Step 19: Phase 7 Integration Processes (5)
+Step 20: Redeploy Flow Service (v2.0.0)
 ```
 
 ---
@@ -548,6 +555,12 @@ Invoke-RestMethod -Uri "https://api.boomi.com/partner/api/rest/v1/$env:BOOMI_ACC
 | 11 | `PROMO - FSS Op - GenerateComponentDiff` | Process G | `generateComponentDiff` |
 | 12 | `PROMO - FSS Op - QueryTestDeployments` | Process E4 | `queryTestDeployments` |
 | 13 | `PROMO - FSS Op - CancelTestDeployment` | Process E4 | `cancelTestDeployment` |
+| 14 | `PROMO - FSS Op - WithdrawPromotion` | Process E5 | `withdrawPromotion` |
+| 15 | `PROMO - FSS Op - ListClientAccounts` | Process K | `listClientAccounts` |
+| 16 | `PROMO - FSS Op - GetExtensions` | Process L | `getExtensions` |
+| 17 | `PROMO - FSS Op - UpdateExtensions` | Process M | `updateExtensions` |
+| 18 | `PROMO - FSS Op - CopyExtensionsTestToProd` | Process N | `copyExtensionsTestToProd` |
+| 19 | `PROMO - FSS Op - UpdateMapExtension` | Process O | `updateMapExtension` |
 
 ---
 
@@ -616,7 +629,7 @@ Invoke-RestMethod -Uri "https://api.boomi.com/partner/api/rest/v1/$env:BOOMI_ACC
 
 Reference: [Phase 4: Flow Service Component](14-flow-service.md)
 
-The Flow Service is a `flowservice` type component that links 14 message actions to their FSS Operations and profiles.
+The Flow Service is a `flowservice` type component that links 19 message actions to their FSS Operations and profiles.
 
 ```bash
 curl -s -u "$BOOMI_AUTH" \
@@ -645,7 +658,7 @@ Invoke-RestMethod -Uri "https://api.boomi.com/partner/api/rest/v1/$env:BOOMI_ACC
   -Method POST -Headers $BoomiHeadersXml -Body $fsXml
 ```
 
-> **Recommended workflow:** Build the Flow Service in the UI following [Phase 4](14-flow-service.md) to link all 14 message actions correctly, then export with `GET /Component/{id}` to capture the complete XML for future automation.
+> **Recommended workflow:** Build the Flow Service in the UI following [Phase 4](14-flow-service.md) to link all 19 message actions correctly, then export with `GET /Component/{id}` to capture the complete XML for future automation.
 
 ---
 
@@ -711,7 +724,7 @@ After deployment, set the `primaryAccountId` configuration value via the Boomi U
 1. Navigate to Manage -> Atom Management -> select the public cloud atom.
 2. Open Properties -> Configuration Values.
 3. Set `primaryAccountId` to your primary Boomi account ID.
-4. Save and verify all 13 listeners appear in Runtime Management -> Listeners.
+4. Save and verify all 19 listeners appear in Runtime Management -> Listeners.
 
 > The `primaryAccountId` configuration value cannot be set via API -- it must be configured in the Atom Management UI after deployment.
 
@@ -1024,7 +1037,7 @@ Invoke-RestMethod -Uri "https://api.boomi.com/partner/api/rest/v1/$env:BOOMI_ACC
   -Method POST -Headers $BoomiHeaders -Body $queryBody
 ```
 
-Verify `numberOfResults` equals **38** (19 HTTP Client + 6 DataHub + 13 FSS operations).
+Verify `numberOfResults` equals **56** (27 HTTP Client + 10 DataHub + 19 FSS operations).
 
 #### 4. Verify Profiles
 
@@ -1065,7 +1078,7 @@ Invoke-RestMethod -Uri "https://api.boomi.com/partner/api/rest/v1/$env:BOOMI_ACC
   -Method POST -Headers $BoomiHeaders -Body $queryBody
 ```
 
-Verify `numberOfResults` equals **26** (13 actions x 2 profiles each).
+Verify `numberOfResults` equals **38** (19 actions x 2 profiles each).
 
 #### 5. Verify Processes
 
@@ -1106,7 +1119,7 @@ Invoke-RestMethod -Uri "https://api.boomi.com/partner/api/rest/v1/$env:BOOMI_ACC
   -Method POST -Headers $BoomiHeaders -Body $queryBody
 ```
 
-Verify `numberOfResults` equals **12** processes.
+Verify `numberOfResults` equals **18** processes.
 
 #### 6. Verify Flow Service and Listeners
 
@@ -1164,16 +1177,16 @@ A successful `getDevAccounts` response with `"success": true` confirms the entir
 
 | Category | Expected Count | Verification Query |
 |----------|---------------|-------------------|
-| DataHub Models | 3 | Query each model for 200 response |
+| DataHub Models | 5 | Query each model for 200 response |
 | DataHub Sources | 3 | Check via DataHub UI |
 | Connections | 2 | GET Component for each ID |
-| HTTP Client Operations | 19 | STARTS_WITH "PROMO - HTTP Op" |
-| DataHub Operations | 6 | STARTS_WITH "PROMO - DH Op" |
-| FSS Operations | 13 | STARTS_WITH "PROMO - FSS Op" |
-| JSON Profiles | 26 | STARTS_WITH "PROMO - Profile" |
-| Integration Processes | 12 | type = "process", STARTS_WITH "PROMO - " |
+| HTTP Client Operations | 27 | STARTS_WITH "PROMO - HTTP Op" |
+| DataHub Operations | 10 | STARTS_WITH "PROMO - DH Op" |
+| FSS Operations | 19 | STARTS_WITH "PROMO - FSS Op" |
+| JSON Profiles | 38 | STARTS_WITH "PROMO - Profile" |
+| Integration Processes | 18 | type = "process", STARTS_WITH "PROMO - " |
 | Flow Service | 1 | name = "PROMO - Flow Service" |
-| **Total Components** | **82** | |
+| **Total Components** | **124** | |
 
 ---
 

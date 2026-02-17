@@ -294,4 +294,42 @@ Complete mapping of all error codes to their source processes, causes, and resol
 - **DPP cache monitoring**: Add `logger.info("componentMappingCache size: " + cache.length())` to the `rewrite-references.groovy` script to track cache size growth over time in Process Reporting logs.
 
 ---
+
+### Phase 7 Issues (Extension Editor)
+
+**"No accessible accounts" on Page 10**
+Verify that ClientAccountConfig records exist in DataHub for the user's SSO group. Seed at least one record: `clientAccountId` + `ssoGroupId` + `testEnvironmentId` + `prodEnvironmentId`. Publish and deploy the model after adding records.
+
+**"ExtensionEditor component not rendering"**
+Three conditions: (1) The JS and CSS bundles must be uploaded as Flow tenant assets. (2) Both asset URLs must be in the custom player's `customResources` array. (3) The component must be bound to a Flow value containing `extensionEditorPayload` data from the `getExtensions` message step. Check the browser console for 404 errors or component registration failures.
+
+**"UNAUTHORIZED_EXTENSION_EDIT" when saving**
+The user attempted to edit an extension outside their authorized scope. Non-admins cannot edit connection extensions. Verify the user's SSO group matches entries in ExtensionAccessMapping for the target components. Admin users (`ABC_BOOMI_FLOW_ADMIN`) bypass the connection restriction.
+
+**"CONNECTION_EDIT_ADMIN_ONLY" error**
+A contributor attempted to modify a connection extension field. Connection edits require `ABC_BOOMI_FLOW_ADMIN` tier. The ExtensionEditor should show connections as read-only for contributors — if this error occurs via API, it indicates a UI bypass attempt.
+
+**"COPY_FAILED" during Test-to-Prod copy**
+The UPDATE EnvironmentExtensions call to the production environment failed. Common causes: (1) Production environment ID is incorrect in ClientAccountConfig. (2) The API token lacks write access to the production account. (3) Rate limiting (429) — retry with backoff. Check Process Reporting for Process N execution details.
+
+**"MAP_EXTENSION_READONLY" error**
+Map extension editing is Phase 2 functionality. In Phase 1, Process O returns this error for all update attempts. Map extensions are displayed read-only in the ExtensionEditor with a "Read-only (Phase 2)" badge.
+
+**Diagnostic — verify extension access cache:**
+
+```bash
+# Query ExtensionAccessMapping for a specific environment
+curl -s -u "BOOMI_TOKEN.user@company.com:your-api-token" \
+  -X POST "https://api.boomi.com/mdm/api/rest/v1/{accountId}/DataHub/record/query" \
+  -H "Content-Type: application/xml" \
+  -d '<RecordQueryRequest limit="50"><view><fieldId>environmentId</fieldId><fieldId>prodComponentId</fieldId><fieldId>authorizedSsoGroups</fieldId></view><filter op="AND"><fieldValue><fieldId>environmentId</fieldId><operator>EQUALS</operator><value>{targetEnvironmentId}</value></fieldValue></filter></RecordQueryRequest>'
+```
+
+```powershell
+$queryBody = '<RecordQueryRequest limit="50"><view><fieldId>environmentId</fieldId><fieldId>prodComponentId</fieldId><fieldId>authorizedSsoGroups</fieldId></view><filter op="AND"><fieldValue><fieldId>environmentId</fieldId><operator>EQUALS</operator><value>{targetEnvironmentId}</value></fieldValue></filter></RecordQueryRequest>'
+Invoke-RestMethod -Uri "https://api.boomi.com/mdm/api/rest/v1/{accountId}/DataHub/record/query" `
+  -Method POST -Headers @{ Authorization = "Basic $cred"; "Content-Type" = "application/xml" } -Body $queryBody
+```
+
+---
 Prev: [Phase 6: Testing](17-testing.md) | Next: [Appendix A: Naming & Inventory](19-appendix-naming-and-inventory.md) | [Back to Index](index.md)
