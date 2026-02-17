@@ -10,56 +10,27 @@ A Boomi Flow dashboard where devs promote packaged processes from a dev sub-acco
 
 ## Architecture Overview
 
-```
-┌───────────────────────────────────────────────────────────┐
-│                   BOOMI FLOW DASHBOARD                    │
-│                                                           │
-│  ┌─────────────┐ ┌───────────────┐ ┌──────────────────┐  │
-│  │ DEV Swimlane│ │ PEER REVIEW   │ │ ADMIN Swimlane   │  │
-│  │ Pkg Browser │ │ Swimlane      │ │ Approval Queue   │  │
-│  │ Review      │ │ Review Queue  │ │ Mapping Viewer   │  │
-│  │ Status      │ │ Review Detail │ │                  │  │
-│  │ Deployment  │ │               │ │                  │  │
-│  │ Prod Ready  │ │               │ │                  │  │
-│  └──────┬──────┘ └──────┬────────┘ └────────┬─────────┘  │
-│         │               │                   │             │
-└─────────┼───────────────┼───────────────────┼─────────────┘
-          │               │ Message Actions   │
-          │ Message       │ (Flow Service)    │ Message
-          │ Actions       │                   │ Actions
-          ▼               ▼                   ▼
-┌───────────────────────────────────────────────────────────┐
-│              BOOMI INTEGRATION ENGINE                     │
-│              (Public Boomi Cloud Atom)                    │
-│                                                           │
-│  Process A0: Get Dev Accounts                             │
-│  Process A: List Dev Packages                             │
-│  Process B: Resolve Dependencies                          │
-│  Process C: Execute Promotion                             │
-│  Process D: Package & Deploy to IPack                     │
-│  Process E: Query Promotion Status                        │
-│  Process E2: Query Peer Review Queue                      │
-│  Process E3: Submit Peer Review                           │
-│  Process E4: Query Test Deployments                       │
-│  Process E5: Withdraw Promotion                           │
-│  Process F: Mapping CRUD                                  │
-│  Process G: Generate Component Diff                       │
-│  Process J: List Integration Packs                        │
-│                                                           │
-│  ┌──────────────┐    ┌───────────────────┐                │
-│  │ HTTP Client  │    │ DataHub Connector │                │
-│  │ (Partner API)│    │ (Hub Auth Token)  │                │
-│  └──────┬───────┘    └───────┬───────────┘                │
-└─────────┼────────────────────┼────────────────────────────┘
-          ▼                    ▼
-┌──────────────────┐  ┌────────────────────────┐
-│ Boomi Platform   │  │ Boomi DataHub          │
-│ API              │  │ Repository             │
-│ api.boomi.com    │  │                        │
-│                  │  │ Model: ComponentMapping │
-│ Partner API with │  │ Model: DevAccountAccess │
-│ overrideAccount  │  │ Model: PromotionLog    │
-└──────────────────┘  └────────────────────────┘
+```mermaid
+graph TD
+    subgraph dash["Flow Dashboard (3 Swimlanes)"]
+        devSL["DEV Swimlane\nPkg Browser / Review / Status\nDeployment / Prod Readiness\nExtension Manager"]
+        peerSL["PEER REVIEW Swimlane\nReview Queue\nReview Detail"]
+        adminSL["ADMIN Swimlane\nApproval Queue\nMapping Viewer"]
+    end
+
+    subgraph fss["Flow Service (Message Actions)"]
+        msgActions["19 Message Actions\ngetDevAccounts / listDevPackages\nresolveDependencies / executePromotion\npackageAndDeploy / queryStatus\nqueryPeerReviewQueue / submitPeerReview\nqueryTestDeployments / withdrawPromotion\nmanageMappings / generateComponentDiff\nlistIntegrationPacks / listClientAccounts\ngetExtensions / updateExtensions\ncopyExtensionsTestToProd / updateMapExtension"]
+    end
+
+    subgraph engine["Integration Engine (Public Boomi Cloud Atom)"]
+        httpConn["HTTP Client\nPartner API"]
+        dhConn["DataHub Connector\nHub Auth Token"]
+    end
+
+    dash -->|"Message Actions"| fss
+    fss --> engine
+    httpConn --> platformAPI["Boomi Platform API\napi.boomi.com\nPartner API + overrideAccount"]
+    dhConn --> dataHub["Boomi DataHub\nComponentMapping\nDevAccountAccess\nPromotionLog\nExtensionAccessMapping\nClientAccountConfig"]
 ```
 
 ## Key Design Decisions
@@ -137,6 +108,50 @@ else → READONLY (no dashboard access)
 - Defense-in-depth: Process C re-validates the tier from the `userSsoGroups` array passed in the executePromotion request, rejecting with `INSUFFICIENT_TIER` if below CONTRIBUTOR
 - Per-button tier gating is unnecessary — swimlane authorization already enforces CONTRIBUTOR/ADMIN access
 
+### Authorization Flow
+
+The two-axis SSO model maps group membership to dashboard access and account visibility.
+
+```mermaid
+graph TD
+    azureAD["Azure AD / Entra ID\nSSO Group Claims"]
+
+    subgraph tierGroups["Tier Groups (Dashboard Access)"]
+        adminTier["ABC_BOOMI_FLOW_ADMIN"]
+        contribTier["ABC_BOOMI_FLOW_CONTRIBUTOR"]
+        readTier["ABC_BOOMI_FLOW_READONLY\nABC_BOOMI_FLOW_OPERATOR"]
+    end
+
+    subgraph teamGroups["Team Groups (Account Visibility)"]
+        teamA["ABC_BOOMI_FLOW_DEVTEAMA"]
+        teamB["ABC_BOOMI_FLOW_DEVTEAMB"]
+        teamN["...DEVTEAM*"]
+    end
+
+    subgraph swimlanes["Flow Dashboard Swimlanes"]
+        devLane["DEV Swimlane"]
+        peerLane["PEER REVIEW Swimlane"]
+        adminLane["ADMIN Swimlane"]
+    end
+
+    azureAD --> tierGroups
+    azureAD --> teamGroups
+
+    adminTier -->|"full access\nbypasses team check"| devLane
+    adminTier --> peerLane
+    adminTier --> adminLane
+
+    contribTier -->|"team-gated accounts"| devLane
+    contribTier --> peerLane
+
+    readTier -->|"no dashboard access"| blocked["AtomSphere Only"]
+
+    teamA -->|"DevAccountAccess lookup"| devAccounts["Visible Dev Accounts"]
+    teamB --> devAccounts
+    teamN --> devAccounts
+    adminTier -->|"all accounts"| devAccounts
+```
+
 ## Constraints
 - Flow State is temporary/auto-purged — not usable for persistent storage
 - Starting fresh — no pre-existing components to seed
@@ -150,6 +165,8 @@ else → READONLY (no dashboard access)
 - Boomi Branching enabled on primary account; 20-branch hard limit requires lifecycle management
 
 ## DataHub Models
+
+**Diagram:** See the [DataHub ER Diagram](diagrams/datahub-er.md) for entity relationships.
 
 ### ComponentMapping
 - Purpose: Dev→prod component ID mapping (core persistent data)
@@ -167,6 +184,46 @@ else → READONLY (no dashboard access)
 - Match: Exact on `promotionId`
 - Source: PROMOTION_ENGINE (writes promotion data + peer/admin review updates)
 - Key fields for approval workflow: `peerReviewStatus`, `peerReviewedBy`, `peerReviewedAt`, `peerReviewComments`, `adminReviewStatus`, `adminApprovedBy`, `adminApprovedAt`, `adminComments`
+
+### Promotion Status Lifecycle
+
+The PromotionLog `status` field tracks each promotion run through creation, review, and terminal states. The diagram below shows all valid transitions.
+
+```mermaid
+stateDiagram-v2
+    [*] --> IN_PROGRESS : Process C starts
+
+    IN_PROGRESS --> COMPLETED : all components succeeded
+    IN_PROGRESS --> FAILED : any component failed\nbranch deleted
+
+    COMPLETED --> TEST_DEPLOYING : deploy to test env
+    TEST_DEPLOYING --> TEST_DEPLOYED : test deploy success
+    TEST_DEPLOYING --> FAILED : test deploy error
+
+    COMPLETED --> PENDING_PEER_REVIEW : submit for production
+
+    TEST_DEPLOYED --> PENDING_PEER_REVIEW : promote to production
+
+    PENDING_PEER_REVIEW --> PEER_APPROVED : peer approves
+    PENDING_PEER_REVIEW --> PEER_REJECTED : peer rejects\nbranch deleted
+    PENDING_PEER_REVIEW --> WITHDRAWN : initiator withdraws\nbranch deleted
+
+    PEER_APPROVED --> PENDING_ADMIN_REVIEW : awaiting admin
+
+    PENDING_ADMIN_REVIEW --> ADMIN_APPROVED : admin approves
+    PENDING_ADMIN_REVIEW --> ADMIN_REJECTED : admin rejects\nbranch deleted
+    PENDING_ADMIN_REVIEW --> WITHDRAWN : initiator withdraws\nbranch deleted
+
+    ADMIN_APPROVED --> DEPLOYED : Process D merges\npackages and deploys
+
+    FAILED --> [*]
+    PEER_REJECTED --> [*]
+    ADMIN_REJECTED --> [*]
+    WITHDRAWN --> [*]
+    DEPLOYED --> [*]
+```
+
+> **Note:** `PARTIALLY_COMPLETED` is not a valid status — the fail-fast policy ensures binary COMPLETED/FAILED outcomes from Process C.
 
 ## Integration Processes
 
@@ -262,27 +319,44 @@ For promotions the initiator wants to retract before review completion:
 
 ### Branch Lifecycle (Multi-Environment)
 
-```
-CREATE → POLL → PROMOTE → ENVIRONMENT DECISION
-  │                              │
-  │                    ┌─────────┴──────────┐
-  │                    │                    │
-  │               TEST PATH           HOTFIX PATH
-  │                    │                    │
-  │            Merge to main         Merge to main
-  │            Package (test)        Package (prod)
-  │            Deploy to test        Deploy to prod
-  │            PRESERVE branch       DELETE branch
-  │                    │
-  │            PRODUCTION PATH
-  │            (from test)
-  │                    │
-  │            Skip merge (already on main)
-  │            Package (prod)
-  │            Deploy to prod
-  │            DELETE branch
-  │
-  └─ On Process C failure: DELETE immediately
+```mermaid
+stateDiagram-v2
+    [*] --> BranchCreated : POST /Branch\npromo-{promotionId}
+
+    BranchCreated --> Polling : poll until ready=true
+
+    Polling --> ComponentsPromoted : Process C writes\nvia tilde syntax
+
+    ComponentsPromoted --> EnvConfigStripped : strip passwords\nhosts, URLs
+
+    EnvConfigStripped --> RefsRewritten : dev IDs to prod IDs\nvia mapping cache
+
+    RefsRewritten --> EnvironmentDecision : Process C outcome
+
+    EnvironmentDecision --> TestPath : TEST mode
+    EnvironmentDecision --> HotfixPath : HOTFIX mode
+    EnvironmentDecision --> FailedDelete : any component failed
+
+    TestPath --> MergedToMainTest : merge to main\nOVERRIDE strategy
+    MergedToMainTest --> PackagedTest : package\nTest Integration Pack
+    PackagedTest --> DeployedTest : deploy to Test env
+    DeployedTest --> BranchPreserved : branch kept for\nprod promotion diff
+
+    BranchPreserved --> ProductionPath : promote to prod\nfrom Page 9
+
+    ProductionPath --> SkipMerge : already on main
+    SkipMerge --> PackagedProd : package\nProd Integration Pack
+    PackagedProd --> DeployedProd : deploy to Prod env
+    DeployedProd --> BranchDeleted : DELETE /Branch
+
+    HotfixPath --> MergedToMainHotfix : merge to main
+    MergedToMainHotfix --> PackagedHotfix : package\nProd Integration Pack
+    PackagedHotfix --> DeployedHotfix : deploy to Prod env
+    DeployedHotfix --> BranchDeleted
+
+    FailedDelete --> BranchDeleted : DELETE immediately\nno merge
+
+    BranchDeleted --> [*]
 ```
 
 ### Integration Pack Strategy
@@ -312,18 +386,33 @@ Emergency hotfixes are tracked for leadership review:
 
 ## Branch Lifecycle
 
-```
-CREATE → POLL → PROMOTE → OUTCOME
-  │                          │
-  │  POST /Branch             ├─ (all succeed) → COMPLETED → REVIEW → TERMINAL
-  │  poll until ready         │                                  │
-  │  Process C writes         │                     ├─ APPROVE: Merge → Package → Deploy → DELETE
-  │    via tilde syntax       │                     ├─ REJECT: DELETE (peer)
-  │  Process G reads          │                     ├─ DENY: DELETE (admin)
-  │    for diff               │                     └─ WITHDRAW: DELETE (initiator)
-  │                           └─ (any fail) → FAILED → DELETE immediately (no merge)
-  │
-  └─ On pre-promotion error (e.g. BRANCH_LIMIT_REACHED): branch never created or deleted on creation failure
+```mermaid
+stateDiagram-v2
+    [*] --> Created : POST /Branch\npromo-{promotionId}
+
+    Created --> Active : all components\npromoted successfully\nCOMPLETED
+
+    Active --> ReviewPending : submitted for\nproduction review\nPENDING_PEER_REVIEW
+
+    ReviewPending --> PeerApproved : peer approves\nPEER_APPROVED
+    ReviewPending --> DeletedReject : peer rejects\nPEER_REJECTED
+    ReviewPending --> DeletedWithdraw : initiator withdraws\nWITHDRAWN
+
+    PeerApproved --> AdminPending : PENDING_ADMIN_REVIEW
+
+    AdminPending --> Merged : admin approves\nOVERRIDE merge to main
+    AdminPending --> DeletedReject : admin rejects\nADMIN_REJECTED
+    AdminPending --> DeletedWithdraw : initiator withdraws\nWITHDRAWN
+
+    Merged --> PackageDeployed : package and deploy\nDEPLOYED
+    PackageDeployed --> DeletedSuccess : DELETE /Branch
+
+    Created --> DeletedFail : any component fails\nFAILED → DELETE immediately
+
+    DeletedFail --> [*]
+    DeletedReject --> [*]
+    DeletedWithdraw --> [*]
+    DeletedSuccess --> [*]
 ```
 
 **Key invariant:** Every branch is either actively in review or has been deleted (via approval, rejection, denial, or withdrawal). No orphaned branches.
