@@ -18,6 +18,8 @@ The request JSON contains:
 The response JSON contains:
 - `success`, `errorCode`, `errorMessage` (standard error contract)
 - `promotionId` (string): unique ID for this promotion run
+- `branchId` (string): promotion branch ID (used by Process D for merge and Process G for diff)
+- `branchName` (string): promotion branch name (e.g., `"promo-{promotionId}"`)
 - `componentsCreated` (number), `componentsUpdated` (number), `componentsFailed` (number)
 - `results` (array): each entry has `devComponentId`, `name`, `action` (`"CREATED"`, `"UPDATED"`, `"FAILED"`, `"SKIPPED"`), `prodComponentId`, `prodVersion`, `status`, `errorMessage`, `configStripped`
 - `connectionsSkipped` (number): count of shared connections not promoted (filtered out)
@@ -45,6 +47,9 @@ Create `PROMO - FSS Op - ExecutePromotion` per Section 3.B, using `PROMO - Profi
 | `missingConnectionCount` | `"0"` | Count of missing connection mappings |
 | `connectionMappingsValid` | `"true"` | Whether all connection mappings exist |
 | `currentFolderFullPath` | (set per loop iteration) | Dev folder path for mirrored promotion target |
+| `branchId` | (set in step 3.7) | Promotion branch ID for tilde syntax writes |
+| `branchName` | `"promo-{promotionId}"` | Promotion branch name |
+| `activeBranchCount` | (set in step 3.5) | Current branch count for limit check |
 
 #### Canvas — Shape by Shape
 
@@ -63,6 +68,37 @@ Create `PROMO - FSS Op - ExecutePromotion` per Section 3.B, using `PROMO - Profi
    ExecutionUtil.setDynamicProcessProperty("promotionId", promotionId, false)
    ```
 
+3.5. **HTTP Client Send — QUERY Branch (Check Limit)**
+   - Connector: `PROMO - Partner API Connection`
+   - Operation: `PROMO - HTTP Op - QUERY Branch`
+   - URL parameter `{1}` = DPP `primaryAccountId`
+   - Request body: empty `QueryFilter` (returns all branches). See `/integration/api-requests/query-branch.json`
+   - Extract `numberOfResults` from the response; store in DPP `activeBranchCount`
+
+3.6. **Decision — Branch Limit**
+   - Condition: DPP `activeBranchCount` **>=** `15`
+   - **YES (limit reached)**: Build error response with `success = false`, `errorCode = "BRANCH_LIMIT_REACHED"`, `errorMessage = "Too many active promotions. Please wait for pending reviews to complete."` → **Return Documents** (exit process)
+   - **NO (under limit)**: continue to step 3.7
+
+3.7. **HTTP Client Send — POST Branch (Create)**
+   - Connector: `PROMO - Partner API Connection`
+   - Operation: `PROMO - HTTP Op - POST Branch`
+   - URL parameter `{1}` = DPP `primaryAccountId`
+   - Request body: `name` = `"promo-{promotionId}"` (from DPP), `description` = `"Promotion branch for {promotionId}"`. See `/integration/api-requests/create-branch.json`
+   - Extract `branchId` from the response; store in DPP `branchId`
+   - Set DPP `branchName` = `"promo-{promotionId}"`
+
+3.8. **HTTP Client Send — GET Branch (Poll Until Ready)**
+   - Connector: `PROMO - Partner API Connection`
+   - Operation: `PROMO - HTTP Op - GET Branch`
+   - URL parameter `{1}` = DPP `primaryAccountId`, `{2}` = DPP `branchId`
+   - Poll with **5-second delay** between retries, **max 6 retries** (30 seconds total). See `/integration/api-requests/get-branch.json`
+   - Check `ready` field in response:
+     - `ready = true`: branch is ready, continue to step 4
+     - `ready = false` after max retries: error with `errorCode = "BRANCH_CREATION_TIMEOUT"`, `errorMessage = "Branch creation timed out after 30 seconds"` → **DELETE** `/Branch/{branchId}` → **Return Documents** (exit process)
+
+> **Outer Try/Catch**: Wrap steps 4 through 22 in an **outer Try/Catch** block (distinct from the per-component Try/Catch at step 8). In the outer catch block: attempt `DELETE /Branch/{branchId}` to clean up the branch before returning the error response. This ensures that if any catastrophic failure occurs during the promotion loop, the branch is not leaked.
+
 4. **DataHub Update — Create PromotionLog (IN_PROGRESS)**
    - Connector: `PROMO - DataHub Connection`
    - Operation: `PROMO - DH Op - Update PromotionLog`
@@ -74,6 +110,8 @@ Create `PROMO - FSS Op - ExecutePromotion` per Section 3.B, using `PROMO - Profi
      - `initiatedAt` = current timestamp
      - `status` = `"IN_PROGRESS"`
      - `componentsTotal` = count of components in request array
+     - `branchId` = DPP `branchId`
+     - `branchName` = DPP `branchName`
    - Use a **Map** shape before the DataHub connector to transform the request data into the PromotionLog update XML format
 
 5. **Data Process — Sort Components (`sort-by-dependency.groovy`)**
@@ -201,11 +239,13 @@ Create `PROMO - FSS Op - ExecutePromotion` per Section 3.B, using `PROMO - Profi
        - Writes DPP: `referencesRewritten` = count of IDs replaced
        - Output: the rewritten XML on the document stream
 
-    2. **HTTP Client Send — POST Component Update**
+    2. **HTTP Client Send — POST Component Update (to branch)**
        - Connector: `PROMO - Partner API Connection`
        - Operation: `PROMO - HTTP Op - POST Component Update`
        - URL parameter `{1}` = DPP `primaryAccountId`
        - URL parameter `{2}` = DPP `prodComponentId`
+       - URL parameter `{3}` = DPP `branchId`
+       - Request URL: `/partner/api/rest/v1/{1}/Component/{2}~{3}` — tilde syntax writes to the promotion branch
        - Request body: the rewritten component XML
        - The request XML uses `folderFullPath="/Promoted{currentFolderFullPath}"` per the updated template in `/integration/api-requests/update-component.xml`
        - Response returns the updated component with its new version number
@@ -216,13 +256,15 @@ Create `PROMO - FSS Op - ExecutePromotion` per Section 3.B, using `PROMO - Profi
 
     1. **Data Process — `rewrite-references.groovy`** — same as step 15a.1 above
 
-    2. **HTTP Client Send — POST Component Create**
+    2. **HTTP Client Send — POST Component Create (to branch)**
        - Connector: `PROMO - Partner API Connection`
        - Operation: `PROMO - HTTP Op - POST Component Create`
        - URL parameter `{1}` = DPP `primaryAccountId`
+       - URL parameter `{2}` = DPP `branchId`
+       - Request URL: `/partner/api/rest/v1/{1}/Component~{2}` — tilde syntax writes to the promotion branch
        - Request body: the rewritten component XML
        - The request XML uses `folderFullPath="/Promoted{currentFolderFullPath}"` per the updated template in `/integration/api-requests/create-component.xml`
-       - The Platform API creates a new component in the primary account and returns the new `prodComponentId` and `version = 1`
+       - The Platform API creates a new component on the promotion branch and returns the new `prodComponentId` and `version = 1`
 
     3. Extract `prodComponentId` from the API response; set DPP `prodComponentId`, set action = `"CREATED"`, `prodVersion = 1`
 
@@ -281,6 +323,8 @@ Create `PROMO - FSS Op - ExecutePromotion` per Section 3.B, using `PROMO - Profi
     - Destination: `PROMO - Profile - ExecutePromotionResponse`
     - Map:
       - `promotionId` = DPP `promotionId`
+      - `branchId` = DPP `branchId`
+      - `branchName` = DPP `branchName`
       - `componentsCreated`, `componentsUpdated`, `componentsFailed` = computed counts
       - `results` array = all accumulated component results
       - `success` = `true` (even if some components failed — the promotion operation itself succeeded)
