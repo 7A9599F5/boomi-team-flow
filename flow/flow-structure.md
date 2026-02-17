@@ -15,23 +15,24 @@ The Promotion Dashboard is a single Flow application with three swimlanes design
 ## Swimlanes
 
 ### Developer Swimlane
-- **Authorization:** SSO group "Boomi Developers"
+- **Authorization:** SSO group "ABC_BOOMI_FLOW_CONTRIBUTOR" OR "ABC_BOOMI_FLOW_ADMIN"
 - **Pages:**
   1. Package Browser
   2. Promotion Review
   3. Promotion Status
   4. Deployment Submission
 - **Purpose:** Browse packages, review dependencies, execute promotion, submit for peer review
+- **Note:** READONLY/OPERATOR tier users cannot access any Developer pages
 
 ### Peer Review Swimlane
-- **Authorization:** SSO groups "Boomi Developers" OR "Boomi Admins" (any listed group grants access)
+- **Authorization:** SSO group "ABC_BOOMI_FLOW_CONTRIBUTOR" OR "ABC_BOOMI_FLOW_ADMIN"
 - **Pages:**
   5. Peer Review Queue
   6. Peer Review Detail
 - **Purpose:** Review and approve/reject promotion submissions from other developers. Self-review prevention: submitter cannot review their own submission (enforced at backend + UI level)
 
 ### Admin Swimlane
-- **Authorization:** SSO group "Boomi Admins"
+- **Authorization:** SSO group "ABC_BOOMI_FLOW_ADMIN"
 - **Pages:**
   7. Admin Approval Queue
   8. Mapping Viewer
@@ -52,6 +53,7 @@ Flow values are used to maintain state across pages and message steps.
 | `deploymentRequest` | Object | Deployment submission data (version, pack, notes, devAccountId, devPackageId, devPackageCreator, devPackageVersion, etc.) |
 | `userSsoGroups` | List | User's Azure AD group memberships (from SSO context) |
 | `accessibleAccounts` | List | Dev accounts user can access based on SSO groups |
+| `userEffectiveTier` | String | User's resolved dashboard tier ("CONTRIBUTOR" or "ADMIN"), set from getDevAccounts response `effectiveTier` field |
 | `componentsCreated` | Integer | Count of components created in promotion |
 | `componentsUpdated` | Integer | Count of components updated in promotion |
 | `componentsFailed` | Integer | Count of components that failed in promotion |
@@ -101,7 +103,7 @@ Flow values are used to maintain state across pages and message steps.
 
 7. **Page 4** → "Submit for Peer Review" → Email notification → **Peer Review Swimlane** → **Page 5**
    - Flow pauses at swimlane boundary
-   - Requires peer reviewer authentication (Boomi Developers OR Boomi Admins) to continue
+   - Requires peer reviewer authentication (ABC_BOOMI_FLOW_CONTRIBUTOR OR ABC_BOOMI_FLOW_ADMIN) to continue
 
 ### Peer Review Flow Path
 
@@ -145,6 +147,7 @@ All Message steps use the Boomi Integration Service connector. Each generates Re
   - `userSsoGroups` (from authorization context)
 - **Output values:**
   - `accessibleAccounts` (list of dev accounts)
+  - `userEffectiveTier` (string: "CONTRIBUTOR" or "ADMIN", from `effectiveTier` response field)
 
 ### 2. List Packages
 - **Step name:** `List Packages`
@@ -183,6 +186,7 @@ All Message steps use the Boomi Integration Service connector. Each generates Re
   - `selectedPackage.componentId`
   - `selectedDevAccountId`
   - `dependencyTree`
+  - `userSsoGroups` (passed through for defense-in-depth tier re-validation in Process C)
 - **Output values:**
   - `promotionId` (UUID)
   - `promotionResults` (array of component results)
