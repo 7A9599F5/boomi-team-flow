@@ -101,6 +101,7 @@ Located in `integration/scripts/`, these run as Data Process steps inside Integr
 ## Working with the Build Guide
 
 - **Count references are scattered** — when changing component counts (processes, profiles, pages, actions, types), grep `docs/build-guide/`, `.claude/skills/`, `.claude/rules/`, and `CHANGELOG.md` for stale numbers. Key files: `00-overview.md`, `index.md`, `14-flow-service.md`, `15-flow-dashboard-developer.md`, `18-troubleshooting.md`, `19-appendix-naming-and-inventory.md`
+- **BOM total must be recomputed** — the total in `00-overview.md` drifts when individual row counts change. Always sum the rows: Models + Connections + HTTP Ops + DH Ops + Profiles + Processes + FSS Ops + Flow Service + Custom Component + Flow Connector + Flow App
 - **Spec files are source of truth** — `datahub/models/*.json`, `integration/profiles/*.json`, `flow/flow-structure.md`, and `flow/page-layouts/` define the system. Build guide docs must match them.
 - **Nav footer pattern** — every build guide file ends with `Prev: [...] | Next: [...] | [Back to Index](index.md)`
 - **Verify plan items against current state** — planned changes may already be implemented in the codebase

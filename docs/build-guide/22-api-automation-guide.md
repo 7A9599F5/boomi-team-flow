@@ -616,7 +616,7 @@ Invoke-RestMethod -Uri "https://api.boomi.com/partner/api/rest/v1/$env:BOOMI_ACC
 
 Reference: [Phase 4: Flow Service Component](14-flow-service.md)
 
-The Flow Service is a `flowservice` type component that links 13 message actions to their FSS Operations and profiles.
+The Flow Service is a `flowservice` type component that links 14 message actions to their FSS Operations and profiles.
 
 ```bash
 curl -s -u "$BOOMI_AUTH" \
@@ -645,7 +645,7 @@ Invoke-RestMethod -Uri "https://api.boomi.com/partner/api/rest/v1/$env:BOOMI_ACC
   -Method POST -Headers $BoomiHeadersXml -Body $fsXml
 ```
 
-> **Recommended workflow:** Build the Flow Service in the UI following [Phase 4](14-flow-service.md) to link all 13 message actions correctly, then export with `GET /Component/{id}` to capture the complete XML for future automation.
+> **Recommended workflow:** Build the Flow Service in the UI following [Phase 4](14-flow-service.md) to link all 14 message actions correctly, then export with `GET /Component/{id}` to capture the complete XML for future automation.
 
 ---
 
