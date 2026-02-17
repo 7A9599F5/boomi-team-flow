@@ -1,6 +1,6 @@
 ## Phase 2: Integration Connections & Operations
 
-This phase creates the connection and operation components that all integration processes depend on. There are 2 connections and 15 operations total (9 HTTP Client + 6 DataHub).
+This phase creates the connection and operation components that all integration processes depend on. There are 2 connections and 21 operations total (15 HTTP Client + 6 DataHub).
 
 ### Step 2.1 -- Create HTTP Client Connection (Partner API)
 
@@ -30,15 +30,15 @@ This phase creates the connection and operation components that all integration 
 
 ### Step 2.2 -- Create HTTP Client Operations
 
-Create 12 HTTP Client operations. Each uses the `PROMO - Partner API Connection` from Step 2.1.
+Create 15 HTTP Client operations. Each uses the `PROMO - Partner API Connection` from Step 2.1.
 
 #### Quick Reference Table
 
 | # | Component Name | Method | Request URL | Content-Type | Template File |
 |---|---------------|--------|-------------|-------------|---------------|
 | 1 | PROMO - HTTP Op - GET Component | GET | `/partner/api/rest/v1/{1}/Component/{2}` | `application/xml` | `get-component.xml` |
-| 2 | PROMO - HTTP Op - POST Component Create | POST | `/partner/api/rest/v1/{1}/Component` | `application/xml` | `create-component.xml` |
-| 3 | PROMO - HTTP Op - POST Component Update | POST | `/partner/api/rest/v1/{1}/Component/{2}` | `application/xml` | `update-component.xml` |
+| 2 | PROMO - HTTP Op - POST Component Create | POST | `/partner/api/rest/v1/{1}/Component~{2}` | `application/xml` | `create-component.xml` |
+| 3 | PROMO - HTTP Op - POST Component Update | POST | `/partner/api/rest/v1/{1}/Component/{2}~{3}` | `application/xml` | `update-component.xml` |
 | 4 | PROMO - HTTP Op - GET ComponentReference | GET | `/partner/api/rest/v1/{1}/ComponentReference/{2}` | `application/xml` | `query-component-reference.xml` |
 | 5 | PROMO - HTTP Op - GET ComponentMetadata | GET | `/partner/api/rest/v1/{1}/ComponentMetadata/{2}` | `application/xml` | `query-component-metadata.xml` |
 | 6 | PROMO - HTTP Op - QUERY PackagedComponent | POST | `/partner/api/rest/v1/{1}/PackagedComponent/query` | `application/xml` | `query-packaged-components.xml` |
@@ -48,6 +48,9 @@ Create 12 HTTP Client operations. Each uses the `PROMO - Partner API Connection`
 | 10 | PROMO - HTTP Op - POST Branch | POST | `/partner/api/rest/v1/{1}/Branch` | `application/json` | `create-branch.json` |
 | 11 | PROMO - HTTP Op - QUERY Branch | POST | `/partner/api/rest/v1/{1}/Branch/query` | `application/json` | `query-branch.json` |
 | 12 | PROMO - HTTP Op - POST MergeRequest | POST | `/partner/api/rest/v1/{1}/MergeRequest` | `application/json` | `create-merge-request.json` |
+| 13 | PROMO - HTTP Op - POST MergeRequest Execute | POST | `/partner/api/rest/v1/{1}/MergeRequest/execute/{2}` | `application/json` | `execute-merge-request.json` |
+| 14 | PROMO - HTTP Op - GET Branch | GET | `/partner/api/rest/v1/{1}/Branch/{2}` | `application/json` | `get-branch.json` |
+| 15 | PROMO - HTTP Op - DELETE Branch | DELETE | `/partner/api/rest/v1/{1}/Branch/{2}` | `application/json` | `delete-branch.json` |
 
 > Operations 1-6 use `application/xml` for both Content-Type and Accept headers (Platform API XML endpoints). Operations 7-9 use `application/json` for both headers (JSON-based endpoints).
 
@@ -90,8 +93,8 @@ Creates a new component in the primary (production) account. Used when no existi
 |---------------|-------|
 | **Action** | Send |
 | **HTTP Method** | POST |
-| **Request URL** | `/partner/api/rest/v1/{1}/Component` |
-| **Request URL Parameters** | `{1}` = DPP `primaryAccountId` |
+| **Request URL** | `/partner/api/rest/v1/{1}/Component~{2}` |
+| **Request URL Parameters** | `{1}` = DPP `primaryAccountId`; `{2}` = DPP `branchId` |
 | **Query Parameters** | (none -- creates in the primary account directly) |
 | **Request Headers** | `Accept: application/xml`, `Content-Type: application/xml` |
 | **Response Codes - Success** | `200` |
@@ -99,6 +102,8 @@ Creates a new component in the primary (production) account. Used when no existi
 | **Timeout (ms)** | `120000` |
 
 5. The request body is the stripped and reference-rewritten component XML. See `/integration/api-requests/create-component.xml` for the template structure. Note: `componentId` must be omitted or empty for creation (the API assigns a new ID). The `folderFullPath` follows the convention `/Promoted{devFolderFullPath}` — mirroring the dev account's folder hierarchy under `/Promoted/`.
+
+> **Tilde syntax**: The `~{2}` suffix (DPP `branchId`) writes the new component to the promotion branch instead of main. The component will only exist on the branch until merged via MergeRequest.
 6. **Save**.
 
 #### Step 2.2.3 -- PROMO - HTTP Op - POST Component Update
@@ -114,8 +119,8 @@ Updates an existing component in the primary account. Used when a DataHub mappin
 |---------------|-------|
 | **Action** | Send |
 | **HTTP Method** | POST |
-| **Request URL** | `/partner/api/rest/v1/{1}/Component/{2}` |
-| **Request URL Parameters** | `{1}` = DPP `primaryAccountId`; `{2}` = DPP `prodComponentId` |
+| **Request URL** | `/partner/api/rest/v1/{1}/Component/{2}~{3}` |
+| **Request URL Parameters** | `{1}` = DPP `primaryAccountId`; `{2}` = DPP `prodComponentId`; `{3}` = DPP `branchId` |
 | **Query Parameters** | (none) |
 | **Request Headers** | `Accept: application/xml`, `Content-Type: application/xml` |
 | **Response Codes - Success** | `200` |
@@ -123,6 +128,8 @@ Updates an existing component in the primary account. Used when a DataHub mappin
 | **Timeout (ms)** | `120000` |
 
 5. The `{2}` parameter is the production component ID from the DataHub ComponentMapping record. The API auto-increments the version number. See `/integration/api-requests/update-component.xml` for the template structure.
+
+> **Tilde syntax**: The `~{3}` suffix (DPP `branchId`) writes the update to the promotion branch instead of main. The update will only exist on the branch until merged via MergeRequest.
 6. **Save**.
 
 #### Step 2.2.4 -- PROMO - HTTP Op - GET ComponentReference
@@ -343,6 +350,77 @@ Creates a merge request to merge promotion branch changes back to main after adm
 5. Request body requires `sourceBranchId` and `targetBranchId` (usually main). Automatically merges if no conflicts exist.
 6. **Save**.
 
+#### Step 2.2.13 -- PROMO - HTTP Op - POST MergeRequest Execute
+
+Executes a previously created merge request to merge the promotion branch into main.
+
+1. **Build --> New Component --> Connector --> Operation --> HTTP Client**.
+2. Name: `PROMO - HTTP Op - POST MergeRequest Execute`.
+3. Connection: `PROMO - Partner API Connection`.
+4. Configure:
+
+| Tab / Setting | Value |
+|---------------|-------|
+| **Action** | Send |
+| **HTTP Method** | POST |
+| **Request URL** | `/partner/api/rest/v1/{1}/MergeRequest/execute/{2}` |
+| **Request URL Parameters** | `{1}` = DPP `primaryAccountId`; `{2}` = DPP `mergeRequestId` |
+| **Query Parameters** | (none) |
+| **Request Headers** | `Accept: application/json`, `Content-Type: application/json` |
+| **Response Codes - Success** | `200` |
+| **Response Codes - Error** | `400`, `409` (Conflict), `429`, `503` |
+| **Timeout (ms)** | `120000` |
+
+5. Request body includes `action: "MERGE"`. After execution, poll `GET /MergeRequest/{mergeRequestId}` until `stage=MERGED`. See `/integration/api-requests/execute-merge-request.json` for the template.
+6. **Save**.
+
+#### Step 2.2.14 -- PROMO - HTTP Op - GET Branch
+
+Retrieves a single branch by ID. Used to poll for branch readiness after creation.
+
+1. **Build --> New Component --> Connector --> Operation --> HTTP Client**.
+2. Name: `PROMO - HTTP Op - GET Branch`.
+3. Connection: `PROMO - Partner API Connection`.
+4. Configure:
+
+| Tab / Setting | Value |
+|---------------|-------|
+| **Action** | Send |
+| **HTTP Method** | GET |
+| **Request URL** | `/partner/api/rest/v1/{1}/Branch/{2}` |
+| **Request URL Parameters** | `{1}` = DPP `primaryAccountId`; `{2}` = DPP `branchId` |
+| **Query Parameters** | (none) |
+| **Request Headers** | `Accept: application/json` |
+| **Response Codes - Success** | `200` |
+| **Response Codes - Error** | `400`, `404`, `429`, `503` |
+| **Timeout (ms)** | `120000` |
+
+5. Response includes `ready` (boolean). Poll with 5-second delay until `ready=true`, max 6 retries. See `/integration/api-requests/get-branch.json` for the response structure.
+6. **Save**.
+
+#### Step 2.2.15 -- PROMO - HTTP Op - DELETE Branch
+
+Deletes a promotion branch. Called on all terminal paths (approve, reject, deny, error).
+
+1. **Build --> New Component --> Connector --> Operation --> HTTP Client**.
+2. Name: `PROMO - HTTP Op - DELETE Branch`.
+3. Connection: `PROMO - Partner API Connection`.
+4. Configure:
+
+| Tab / Setting | Value |
+|---------------|-------|
+| **Action** | Send |
+| **HTTP Method** | DELETE |
+| **Request URL** | `/partner/api/rest/v1/{1}/Branch/{2}` |
+| **Request URL Parameters** | `{1}` = DPP `primaryAccountId`; `{2}` = DPP `branchId` |
+| **Query Parameters** | (none) |
+| **Request Headers** | `Accept: application/json` |
+| **Response Codes - Success** | `200`, `404` |
+| **Response Codes - Error** | `429`, `503` |
+| **Timeout (ms)** | `120000` |
+
+5. Idempotent: both `200` (deleted) and `404` (already deleted) are treated as success. See `/integration/api-requests/delete-branch.json` for lifecycle paths.
+6. **Save**.
 
 ---
 Prev: [Phase 1: DataHub Foundation](01-datahub-foundation.md) | Next: [Phase 2b: DataHub Connection Setup](03-datahub-connection-setup.md) | [Back to Index](index.md)
