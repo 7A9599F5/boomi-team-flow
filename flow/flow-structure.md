@@ -83,6 +83,7 @@ Flow values are used to maintain state across pages and message steps.
 | `testIntegrationPackName` | String | Test Integration Pack name — populated after test deployment |
 | `testDeployments` | List | Test deployments ready for production promotion (from queryTestDeployments) |
 | `selectedTestDeployment` | Object | Currently selected test deployment in Production Readiness queue |
+| `activePromotions` | List | Current user's pending promotions (PENDING_PEER_REVIEW + PENDING_ADMIN_REVIEW, filtered by initiatedBy == $User/Email) |
 
 ## Flow Navigation (Step-by-Step)
 
@@ -331,6 +332,23 @@ All Message steps use the Boomi Integration Service connector. Each generates Re
 - **Output values:**
   - `testDeployments` (array of TEST_DEPLOYED promotions ready for production)
 
+### 13. Withdraw Promotion
+- **Step name:** `Withdraw Promotion`
+- **Message Action:** `withdrawPromotion`
+- **Used in:** Page 1, on Withdraw button click in Active Promotions panel
+- **Request Type:** `WithdrawPromotionRequest` (auto-generated)
+- **Response Type:** `WithdrawPromotionResponse` (auto-generated)
+- **Input values:**
+  - `promotionId` (from selected active promotion row)
+  - `initiatorEmail` (from `$User/Email`)
+  - `reason` (from optional textarea in confirmation dialog)
+- **Output values:**
+  - `success` (boolean)
+  - `previousStatus` (string)
+  - `newStatus` (string — always "WITHDRAWN" on success)
+  - `branchDeleted` (boolean)
+  - `message` (string)
+
 ## Decision Steps
 
 After each Message step that can fail, add a Decision step to handle errors gracefully.
@@ -353,6 +371,7 @@ After each Message step that can fail, add a Decision step to handle errors grac
 - Generate Component Diff → Decision → (Success: Render XmlDiffViewer | Failure: Show error in panel)
 - List Integration Packs → Decision → (Success: Populate combobox | Failure: Show error, allow manual entry)
 - Query Test Deployments → Decision → (Success: Page 9 | Failure: Error Page)
+- Withdraw Promotion → Decision → (Success: Remove from panel, show toast | Failure: Show error toast)
 
 ## Email Notifications
 

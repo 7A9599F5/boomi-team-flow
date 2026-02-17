@@ -41,6 +41,7 @@ A Boomi Flow dashboard where devs promote packaged processes from a dev sub-acco
 │  Process E2: Query Peer Review Queue                      │
 │  Process E3: Submit Peer Review                           │
 │  Process E4: Query Test Deployments                       │
+│  Process E5: Withdraw Promotion                           │
 │  Process F: Mapping CRUD                                  │
 │  Process G: Generate Component Diff                       │
 │  Process J: List Integration Packs                        │
@@ -73,7 +74,7 @@ No firewall issues. Flow → Integration → DataHub all within Boomi's cloud in
 External databases have 30+ second latency due to firewall/domain limitations. DataHub is accessible without latency when Integration atom is on public Boomi cloud. Match rules provide built-in UPSERT behavior.
 
 ### Why Flow Services Server
-Single Flow Service component defines the contract. Exposes all 12 processes as Message Actions. Handles connection management, timeout callbacks, and authentication automatically.
+Single Flow Service component defines the contract. Exposes all 13 processes as Message Actions. Handles connection management, timeout callbacks, and authentication automatically.
 
 ### Why Swimlanes for Approval
 Built-in Flow authorization containers. Three swimlanes implement a 2-layer approval workflow: Dev swimlane for submission, Peer Review swimlane for first approval gate (any dev or admin except submitter), Admin swimlane for final approval and deployment. SSO group restrictions on each swimlane. Flow pauses at each boundary waiting for the next authenticated user.
@@ -180,6 +181,7 @@ else → READONLY (no dashboard access)
 | E2 | Query Peer Review Queue | queryPeerReviewQueue | Query PENDING_PEER_REVIEW promotions, exclude own |
 | E3 | Submit Peer Review | submitPeerReview | Record peer approve/reject with self-review prevention |
 | E4 | Query Test Deployments | queryTestDeployments | Query TEST_DEPLOYED promotions ready for production |
+| E5 | Withdraw Promotion | withdrawPromotion | Initiator withdraws pending promotion, deletes branch |
 | F | Mapping CRUD | manageMappings | Read/write ComponentMapping records |
 | G | Generate Component Diff | generateComponentDiff | Fetch branch vs main XML for side-by-side diff |
 | J | List Integration Packs | listIntegrationPacks | Query MULTI-type packs + suggest based on history |
@@ -249,6 +251,15 @@ For critical fixes that cannot wait for test validation:
 - **Peer rejection:** Branch deleted, submitter notified with feedback.
 - **Admin denial:** Branch deleted, submitter + peer reviewer notified.
 
+### Path 4: Initiator Withdrawal
+
+For promotions the initiator wants to retract before review completion:
+
+1. **Withdraw:** Initiator clicks "Withdraw" on Page 1's Active Promotions panel.
+2. **Branch cleanup:** Process E5 deletes the promotion branch (`DELETE /Branch/{branchId}`).
+3. **Status update:** PromotionLog status set to `WITHDRAWN`, `branchId` cleared, `withdrawnAt` and `withdrawalReason` recorded.
+4. **Branch slot freed:** The branch slot is released for new promotions.
+
 ### Branch Lifecycle (Multi-Environment)
 
 ```
@@ -288,6 +299,7 @@ With branches persisting through the test→production lifecycle (potentially da
 - Process C branch count threshold lowered from 18 to 15 for early warning
 - Page 9 surfaces branch age as a column to encourage timely production promotions
 - Branches older than 30 days trigger amber/red warnings in the UI
+- Initiator withdrawal (Process E5) frees branch slots for promotions stuck in review queues, helping manage branch pressure during high-volume periods
 - Future consideration: "Cancel Test Deployment" action to delete stale branches and roll back test Integration Pack
 
 ### Hotfix Audit Trail
@@ -307,14 +319,14 @@ CREATE → POLL → PROMOTE → OUTCOME
   │  poll until ready         │                                  │
   │  Process C writes         │                     ├─ APPROVE: Merge → Package → Deploy → DELETE
   │    via tilde syntax       │                     ├─ REJECT: DELETE (peer)
-  │  Process G reads          │                     └─ DENY: DELETE (admin)
-  │    for diff               │
+  │  Process G reads          │                     ├─ DENY: DELETE (admin)
+  │    for diff               │                     └─ WITHDRAW: DELETE (initiator)
   │                           └─ (any fail) → FAILED → DELETE immediately (no merge)
   │
   └─ On pre-promotion error (e.g. BRANCH_LIMIT_REACHED): branch never created or deleted on creation failure
 ```
 
-**Key invariant:** Every branch is either actively in review or has been deleted. No orphaned branches.
+**Key invariant:** Every branch is either actively in review or has been deleted (via approval, rejection, denial, or withdrawal). No orphaned branches.
 
 **PromotionLog tracking:**
 - `branchId` set on creation, cleared (null) after deletion

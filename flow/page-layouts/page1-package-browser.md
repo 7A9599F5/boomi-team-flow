@@ -23,10 +23,70 @@ The Package Browser is the entry point for the developer flow. Users select a de
      - Wait for user selection
      - Package grid shows empty state
 
+3b. **Active promotions query:** 2 parallel `queryStatus` calls:
+   - Call 1: `reviewStage = "PENDING_PEER_REVIEW"`
+   - Call 2: `reviewStage = "PENDING_ADMIN_REVIEW"`
+   - Filter results in Flow: keep only records where `initiatedBy.toLowerCase() == $User/Email.toLowerCase()`
+   - Store filtered results → `activePromotions` Flow value
+
 4. **Error handling:**
    - If `getDevAccounts` fails → Navigate to Error Page
 
 ## Components
+
+### Your Active Promotions (Collapsible Panel)
+
+**Component Type:** Collapsible panel / Accordion
+
+**Visibility:**
+- **Shown when:** `activePromotions` list is non-empty (at least one pending promotion by this user)
+- **Hidden when:** `activePromotions` is empty (no pending promotions)
+
+**Data Source:**
+- Flow value: `activePromotions` (combined PENDING_PEER_REVIEW + PENDING_ADMIN_REVIEW records where `initiatedBy` matches current user)
+
+**Default State:** Expanded (user sees their active promotions immediately)
+
+**Grid Columns:**
+
+| Column | Field | Width | Description |
+|--------|-------|-------|-------------|
+| Package Name | `processName` | 25% | Root process name from the promotion |
+| Dev Account | `devAccountId` | 15% | Source dev account |
+| Status | `peerReviewStatus` or `adminReviewStatus` | 15% | Badge: amber for PENDING_PEER_REVIEW, blue for PENDING_ADMIN_REVIEW |
+| Submitted | `initiatedAt` | 15% | Relative date ("2 hours ago", "3 days ago") |
+| Components | `componentsTotal` | 10% | Total component count |
+| | | 20% | Withdraw button |
+
+**Status Badges:**
+- `PENDING_PEER_REVIEW` → Amber badge: "Awaiting Peer Review"
+- `PENDING_ADMIN_REVIEW` → Blue badge: "Awaiting Admin Review"
+
+**Withdraw Button:**
+- **Label:** "Withdraw"
+- **Style:** Destructive/danger (red outline or red text)
+- **On click:**
+  1. Show confirmation dialog:
+     - Title: "Withdraw Promotion?"
+     - Message: "This will cancel the promotion for **{processName}** and delete the promotion branch. This action cannot be undone."
+     - Optional textarea: "Reason for withdrawal (optional)" — max 500 characters
+     - Buttons: "Cancel" (secondary) | "Withdraw" (destructive/red)
+  2. On confirm: Message step → `withdrawPromotion` with:
+     - `promotionId` from the selected row
+     - `initiatorEmail` from `$User/Email`
+     - `reason` from the textarea (or empty string)
+  3. On success:
+     - Remove the row from `activePromotions` list
+     - Show success toast: "Promotion withdrawn successfully"
+     - Refresh the panel (re-query if needed)
+  4. On failure:
+     - Show error toast with `errorMessage`
+     - Keep the row in place (do not remove)
+
+**Empty State:**
+- Panel is hidden entirely when no active promotions exist
+
+---
 
 ### Account Selector (Combobox)
 
@@ -183,6 +243,12 @@ The Package Browser is the entry point for the developer flow. Users select a de
 | "Component Promotion Dashboard"                          |
 | User: {userName} ({userEmail})                           |
 +----------------------------------------------------------+
+| YOUR ACTIVE PROMOTIONS (collapsible, hidden if empty)    |
+| +------------------------------------------------------+ |
+| | Package Name | Account | Status | Submitted | Action | |
+| | Order Proc   | DevA    | Peer   | 2h ago    | [Withdraw]| |
+| +------------------------------------------------------+ |
++----------------------------------------------------------+
 | ACCOUNT SELECTOR ROW                                     |
 | [Combobox: Select Dev Account ▼]   (conditional)        |
 +----------------------------------------------------------+
@@ -190,11 +256,11 @@ The Package Browser is the entry point for the developer flow. Users select a de
 |                                                          |
 |  Packages Data Grid                                      |
 |  +----------------------------------------------------+  |
-|  | Package Name | Version | Type | Created | Notes |  |
-|  |--------------------------------------------------------|  |
-|  | Order Proc   | 1.2.3   | Proc | 2026... | Main  |  |
-|  | API Conn     | 2.0.0   | Conn | 2026... | Auth  |  |
-|  | ...          | ...     | ...  | ...     | ...   |  |
+|  | Package Name | Version | Type | Created | Notes    |  |
+|  |------------------------------------------------------|  |
+|  | Order Proc   | 1.2.3   | Proc | 2026... | Main     |  |
+|  | API Conn     | 2.0.0   | Conn | 2026... | Auth     |  |
+|  | ...          | ...     | ...  | ...     | ...      |  |
 |  +----------------------------------------------------+  |
 |                                                          |
 +----------------------------------------------------------+
@@ -264,6 +330,10 @@ All pages in the Flow dashboard follow these error handling patterns:
    - Sees "Loading..." while `getDevAccounts` executes
    - If 1 account: Auto-selected, packages load immediately
    - If multiple: Sees account dropdown
+
+1b. **User sees active promotions panel** (if any)
+   - Panel shows 1 promotion: "Order Processing v1.1.0" — Awaiting Peer Review (submitted 3 hours ago)
+   - User can click "Withdraw" to cancel it, or ignore and continue browsing
 
 2. **User selects account "Dev Team A"**
    - Dropdown value updates
