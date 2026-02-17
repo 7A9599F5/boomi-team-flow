@@ -7,7 +7,7 @@ The Peer Review Queue is the entry point for the peer review layer of the 2-laye
 ## Page Load Behavior
 
 1. **Peer reviewer authentication:**
-   - User must authenticate via SSO with "Boomi Developers" OR "Boomi Admins" group membership
+   - User must authenticate via SSO with `ABC_BOOMI_FLOW_CONTRIBUTOR` OR `ABC_BOOMI_FLOW_ADMIN` group membership
    - If not authorized: Show error "Access denied. This page requires developer or admin privileges."
    - Store reviewer user context: `peerReviewerEmail` (from `$User/Email`), `peerReviewerName` (from `$User/First Name` + `$User/Last Name`)
 
@@ -112,7 +112,7 @@ The Peer Review Queue is the entry point for the peer review layer of the 2-laye
 
 2. **UI-level (fallback):** If a promotion somehow appears where `selectedPeerReview.initiatedBy` equals `$User/Email`:
    - Add a Decision step after row selection
-   - Condition: `$User/Email` != `selectedPeerReview.initiatedBy`
+   - Condition: `LOWERCASE($User/Email)` != `LOWERCASE(selectedPeerReview.initiatedBy)`
    - True path: Navigate to Page 6
    - False path: Show inline error banner: "You cannot review your own submission. Please ask another team member to review."
 
@@ -190,7 +190,7 @@ The Peer Review Queue is the entry point for the peer review layer of the 2-laye
    - Clicks link in email
 
 2. **Reviewer authenticates via SSO**
-   - "Boomi Developers" or "Boomi Admins" group membership validated
+   - `ABC_BOOMI_FLOW_CONTRIBUTOR` or `ABC_BOOMI_FLOW_ADMIN` group membership validated
    - Redirected to Page 5
 
 3. **Reviewer sees peer review queue**

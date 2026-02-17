@@ -308,7 +308,7 @@ Creates a promotion branch for isolated component changes before merging to main
 
 #### Step 2.2.11 -- PROMO - HTTP Op - QUERY Branch
 
-Queries existing branches to enforce the 10-branch limit and check for existing promotion branches.
+Queries existing branches to enforce the 15-branch operational limit and check for existing promotion branches. The platform hard limit is 20 branches per account. The operational threshold of 15 provides buffer for manual branches.
 
 1. **Build --> New Component --> Connector --> Operation --> HTTP Client**.
 2. Name: `PROMO - HTTP Op - QUERY Branch`.

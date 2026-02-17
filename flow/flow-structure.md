@@ -135,7 +135,7 @@ Flow values are used to maintain state across pages and message steps.
 
 8. **Page 5 (Peer Review Queue)** → Select pending review → **Page 6 (Peer Review Detail)**
    - On load: Message step → `queryPeerReviewQueue` (excludes own submissions via `$User/Email`)
-   - Decision step: compare `$User/Email` with `selectedPeerReview.initiatedBy` — if equal, block with error "You cannot review your own submission"
+   - Decision step: compare `LOWERCASE($User/Email)` with `LOWERCASE(selectedPeerReview.initiatedBy)` — if equal, block with error "You cannot review your own submission"
 
 9. **Page 6 (Peer Review Detail)** → "Approve" → Message step (`submitPeerReview` with decision=APPROVED) → Email to admins + submitter → **Admin Swimlane** → **Page 7**
    - "View Diff" links call `generateComponentDiff` for branch-vs-main comparison

@@ -144,7 +144,7 @@ else → effectiveTier = "READONLY" (no dashboard access — should not reach th
   - `prodComponentId` (string)
   - `componentName` (string)
   - `componentType` (string)
-  - `action` (string: "created" | "updated")
+  - `action` (string: "created" | "updated" | "SKIPPED") — `SKIPPED` is set on dependent components when a prerequisite component fails during promotion. Prevents broken references from partially-promoted dependency chains.
   - `version` (integer)
 - `connectionsSkipped` (integer) — count of shared connections not promoted
 - `branchId` (string) — promotion branch ID for downstream diff/merge operations
@@ -208,6 +208,10 @@ else → effectiveTier = "READONLY" (no dashboard access — should not reach th
 - `errorCode` (string, optional)
 - `errorMessage` (string, optional)
 
+#### Admin Self-Approval Prevention (MUST implement)
+
+Process D MUST validate that the admin submitting the deployment is not the same user who initiated the promotion. Reject with error code `SELF_APPROVAL_NOT_ALLOWED` if `adminEmail.toLowerCase() == initiatedBy.toLowerCase()`. This enforces the independence of the 2-layer approval workflow and prevents any single user from promoting and deploying their own code.
+
 #### Deployment Modes
 
 **Mode 1: TEST deployment** (`deploymentTarget="TEST"`):
@@ -266,10 +270,10 @@ else → effectiveTier = "READONLY" (no dashboard access — should not reach th
   - `promotionId` (string)
   - `processName` (string)
   - `devAccountId` (string)
-  - `promotionDate` (datetime)
-  - `requestedBy` (string)
-  - `componentCount` (integer)
-  - `packageVersion` (string, optional)
+  - `initiatedAt` (datetime)
+  - `initiatedBy` (string)
+  - `componentsTotal` (integer)
+  - `packageVersion` (string, optional) — not stored in PromotionLog model; populated from PackagedComponent lookup at query time
   - `integrationPackId` (string, optional)
   - `prodPackageId` (string, optional) — Package ID of the prod PackagedComponent (populated after packageAndDeploy)
   - `peerReviewStatus` (string, optional) — PENDING_PEER_REVIEW, PEER_APPROVED, PEER_REJECTED
@@ -329,8 +333,11 @@ Connections are shared resources pre-configured in the parent account's `#Connec
 
 **Description**: Queries PromotionLog records that are in PENDING_PEER_REVIEW status, excluding promotions initiated by the requesting user (self-review prevention). Returns promotions ready for peer review along with deployment metadata.
 
+**Self-Review Exclusion Filter (MUST implement)**:
+Process E2 MUST apply `toLowerCase()` to both sides when filtering out the requester's own submissions: `initiatedBy.toLowerCase() != requesterEmail.toLowerCase()`. This prevents case-sensitive bypass when Azure AD returns email addresses with varying capitalization.
+
 **Request Fields**:
-- `requesterEmail` (string, required) — the authenticated user's email; used to exclude their own submissions from the results
+- `requesterEmail` (string, required) — the authenticated user's email; used to exclude their own submissions from the results (compared case-insensitively against `initiatedBy`)
 
 **Response Fields**:
 - `success` (boolean)
@@ -377,8 +384,11 @@ Connections are shared resources pre-configured in the parent account's `#Connec
 - `errorCode` (string, optional)
 - `errorMessage` (string, optional)
 
+**Self-Review Prevention (MUST implement)**:
+Process E3 MUST compare `reviewerEmail.toLowerCase()` with `initiatedBy.toLowerCase()` to prevent case-sensitive bypass of self-review prevention. Azure AD may return email addresses with varying capitalization; case-insensitive comparison is mandatory.
+
 **Error Codes (specific to this action)**:
-- `SELF_REVIEW_NOT_ALLOWED` — reviewerEmail matches the promotion's initiatedBy field
+- `SELF_REVIEW_NOT_ALLOWED` — `reviewerEmail.toLowerCase()` matches `initiatedBy.toLowerCase()`
 - `ALREADY_REVIEWED` — promotion has already been peer-reviewed (peerReviewStatus is not PENDING_PEER_REVIEW)
 - `INVALID_REVIEW_STATE` — promotion is not in PENDING_PEER_REVIEW state (may be IN_PROGRESS, FAILED, etc.)
 
@@ -676,6 +686,9 @@ Decision: Check Success
 | `HOTFIX_JUSTIFICATION_REQUIRED` | Emergency hotfix missing justification text | Provide hotfix justification before proceeding |
 | `INVALID_DEPLOYMENT_TARGET` | deploymentTarget must be "TEST" or "PRODUCTION" | Correct the deployment target value |
 | `TEST_PROMOTION_NOT_FOUND` | testPromotionId references a non-existent or non-TEST_DEPLOYED promotion | Verify the test promotion exists and is in TEST_DEPLOYED status |
+| `SELF_APPROVAL_NOT_ALLOWED` | Admin attempted to approve/deploy their own promotion (`adminEmail` matches `initiatedBy`) | A different admin must approve the deployment |
+| `MERGE_FAILED` | Branch merge request failed (MergeRequest status returned MERGE_FAILED) | Review merge error details; may indicate conflicting changes on main |
+| `MERGE_TIMEOUT` | Branch merge request did not complete within 60 seconds (12 polling attempts) | Retry the deployment; if persistent, check branch status manually |
 
 **Error Handling Best Practices**:
 
@@ -687,6 +700,41 @@ Decision: Check Success
 
 ---
 
+## Platform API Retry and Polling Specification
+
+### Retry Policy
+
+All Platform API HTTP calls MUST implement retry logic with the following parameters:
+
+| Parameter | Value |
+|-----------|-------|
+| Maximum retries | 3 |
+| Backoff strategy | Exponential |
+| Delay sequence | 1s, 2s, 4s |
+| Retryable responses | HTTP 429 (rate limit), HTTP 5xx (server error) |
+| Non-retryable responses | HTTP 4xx (except 429) — fail immediately |
+
+**Critical retry points:**
+- **Process C** (per-component loop): Each component promotion involves multiple API calls (GET Component, Create/Update Component). A 429 mid-loop must retry the failed call, not restart the entire loop.
+- **Process D** (merge/deploy sequence): A 429 after a successful merge but before packaging leaves the system in a recoverable state — the merge is idempotent, so retrying the full sequence is safe.
+
+### Merge Status Polling (Process D)
+
+After creating a MergeRequest, Process D MUST poll the merge status until completion:
+
+| Parameter | Value |
+|-----------|-------|
+| Polling endpoint | `GET /MergeRequest/{mergeRequestId}` |
+| Check interval | 5 seconds |
+| Maximum retries | 12 (60 seconds total) |
+| Success status | `COMPLETED` — proceed to packaging |
+| Failure status | `MERGE_FAILED` — set `errorCode=MERGE_FAILED`, include merge error details |
+| Timeout | If status is still `PENDING` after 12 checks, set `errorCode=MERGE_TIMEOUT` with message "Merge request did not complete within 60 seconds" |
+
+Process D MUST NOT proceed to Create PackagedComponent until the merge status is `COMPLETED`.
+
+---
+
 ## Security Considerations
 
 ### Authentication
@@ -695,11 +743,35 @@ Decision: Check Success
 - API tokens should be stored securely in Flow connector configuration
 - Rotate API tokens periodically (recommended: every 90 days)
 
+### Token Rotation Procedure
+
+When rotating API tokens, follow this sequence to avoid service interruption:
+
+1. **Create new API token** in Boomi AtomSphere → Settings → API Token Management
+2. **Update HTTP Client connection** with the new token (username remains unchanged)
+3. **Test with a read-only API call** (e.g., `GET Component` for a known component) to verify the new token works
+4. **Revoke the old token** only after confirming the new token is functional
+5. **Graceful 401 failure behavior**: If a token is revoked while in use, all Platform API calls will return HTTP 401. The Flow Service will return `errorCode=AUTH_FAILED` with `errorMessage` describing the authentication failure. No data corruption can occur — the API is read-only until promotion writes, which fail safely on 401.
+
 ### Authorization
 
 - Partner API requires primary account privileges
 - All sub-account access uses `overrideAccount` parameter
 - Flow Service inherits permissions from API token owner
+
+### userSsoGroups Accepted Risk
+
+The `userSsoGroups` field is client-supplied from the Flow authorization context and is not independently verified against Azure AD at runtime. This is an accepted platform constraint: Boomi Flow does not provide a server-side mechanism to query the identity provider directly.
+
+**Mitigation**: The API token serves as the true security boundary. The token is scoped to the primary account and its sub-accounts. Even if `userSsoGroups` were manipulated, the attacker could only access accounts already reachable by the API token.
+
+**Future consideration**: If Boomi Flow adds support for server-side SSO group validation, implement direct Azure AD group membership verification to replace client-supplied claims.
+
+### IDOR Protection Note
+
+The `devAccountId` parameter in several actions (listDevPackages, executePromotion, etc.) is accepted from the client without backend authorization check against DevAccountAccess records. Currently, the API token's account scope provides the security boundary.
+
+**Recommendation**: Process C SHOULD validate `devAccountId` against DevAccountAccess records for the requesting user before proceeding with promotion. This adds defense-in-depth beyond the API token scope.
 
 ### Data Privacy
 

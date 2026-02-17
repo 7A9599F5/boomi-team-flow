@@ -20,56 +20,74 @@
 import com.boomi.execution.ExecutionUtil
 import groovy.json.JsonSlurper
 import groovy.json.JsonOutput
+import java.util.Properties
+import java.util.logging.Logger
 
-// Read the sorted components from the document stream
-def is = dataContext.getStream(0)
-def components = new JsonSlurper().parseText(is.text)
+Logger logger = Logger.getLogger("validate-connection-mappings")
 
-// Read the pre-loaded connection mapping cache (batch-queried from DataHub)
-String connCacheJson = ExecutionUtil.getDynamicProcessProperty("connectionMappingCache")
-def connCache = new JsonSlurper().parseText(connCacheJson ?: "{}")
-
-// Read existing component mapping cache
-String compCacheJson = ExecutionUtil.getDynamicProcessProperty("componentMappingCache")
-def compCache = new JsonSlurper().parseText(compCacheJson ?: "{}")
-
-// Separate connections from non-connections
-def connections = components.findAll { it.type == "connection" }
-def nonConnections = components.findAll { it.type != "connection" }
-
-// Validate ALL connections have mappings — collect ALL missing, don't stop on first
-def missingMappings = []
-
-connections.each { conn ->
-    String devId = conn.devComponentId
-    if (connCache.containsKey(devId)) {
-        // Found — pre-load into componentMappingCache for rewrite-references.groovy
-        compCache[devId] = connCache[devId]
-    } else {
-        // Missing — add to error report
-        missingMappings << [
-            devComponentId: conn.devComponentId,
-            name: conn.name,
-            type: conn.type,
-            devAccountId: ExecutionUtil.getDynamicProcessProperty("devAccountId")
-        ]
+try {
+    if (dataContext.getDataCount() > 1) {
+        logger.warning("validate-connection-mappings expects a single document but received ${dataContext.getDataCount()} — processing first document only")
     }
+
+    // Read the sorted components from the document stream
+    InputStream is = dataContext.getStream(0)
+    Properties props = dataContext.getProperties(0)
+    def components = new JsonSlurper().parseText(is.text)
+
+    // Read the pre-loaded connection mapping cache (batch-queried from DataHub)
+    String connCacheJson = ExecutionUtil.getDynamicProcessProperty("connectionMappingCache")
+    def connCache = new JsonSlurper().parseText(connCacheJson ?: "{}")
+
+    // Read existing component mapping cache
+    String compCacheJson = ExecutionUtil.getDynamicProcessProperty("componentMappingCache")
+    def compCache = new JsonSlurper().parseText(compCacheJson ?: "{}")
+
+    // Separate connections from non-connections
+    def connections = components.findAll { it.type == "connection" }
+    def nonConnections = components.findAll { it.type != "connection" }
+
+    // Validate ALL connections have mappings — collect ALL missing, don't stop on first
+    def missingMappings = []
+
+    connections.each { conn ->
+        String devId = conn.devComponentId
+        if (connCache.containsKey(devId)) {
+            // Found — pre-load into componentMappingCache for rewrite-references.groovy
+            compCache[devId] = connCache[devId]
+        } else {
+            // Missing — add to error report
+            missingMappings << [
+                devComponentId: conn.devComponentId,
+                name: conn.name,
+                type: conn.type,
+                devAccountId: ExecutionUtil.getDynamicProcessProperty("devAccountId")
+            ]
+        }
+    }
+
+    // Log validation summary
+    int foundCount = connections.size() - missingMappings.size()
+    logger.info("Validated ${connections.size()} connection mappings: ${foundCount} found, ${missingMappings.size()} missing")
+
+    // Write results to DPPs
+    ExecutionUtil.setDynamicProcessProperty("missingConnectionMappings",
+        JsonOutput.toJson(missingMappings), false)
+    ExecutionUtil.setDynamicProcessProperty("missingConnectionCount",
+        missingMappings.size().toString(), false)
+    ExecutionUtil.setDynamicProcessProperty("connectionMappingsValid",
+        missingMappings.isEmpty() ? "true" : "false", false)
+
+    // Update the component mapping cache with found connection mappings
+    ExecutionUtil.setDynamicProcessProperty("componentMappingCache",
+        JsonOutput.toJson(compCache), false)
+
+    // Output ONLY non-connection components for the downstream promotion loop
+    dataContext.storeStream(
+        new ByteArrayInputStream(JsonOutput.toJson(nonConnections).getBytes("UTF-8")),
+        props
+    )
+} catch (Exception e) {
+    logger.severe("validate-connection-mappings failed: " + e.getMessage())
+    throw new Exception("validate-connection-mappings failed: " + e.getMessage())
 }
-
-// Write results to DPPs
-ExecutionUtil.setDynamicProcessProperty("missingConnectionMappings",
-    JsonOutput.toJson(missingMappings), false)
-ExecutionUtil.setDynamicProcessProperty("missingConnectionCount",
-    missingMappings.size().toString(), false)
-ExecutionUtil.setDynamicProcessProperty("connectionMappingsValid",
-    missingMappings.isEmpty() ? "true" : "false", false)
-
-// Update the component mapping cache with found connection mappings
-ExecutionUtil.setDynamicProcessProperty("componentMappingCache",
-    JsonOutput.toJson(compCache), false)
-
-// Output ONLY non-connection components for the downstream promotion loop
-dataContext.storeStream(
-    new ByteArrayInputStream(JsonOutput.toJson(nonConnections).getBytes("UTF-8")),
-    new Properties()
-)

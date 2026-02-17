@@ -29,7 +29,7 @@ Every process needs request and response JSON profiles. Import them once; all pr
 3. Click **Import** and select the corresponding file from `/integration/profiles/` (e.g., `manageMappings-request.json`)
 4. Boomi parses the JSON and creates the profile element tree automatically
 5. Click **Save**
-6. Repeat for each of the 14 profiles listed in the master component table:
+6. Repeat for each of the 24 profiles listed in the master component table:
 
 | Profile Name | Source File |
 |-------------|-------------|
@@ -47,6 +47,16 @@ Every process needs request and response JSON profiles. Import them once; all pr
 | `PROMO - Profile - QueryStatusResponse` | `queryStatus-response.json` |
 | `PROMO - Profile - ManageMappingsRequest` | `manageMappings-request.json` |
 | `PROMO - Profile - ManageMappingsResponse` | `manageMappings-response.json` |
+| `PROMO - Profile - QueryPeerReviewQueueRequest` | `queryPeerReviewQueue-request.json` |
+| `PROMO - Profile - QueryPeerReviewQueueResponse` | `queryPeerReviewQueue-response.json` |
+| `PROMO - Profile - SubmitPeerReviewRequest` | `submitPeerReview-request.json` |
+| `PROMO - Profile - SubmitPeerReviewResponse` | `submitPeerReview-response.json` |
+| `PROMO - Profile - GenerateComponentDiffRequest` | `generateComponentDiff-request.json` |
+| `PROMO - Profile - GenerateComponentDiffResponse` | `generateComponentDiff-response.json` |
+| `PROMO - Profile - ListIntegrationPacksRequest` | `listIntegrationPacks-request.json` |
+| `PROMO - Profile - ListIntegrationPacksResponse` | `listIntegrationPacks-response.json` |
+| `PROMO - Profile - QueryTestDeploymentsRequest` | `queryTestDeployments-request.json` |
+| `PROMO - Profile - QueryTestDeploymentsResponse` | `queryTestDeployments-response.json` |
 
 #### Adding Groovy Scripts to Data Process Shapes
 
@@ -95,7 +105,7 @@ The Start shape receives the request JSON document from the Flow Service and pla
 
 #### FSS Operation Creation Pattern
 
-Each process requires a corresponding FSS Operation component that links it to a message action in the Flow Service. Create all seven before building the process canvases, or create each one just before its process.
+Each process requires a corresponding FSS Operation component that links it to a message action in the Flow Service. Create all 12 before building the process canvases, or create each one just before its process.
 
 1. **Build --> New Component --> Operation --> Flow Services Server**
 2. Name: use the exact FSS Operation name from the master component list (see table below)
@@ -113,6 +123,11 @@ Each process requires a corresponding FSS Operation component that links it to a
 | `PROMO - FSS Op - PackageAndDeploy` | `PROMO - Profile - PackageAndDeployRequest` | `PROMO - Profile - PackageAndDeployResponse` | `packageAndDeploy` |
 | `PROMO - FSS Op - QueryStatus` | `PROMO - Profile - QueryStatusRequest` | `PROMO - Profile - QueryStatusResponse` | `queryStatus` |
 | `PROMO - FSS Op - ManageMappings` | `PROMO - Profile - ManageMappingsRequest` | `PROMO - Profile - ManageMappingsResponse` | `manageMappings` |
+| `PROMO - FSS Op - QueryPeerReviewQueue` | `PROMO - Profile - QueryPeerReviewQueueRequest` | `PROMO - Profile - QueryPeerReviewQueueResponse` | `queryPeerReviewQueue` |
+| `PROMO - FSS Op - SubmitPeerReview` | `PROMO - Profile - SubmitPeerReviewRequest` | `PROMO - Profile - SubmitPeerReviewResponse` | `submitPeerReview` |
+| `PROMO - FSS Op - GenerateComponentDiff` | `PROMO - Profile - GenerateComponentDiffRequest` | `PROMO - Profile - GenerateComponentDiffResponse` | `generateComponentDiff` |
+| `PROMO - FSS Op - ListIntegrationPacks` | `PROMO - Profile - ListIntegrationPacksRequest` | `PROMO - Profile - ListIntegrationPacksResponse` | `listIntegrationPacks` |
+| `PROMO - FSS Op - QueryTestDeployments` | `PROMO - Profile - QueryTestDeploymentsRequest` | `PROMO - Profile - QueryTestDeploymentsResponse` | `queryTestDeployments` |
 
 #### Return Documents Shape
 

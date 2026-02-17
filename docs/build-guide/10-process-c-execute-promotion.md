@@ -53,6 +53,22 @@ Create `PROMO - FSS Op - ExecutePromotion` per Section 3.B, using `PROMO - Profi
 
 #### Canvas — Shape by Shape
 
+0. **Concurrency Guard — Check for In-Progress Promotions**
+
+   Before any promotion work begins, verify no other promotion is already running for the same dev account. Two simultaneous promotions of overlapping components would create duplicate prod components.
+
+   - **DataHub Query — Check Existing IN_PROGRESS Promotions**
+     - Connector: `PROMO - DataHub Connection`
+     - Operation: `PROMO - DH Op - Query PromotionLog`
+     - Filter: `status EQUALS "IN_PROGRESS" AND devAccountId EQUALS` the `devAccountId` from the incoming request
+     - If any records are returned:
+       - Extract `promotionId` from the first returned record
+       - Build error response with `success = false`, `errorCode = "PROMOTION_IN_PROGRESS"`, `errorMessage = "A promotion is already in progress for this dev account (promotionId: {existingPromotionId}). Wait for it to complete before starting another."`
+       - **Return Documents** (exit process immediately)
+     - If no records are returned: continue to step 1
+
+   > This guard relies on the PromotionLog `IN_PROGRESS` record created in step 4. The window between step 0 and step 4 is a small race condition, but DataHub's match-rule upsert prevents duplicate PromotionLog records, and the branch-per-promotion isolation ensures component writes do not collide.
+
 1. **Start shape** — Operation = `PROMO - FSS Op - ExecutePromotion`
 
 2. **Set Properties — Read Request**
@@ -155,8 +171,9 @@ Create `PROMO - FSS Op - ExecutePromotion` per Section 3.B, using `PROMO - Profi
     - Update PromotionLog to `FAILED` with error details
     - **Return Documents** — skip the entire promotion loop
 
-6. **Set Properties — Initialize Mapping Cache**
-   - DPP `componentMappingCache` = `{}`
+6. **Set Properties — Prepare for Promotion Loop**
+   - **Do NOT reset `componentMappingCache` here.** The cache was initialized as `{}` in the DPP table at process start and populated with connection mappings by step 5.6 (`validate-connection-mappings.groovy`). Resetting it would erase those connection mappings, causing `rewrite-references.groovy` to produce broken connection references in promoted components.
+   - At this point, `componentMappingCache` already contains all dev→prod connection ID mappings. The promotion loop (steps 7-19) will continue adding non-connection component mappings as each is promoted.
 
 7. **For Each Component — Begin Loop**
    - The sorted components flow as individual documents. For each document:

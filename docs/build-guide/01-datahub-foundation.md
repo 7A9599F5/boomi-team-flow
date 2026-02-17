@@ -64,7 +64,7 @@ DataHub stores the three models that power the promotion engine: component mappi
 | `prodPackageId` | String | No | No | PackagedComponent packageId created in production |
 | `initiatedBy` | String | Yes | No | SSO user email |
 | `initiatedAt` | Date | Yes | No | Format: `yyyy-MM-dd'T'HH:mm:ss.SSS'Z'` |
-| `status` | String | Yes | No | `IN_PROGRESS`, `COMPLETED`, or `FAILED` |
+| `status` | String | Yes | No | See status values table below |
 | `componentsTotal` | Number | Yes | No | Total components in dependency tree |
 | `componentsCreated` | Number | Yes | No | New components created |
 | `componentsUpdated` | Number | Yes | No | Existing components updated |
@@ -92,6 +92,22 @@ DataHub stores the three models that power the promotion engine: component mappi
 | `testIntegrationPackId` | String | No | No | Test Integration Pack ID |
 | `testIntegrationPackName` | String | No | No | Test Integration Pack name |
 | `promotedFromTestBy` | String | No | No | Email of user who initiated test→production promotion |
+
+**PromotionLog Status Values** — The `status` field tracks the full promotion lifecycle across 5 paths (promotion, peer review, admin review, deployment, failure):
+
+| Status | Description |
+|--------|-------------|
+| `IN_PROGRESS` | Promotion is executing (components being promoted to branch) |
+| `COMPLETED` | Promotion finished successfully (all components promoted) |
+| `FAILED` | Promotion failed (catastrophic error or all components failed) |
+| `PARTIALLY_COMPLETED` | Some components promoted, some failed or skipped |
+| `PENDING_PEER_REVIEW` | Awaiting peer review (promotion succeeded, needs approval) |
+| `PEER_APPROVED` | Peer review approved, awaiting admin review |
+| `PEER_REJECTED` | Peer review rejected (promoter must address feedback) |
+| `PENDING_ADMIN_APPROVAL` | Awaiting admin approval (peer review passed) |
+| `ADMIN_APPROVED` | Admin approved, ready for deployment |
+| `TEST_DEPLOYING` | Test deployment in progress |
+| `TEST_DEPLOYED` | Test deployment completed, ready for production promotion |
 
 4. Match rule: **Exact** on `promotionId` (single field).
 5. Source: `PROMOTION_ENGINE` (Contribute Only).

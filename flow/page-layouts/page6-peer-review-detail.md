@@ -13,7 +13,7 @@ The Peer Review Detail page shows the full details of a promotion submission and
    - No additional message step needed (data already loaded from queryPeerReviewQueue response)
 
 3. **Self-review guard (fallback):**
-   - Decision step: `$User/Email` != `selectedPeerReview.initiatedBy`
+   - Decision step: `LOWERCASE($User/Email)` != `LOWERCASE(selectedPeerReview.initiatedBy)`
    - If equal: Navigate to Error Page with message "You cannot review your own submission"
 
 ## Components
@@ -213,7 +213,7 @@ The Peer Review Detail page shows the full details of a promotion submission and
 
 6. **Transition to Admin Swimlane:**
    - Flow state transitions to Admin swimlane
-   - Admin must authenticate with SSO ("Boomi Admins" group) to continue to Page 7
+   - Admin must authenticate with SSO (`ABC_BOOMI_FLOW_ADMIN` group) to continue to Page 7
 
 ---
 

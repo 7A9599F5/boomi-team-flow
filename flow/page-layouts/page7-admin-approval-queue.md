@@ -7,7 +7,7 @@ The Admin Approval Queue is the final approval gate in the 2-layer approval work
 ## Page Load Behavior
 
 1. **Admin authentication:**
-   - User must authenticate via SSO with "Boomi Admins" group membership
+   - User must authenticate via SSO with `ABC_BOOMI_FLOW_ADMIN` group membership
    - If not authorized: Show error "Access denied. This page requires admin privileges."
    - Store admin user context: `adminUserName`, `adminUserEmail`
 
@@ -112,6 +112,19 @@ The Admin Approval Queue is the final approval gate in the 2-layer approval work
 
 **Pagination:**
 - If > 25 requests: Enable pagination (25 rows per page)
+
+---
+
+### Admin Self-Approval Prevention
+
+**Implementation:** Decision step after row selection (mirrors peer review self-review prevention)
+
+1. **Decision step:** After a row is selected and before approval actions are enabled
+   - Condition: `LOWERCASE($User/Email)` != `LOWERCASE(selectedPromotion.initiatedBy)`
+   - **True path (different person):** Proceed — expand Promotion Detail Panel, enable Approve/Deny buttons
+   - **False path (same person):** Show inline error banner: "You cannot approve your own promotion. Please ask another admin to review." Disable Approve and Deny buttons. The detail panel may still be shown (read-only) but no approval actions are available.
+
+2. **Purpose:** Prevents an admin who submitted a promotion from also serving as the final approver, enforcing independence in the 2-layer approval workflow. Even though peer review was performed by a different person, the admin approval gate must also be independent from the original submitter.
 
 ---
 
@@ -540,7 +553,7 @@ The Admin Approval Queue is the final approval gate in the 2-layer approval work
    - Clicks link in email
 
 2. **Admin authenticates via SSO**
-   - "Boomi Admins" group membership validated
+   - `ABC_BOOMI_FLOW_ADMIN` group membership validated
    - Redirected to Page 7
 
 3. **Admin sees approval queue**
