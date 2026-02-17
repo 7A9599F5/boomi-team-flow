@@ -1,0 +1,42 @@
+{
+  "_comment": "POST https://api.boomi.com/partner/api/rest/v1/{accountId}/EnvironmentMapExtension/{mapExtensionId}/update",
+  "_notes": [
+    "Phase 2: Used by Process O for map extension editing",
+    "WARNING: This is a REPLACE operation — omitted mappings and functions are DELETED",
+    "Must include ALL extensible map fields and ALL functions, not just changed ones",
+    "Process O must first call GET (see get-map-extension.json) to retrieve current state",
+    "Then merge user changes into the full payload before calling this update",
+    "${mapExtensionId}: ID of the map extension to update — from DPP",
+    "${environmentId}: target environment ID — from DPP",
+    "${extensionGroupId}: extension group ID from the GET response — must be preserved"
+  ],
+  "_http_operation": {
+    "method": "POST",
+    "url": "/partner/api/rest/v1/{accountId}/EnvironmentMapExtension/{mapExtensionId}/update",
+    "urlParameters": {
+      "{accountId}": "DPP: targetAccountId",
+      "{mapExtensionId}": "DPP: mapExtensionId"
+    },
+    "headers": {
+      "Accept": "application/json",
+      "Content-Type": "application/json"
+    }
+  },
+  "_comment": "Phase 2: Map extension update. WARNING: Omitted mappings/functions are DELETED. Must include ALL extensible map fields and functions.",
+  "id": "${mapExtensionId}",
+  "environmentId": "${environmentId}",
+  "extensionGroupId": "${extensionGroupId}",
+  "Map": {
+    "ExtendedMappings": {
+      "Mapping": [
+        {
+          "fromXPath": "${sourceXPath}",
+          "toXPath": "${destinationXPath}"
+        }
+      ]
+    },
+    "ExtendedFunctions": {
+      "Function": []
+    }
+  }
+}

@@ -1,0 +1,33 @@
+{
+  "_comment": "POST https://api.boomi.com/partner/api/rest/v1/{accountId}/EnvironmentExtensions/query",
+  "_notes": [
+    "Used by Processes L and N to fetch current extension values for an environment",
+    "Process L: reads extensions to populate the editor UI with current values",
+    "Process N: reads extensions before applying partial updates to preserve unmodified values",
+    "${environmentId} is substituted at runtime with the selected environment's ID",
+    "Response includes connections, processProperties, and properties (DPPs) sections"
+  ],
+  "_http_operation": {
+    "method": "POST",
+    "url": "/partner/api/rest/v1/{accountId}/EnvironmentExtensions/query",
+    "urlParameters": {
+      "{accountId}": "DPP: targetAccountId"
+    },
+    "headers": {
+      "Accept": "application/json",
+      "Content-Type": "application/json"
+    }
+  },
+  "QueryFilter": {
+    "expression": {
+      "operator": "and",
+      "nestedExpression": [
+        {
+          "operator": "EQUALS",
+          "property": "environmentId",
+          "argument": ["${environmentId}"]
+        }
+      ]
+    }
+  }
+}

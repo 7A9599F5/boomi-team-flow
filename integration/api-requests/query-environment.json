@@ -1,0 +1,28 @@
+{
+  "_comment": "POST https://api.boomi.com/partner/api/rest/v1/{accountId}/Environment/query",
+  "_notes": [
+    "Used by Process K to list environments within a given account",
+    "Filters by classification to return only TEST or PRODUCTION environments",
+    "${classification} is substituted at runtime — valid values: TEST, PRODUCTION",
+    "Response includes environmentId, name, classification for environment selector"
+  ],
+  "_http_operation": {
+    "method": "POST",
+    "url": "/partner/api/rest/v1/{accountId}/Environment/query",
+    "urlParameters": {
+      "{accountId}": "DPP: targetAccountId"
+    },
+    "headers": {
+      "Accept": "application/json",
+      "Content-Type": "application/json"
+    }
+  },
+  "QueryFilter": {
+    "expression": {
+      "@type": "SimpleExpression",
+      "operator": "EQUALS",
+      "property": "classification",
+      "argument": ["${classification}"]
+    }
+  }
+}

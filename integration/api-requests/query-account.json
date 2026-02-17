@@ -1,0 +1,28 @@
+{
+  "_comment": "POST https://api.boomi.com/partner/api/rest/v1/{primaryAccountId}/Account/query",
+  "_notes": [
+    "Used by Process K to list sub-accounts under the primary account",
+    "Filters by status=active to exclude disabled/suspended accounts",
+    "Response includes accountId, name, status for each sub-account",
+    "Called at the start of Process K to populate the account selector"
+  ],
+  "_http_operation": {
+    "method": "POST",
+    "url": "/partner/api/rest/v1/{primaryAccountId}/Account/query",
+    "urlParameters": {
+      "{primaryAccountId}": "DPP: primaryAccountId"
+    },
+    "headers": {
+      "Accept": "application/json",
+      "Content-Type": "application/json"
+    }
+  },
+  "QueryFilter": {
+    "expression": {
+      "@type": "SimpleExpression",
+      "operator": "EQUALS",
+      "property": "status",
+      "argument": ["active"]
+    }
+  }
+}

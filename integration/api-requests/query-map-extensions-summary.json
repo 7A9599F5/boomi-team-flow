@@ -1,0 +1,33 @@
+{
+  "_comment": "POST https://api.boomi.com/partner/api/rest/v1/{accountId}/EnvironmentMapExtensionsSummary/query",
+  "_notes": [
+    "Used by Process L to list all map extensions configured for an environment",
+    "Returns a summary list (no full mapping detail) — use get-map-extension.json for detail",
+    "${environmentId} is substituted at runtime with the selected environment's ID",
+    "Response includes mapExtensionId, name, and extensionGroupId for each map extension",
+    "Results are displayed in the Flow editor UI for user selection before detail fetch"
+  ],
+  "_http_operation": {
+    "method": "POST",
+    "url": "/partner/api/rest/v1/{accountId}/EnvironmentMapExtensionsSummary/query",
+    "urlParameters": {
+      "{accountId}": "DPP: targetAccountId"
+    },
+    "headers": {
+      "Accept": "application/json",
+      "Content-Type": "application/json"
+    }
+  },
+  "QueryFilter": {
+    "expression": {
+      "operator": "and",
+      "nestedExpression": [
+        {
+          "operator": "EQUALS",
+          "property": "environmentId",
+          "argument": ["${environmentId}"]
+        }
+      ]
+    }
+  }
+}

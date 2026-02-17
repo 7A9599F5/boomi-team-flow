@@ -1,0 +1,29 @@
+{
+  "_comment": "POST https://api.boomi.com/partner/api/rest/v1/{primaryAccountId}/ComponentReference/query",
+  "_notes": [
+    "Used by Process D cache refresh to find all processes that reference a given component",
+    "Identifies which parent processes need to be re-packaged after a component is promoted",
+    "${componentId} is substituted at runtime with the promoted component's ID in the primary account",
+    "Response includes referencing componentId, componentType, and name for each parent process",
+    "Called after promotion completes to determine downstream deployment impact"
+  ],
+  "_http_operation": {
+    "method": "POST",
+    "url": "/partner/api/rest/v1/{primaryAccountId}/ComponentReference/query",
+    "urlParameters": {
+      "{primaryAccountId}": "DPP: primaryAccountId"
+    },
+    "headers": {
+      "Accept": "application/json",
+      "Content-Type": "application/json"
+    }
+  },
+  "QueryFilter": {
+    "expression": {
+      "@type": "SimpleExpression",
+      "operator": "EQUALS",
+      "property": "componentId",
+      "argument": ["${componentId}"]
+    }
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "_comment": "GET https://api.boomi.com/partner/api/rest/v1/{accountId}/EnvironmentMapExtension/{mapExtensionId}",
+  "_notes": [
+    "Used by Process L to fetch full map extension detail for the selected map",
+    "No request body is required — this is a direct GET by ID",
+    "mapExtensionId is obtained from the EnvironmentMapExtensionsSummary query (see query-map-extensions-summary.json)",
+    "Response includes full Mapping and Function arrays for display and editing in the Flow UI",
+    "WARNING: The update operation (see update-map-extension.json) requires ALL extensible fields"
+  ],
+  "_http_operation": {
+    "method": "GET",
+    "url": "/partner/api/rest/v1/{accountId}/EnvironmentMapExtension/{mapExtensionId}",
+    "urlParameters": {
+      "{accountId}": "DPP: targetAccountId",
+      "{mapExtensionId}": "DPP: mapExtensionId"
+    },
+    "headers": {
+      "Accept": "application/json"
+    }
+  },
+  "_comment": "GET request — no request body needed. Use URL path: /EnvironmentMapExtension/{mapExtensionId}",
+  "_usage": "Process L fetches map extension detail using the ID obtained from EnvironmentMapExtensionsSummary query",
+  "mapExtensionId": "${mapExtensionId}"
+}

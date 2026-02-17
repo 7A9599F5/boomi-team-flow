@@ -1,0 +1,53 @@
+<!--
+  UPDATE EnvironmentExtensions (Partial) via Partner API
+
+  HTTP Method: POST
+  URL: https://api.boomi.com/partner/api/rest/v1/{accountId}/EnvironmentExtensions
+
+  Headers:
+    Accept: application/xml
+    Content-Type: application/xml
+
+  Notes:
+    - Used by Processes M and N to apply extension changes to an environment
+    - Process M: admin applies connection extension updates (connections section only)
+    - Process N: developer applies process property / DPP updates (processProperties + properties)
+    - partial="true" means only included sections are updated; omitted sections retain current values
+    - environmentId: ID of the target environment from DPP
+    - Sections included dynamically based on what the user modified in the Flow editor UI
+
+  HTTP Client Operation Configuration:
+    Action: Send
+    HTTP Method: POST
+    Request URL: /partner/api/rest/v1/{1}/EnvironmentExtensions
+    Request URL Parameters:
+      {1} = Dynamic Process Property: targetAccountId
+-->
+<?xml version="1.0" encoding="UTF-8"?>
+<bns:EnvironmentExtensions xmlns:bns="http://api.platform.boomi.com/"
+    environmentId="${environmentId}" partial="true">
+  <!--
+    Sections included dynamically based on what the user modified.
+    Only modified sections are sent; omitted sections retain current values.
+
+    Connection extensions (admin-only):
+    <bns:connections>
+      <bns:connection id="${connectionComponentId}">
+        <bns:field id="${fieldId}" value="${fieldValue}" useDefault="false"/>
+      </bns:connection>
+    </bns:connections>
+
+    Process property extensions:
+    <bns:processProperties>
+      <bns:ProcessProperty id="${componentId}" name="${componentName}">
+        <bns:ProcessPropertyValue key="${propertyKey}" label="${propertyLabel}"
+            value="${propertyValue}" useDefault="false"/>
+      </bns:ProcessProperty>
+    </bns:processProperties>
+
+    Dynamic process property extensions:
+    <bns:properties>
+      <bns:property name="${dppName}" value="${dppValue}"/>
+    </bns:properties>
+  -->
+</bns:EnvironmentExtensions>
