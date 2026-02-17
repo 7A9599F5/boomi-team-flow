@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<batch src="PROMOTION_ENGINE">
+  <ExtensionAccessMapping>
+    <environmentId>env-prod-001</environmentId>
+    <prodComponentId>c80bd1f5-5710-4b05-95a8-436ed746d7bd</prodComponentId>
+    <componentName>Salesforce CRM Connection</componentName>
+    <componentType>connection</componentType>
+    <ownerProcessId>abc123-process-id</ownerProcessId>
+    <ownerProcessName>PROMO - Execute Promotion</ownerProcessName>
+    <devAccountId>dev-team-alpha</devAccountId>
+    <devAccountName>Dev Team Alpha</devAccountName>
+    <authorizedSsoGroups>["ABC_BOOMI_FLOW_DEVTEAMA"]</authorizedSsoGroups>
+    <isConnectionExtension>true</isConnectionExtension>
+    <isSharedComponent>false</isSharedComponent>
+    <extensionGroupId></extensionGroupId>
+    <lastUpdatedAt>2026-02-17T10:00:00.000Z</lastUpdatedAt>
+    <lastUpdatedBy>PROCESS_D_DEPLOY</lastUpdatedBy>
+  </ExtensionAccessMapping>
+</batch>

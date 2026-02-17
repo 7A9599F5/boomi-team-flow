@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<batch src="ADMIN_CONFIG">
+  <ClientAccountConfig>
+    <clientAccountId>client-acme-X7K1DU</clientAccountId>
+    <clientAccountName>ACME Corp</clientAccountName>
+    <testEnvironmentId>env-test-acme-001</testEnvironmentId>
+    <testEnvironmentName>ACME Test</testEnvironmentName>
+    <prodEnvironmentId>env-prod-acme-001</prodEnvironmentId>
+    <prodEnvironmentName>ACME Production</prodEnvironmentName>
+    <ssoGroupId>ABC_BOOMI_FLOW_ACME</ssoGroupId>
+    <ssoGroupName>Boomi Flow ACME Team</ssoGroupName>
+    <integrationPackInstanceId></integrationPackInstanceId>
+    <isActive>true</isActive>
+  </ClientAccountConfig>
+</batch>

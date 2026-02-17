@@ -1,0 +1,133 @@
+{
+  "modelName": "ExtensionAccessMapping",
+  "rootElement": "ExtensionAccessMapping",
+  "description": "Maps environment extension components to their originating dev accounts and authorized SSO groups. Pre-computes the full authorization chain (extension component -> promoted process -> dev account -> SSO groups) into a single queryable record for fast access control checks. Populated during deployment (Process D) to enable fast access control checks for the extension editor.",
+  "fields": [
+    {
+      "name": "id",
+      "type": "String",
+      "description": "Auto-generated DataHub record ID",
+      "required": false,
+      "matchField": false
+    },
+    {
+      "name": "environmentId",
+      "type": "String",
+      "description": "Boomi environment ID where the extension applies",
+      "required": true,
+      "matchField": true
+    },
+    {
+      "name": "prodComponentId",
+      "type": "String",
+      "description": "Production component ID that appears in EnvironmentExtensions response",
+      "required": true,
+      "matchField": true
+    },
+    {
+      "name": "componentName",
+      "type": "String",
+      "description": "Human-readable component name for display",
+      "required": true,
+      "matchField": false
+    },
+    {
+      "name": "componentType",
+      "type": "String",
+      "description": "Boomi component type: connection, operation, tradingPartner, sharedCommunication, processProperty",
+      "required": true,
+      "matchField": false
+    },
+    {
+      "name": "ownerProcessId",
+      "type": "String",
+      "description": "Production process component ID that uses this extension component",
+      "required": true,
+      "matchField": false
+    },
+    {
+      "name": "ownerProcessName",
+      "type": "String",
+      "description": "Human-readable process name for display",
+      "required": true,
+      "matchField": false
+    },
+    {
+      "name": "devAccountId",
+      "type": "String",
+      "description": "Dev sub-account ID where the process originated",
+      "required": true,
+      "matchField": false
+    },
+    {
+      "name": "devAccountName",
+      "type": "String",
+      "description": "Human-readable dev account name",
+      "required": true,
+      "matchField": false
+    },
+    {
+      "name": "authorizedSsoGroups",
+      "type": "String",
+      "description": "JSON array of SSO group IDs authorized to edit this extension",
+      "required": true,
+      "matchField": false
+    },
+    {
+      "name": "isConnectionExtension",
+      "type": "String",
+      "description": "'true' or 'false' — connections are admin-only editable",
+      "required": true,
+      "matchField": false
+    },
+    {
+      "name": "isSharedComponent",
+      "type": "String",
+      "description": "'true' if component used by processes from multiple dev accounts",
+      "required": false,
+      "matchField": false
+    },
+    {
+      "name": "extensionGroupId",
+      "type": "String",
+      "description": "For multi-install packs: specific process installation ID. Null for single-install",
+      "required": false,
+      "matchField": false
+    },
+    {
+      "name": "lastUpdatedAt",
+      "type": "Date",
+      "description": "Timestamp of last cache refresh (format: yyyy-MM-dd'T'HH:mm:ss.SSS'Z')",
+      "required": true,
+      "matchField": false
+    },
+    {
+      "name": "lastUpdatedBy",
+      "type": "String",
+      "description": "Process that last updated this record (e.g., 'PROCESS_D_DEPLOY', 'ADMIN_SYNC')",
+      "required": true,
+      "matchField": false
+    }
+  ],
+  "matchRules": [
+    {
+      "type": "EXACT",
+      "description": "Compound match on environment ID and production component ID",
+      "fields": ["environmentId", "prodComponentId"]
+    }
+  ],
+  "sources": [
+    {
+      "name": "PROMOTION_ENGINE",
+      "type": "contribute-only",
+      "description": "Auto-populated by Process D after successful deployment"
+    },
+    {
+      "name": "ADMIN_SYNC",
+      "type": "contribute-only",
+      "description": "Used by admin-triggered cache refresh to rebuild all mappings"
+    }
+  ],
+  "dataQualitySteps": [],
+  "notes": "This model pre-computes the full authorization chain (extension component -> promoted process -> dev account -> SSO groups) into a single queryable record for fast access control checks. The compound match key (environmentId + prodComponentId) ensures one record per extension component per environment."
+}

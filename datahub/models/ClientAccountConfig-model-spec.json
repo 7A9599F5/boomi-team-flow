@@ -1,0 +1,119 @@
+{
+  "modelName": "ClientAccountConfig",
+  "rootElement": "ClientAccountConfig",
+  "description": "Maps client sub-accounts to their Test and Production environment IDs, and controls which SSO groups can manage extensions for each account. Parallels the DevAccountAccess pattern for client accounts that consume Integration Packs.",
+  "fields": [
+    {
+      "name": "id",
+      "type": "String",
+      "description": "Auto-generated DataHub record ID",
+      "required": false,
+      "matchField": false
+    },
+    {
+      "name": "clientAccountId",
+      "type": "String",
+      "description": "Boomi client sub-account ID",
+      "required": true,
+      "matchField": true
+    },
+    {
+      "name": "clientAccountName",
+      "type": "String",
+      "description": "Human-readable client account name",
+      "required": true,
+      "matchField": false
+    },
+    {
+      "name": "testEnvironmentId",
+      "type": "String",
+      "description": "Environment ID for Test env in this client account",
+      "required": true,
+      "matchField": false
+    },
+    {
+      "name": "testEnvironmentName",
+      "type": "String",
+      "description": "Human-readable Test environment name",
+      "required": true,
+      "matchField": false
+    },
+    {
+      "name": "prodEnvironmentId",
+      "type": "String",
+      "description": "Environment ID for Production env in this client account",
+      "required": true,
+      "matchField": false
+    },
+    {
+      "name": "prodEnvironmentName",
+      "type": "String",
+      "description": "Human-readable Production environment name",
+      "required": true,
+      "matchField": false
+    },
+    {
+      "name": "ssoGroupId",
+      "type": "String",
+      "description": "Azure AD group object ID for managing this client account's extensions",
+      "required": true,
+      "matchField": true
+    },
+    {
+      "name": "ssoGroupName",
+      "type": "String",
+      "description": "Human-readable SSO group name",
+      "required": true,
+      "matchField": false
+    },
+    {
+      "name": "integrationPackInstanceId",
+      "type": "String",
+      "description": "ID of installed Integration Pack instance",
+      "required": false,
+      "matchField": false
+    },
+    {
+      "name": "isActive",
+      "type": "String",
+      "description": "Enable/disable access ('true'/'false')",
+      "required": true,
+      "matchField": false
+    },
+    {
+      "name": "lastExtensionSyncAt",
+      "type": "Date",
+      "description": "Timestamp of last Test to Prod copy (format: yyyy-MM-dd'T'HH:mm:ss.SSS'Z')",
+      "required": false,
+      "matchField": false
+    },
+    {
+      "name": "lastExtensionSyncBy",
+      "type": "String",
+      "description": "SSO user email who last performed copy",
+      "required": false,
+      "matchField": false
+    }
+  ],
+  "matchRules": [
+    {
+      "type": "EXACT",
+      "description": "Compound match on client account ID and SSO group ID",
+      "fields": ["clientAccountId", "ssoGroupId"]
+    }
+  ],
+  "sources": [
+    {
+      "name": "ADMIN_CONFIG",
+      "type": "contribute-only",
+      "description": "Manually seeded by admins"
+    },
+    {
+      "name": "EXTENSION_ENGINE",
+      "type": "contribute-only",
+      "description": "Updated by extension management processes for sync timestamps"
+    }
+  ],
+  "dataQualitySteps": [],
+  "notes": "Parallels the DevAccountAccess pattern for client accounts that consume Integration Packs. Compound match key (clientAccountId + ssoGroupId) allows multiple SSO groups per account."
+}
