@@ -34,6 +34,8 @@ Platform API        DataHub
 - **G** generateComponentDiff — fetch branch vs main component XML for diff rendering
 - **J** listIntegrationPacks — query Integration Packs with smart suggestion from history
 
+**13 Message Actions** (FSS Operations): one per process, plus `cancelTestDeployment` (E4 reuse). When adding a new action, update: FSS op table in `04-process-canvas-fundamentals.md`, message actions table in `14-flow-service.md`, listener list in `14-flow-service.md`, Flow types list in `15-flow-dashboard-developer.md`, troubleshooting counts in `18-troubleshooting.md`, and `22-api-automation-guide.md` FSS table.
+
 **Key design decisions** (see `docs/architecture.md`):
 - Message Actions over Data Actions (complex logic requires full process control)
 - Public Cloud Atom (no firewall issues, everything within Boomi infra)
@@ -100,7 +102,8 @@ Located in `integration/scripts/`, these run as Data Process steps inside Integr
 
 ## Working with the Build Guide
 
-- **Count references are scattered** — when changing component counts (processes, profiles, pages, actions, types), grep `docs/build-guide/`, `.claude/skills/`, `.claude/rules/`, and `CHANGELOG.md` for stale numbers. Key files: `00-overview.md`, `index.md`, `14-flow-service.md`, `15-flow-dashboard-developer.md`, `18-troubleshooting.md`, `19-appendix-naming-and-inventory.md`
+- **Count references are scattered** — when changing component counts (processes, profiles, pages, actions, types), grep `docs/build-guide/`, `.claude/skills/`, `.claude/rules/`, and `CHANGELOG.md` for stale numbers. Key files: `00-overview.md`, `index.md`, `14-flow-service.md`, `15-flow-dashboard-developer.md`, `18-troubleshooting.md`, `19-appendix-naming-and-inventory.md`, `22-api-automation-guide.md`
+- **Current component counts** (verify before editing): 85 total — 3 models, 2 connections, 19 HTTP ops, 6 DH ops, 26 profiles, 12 processes, 13 FSS ops, 1 Flow Service, 1 custom component, 1 Flow connector, 1 Flow app, 7 scripts, 20 API request templates
 - **BOM total must be recomputed** — the total in `00-overview.md` drifts when individual row counts change. Always sum the rows: Models + Connections + HTTP Ops + DH Ops + Profiles + Processes + FSS Ops + Flow Service + Custom Component + Flow Connector + Flow App
 - **Spec files are source of truth** — `datahub/models/*.json`, `integration/profiles/*.json`, `flow/flow-structure.md`, and `flow/page-layouts/` define the system. Build guide docs must match them.
 - **Nav footer pattern** — every build guide file ends with `Prev: [...] | Next: [...] | [Back to Index](index.md)`
