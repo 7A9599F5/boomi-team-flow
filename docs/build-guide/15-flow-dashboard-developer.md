@@ -129,10 +129,16 @@ Displays results after `executePromotion` completes. The Flow Service returns wa
 1. **Summary section**: Promotion ID (copyable), badges for Created/Updated/Failed counts.
 2. **Results Data Grid** bound to `promotionResults`. Columns: Component Name, Action (CREATE/UPDATE badge), Status (SUCCESS/FAILED badge), Prod Component ID, Prod Version, Config Stripped (warning icon if true), Error message (red text, truncated with tooltip).
 3. **Credential Warning box** (conditional): Shown when any component has `configStripped = true`. Lists affected component names and instructions for reconfiguration in the primary account Build tab.
-4. **"Submit for Integration Pack Deployment"** button:
-   - Enabled only when `componentsFailed == 0`
-   - On click: Navigate to Page 4
-5. **"Done"** button: End flow.
+4. **Deployment Target Selection** (radio button group):
+   - **"Deploy to Test"** (default, selected by default): Standard path — deploy to test environment first, review later for production
+   - **"Deploy to Production (Emergency Hotfix)"**: Shows warning banner + required justification textarea
+     - Warning text: "This will bypass test deployment and submit directly for production review. Use only for critical fixes."
+     - `hotfixJustification` textarea (required when selected, max 1000 characters)
+   - On change: Set Flow values `targetEnvironment` (`"TEST"` or `"PRODUCTION"`), `isHotfix` (`"false"` or `"true"`), `hotfixJustification` (text or empty)
+5. **"Continue to Deployment"** button:
+   - Enabled only when `componentsFailed == 0` and (if hotfix selected, `hotfixJustification` is non-empty)
+   - On click: Navigate to Page 4 with deployment target context
+6. **"Done"** button: End flow.
 
 #### Page 4: Deployment Submission (Developer to Peer Review Transition)
 
@@ -140,27 +146,100 @@ Reference: `/flow/page-layouts/page4-deployment-submission.md` for full UI speci
 
 The developer fills out deployment details and submits for peer review. This page marks the transition between the Developer and Peer Review swimlanes — the first step of the 2-layer approval workflow.
 
-**Form components:**
+**Mode detection on page load:**
+
+On page load, detect the deployment mode from Flow values:
+- **Mode 1 — Test** (`targetEnvironment = "TEST"`, `testPromotionId` empty): Direct test deployment, no peer review needed
+- **Mode 2 — Production from Test** (`targetEnvironment = "PRODUCTION"`, `testPromotionId` non-empty): Production deployment of a previously tested package
+- **Mode 3 — Hotfix** (`targetEnvironment = "PRODUCTION"`, `isHotfix = "true"`): Emergency production deployment bypassing test
+
+**Shared form components (all modes):**
 
 1. **Package Version** text input: Pre-populated from `selectedPackage.packageVersion`. Required.
-2. **Integration Pack Selector** combobox: Options include "Create New Integration Pack" (special value) and existing packs. On "Create New" selection, show conditional fields below.
+2. **Integration Pack Selector** combobox: Options include "Create New Integration Pack" (special value) and existing packs. On "Create New" selection, show conditional fields below. The `listIntegrationPacks` call includes `packPurpose` = `targetEnvironment` to filter packs by environment.
 3. **New Pack Name** text input (conditional): Shown when "Create New" is selected. Required when visible.
 4. **New Pack Description** textarea (conditional): Shown when "Create New" is selected. Optional.
 5. **Target Account Group** combobox: Populated from available account groups. Required.
 6. **Deployment Notes** textarea: Optional, max 500 characters.
 
-**Submit behavior:**
+**Mode 1 — Test deployment behavior:**
 
-7. **"Submit for Peer Review"** button:
+7a. **Test Summary Panel**: Header reads "Deploy to Test Environment". Brief instructions: "Components will be deployed to the test environment. The promotion branch is preserved for future production review."
+7b. **"Deploy to Test"** button (primary):
    - Validates all required fields
-   - Builds the `deploymentRequest` object with `promotionId`, `packageVersion`, `integrationPackId` (or `createNewPack` + `newPackName`), `targetAccountGroupId`, `notes`, `submittedBy`, `processName`, `componentsTotal`
-   - Sends email notification to dev + admin distribution lists:
-     - **To**: dev group + admin group emails (e.g., `boomi-developers@company.com`, `boomi-admins@company.com`)
-     - **Subject**: `"Peer Review Needed: {processName} v{packageVersion}"`
-     - **Body**: Promotion ID, process name, package version, component counts, deployment details, submitter info, and a link to the peer review queue
-   - Transitions to the **Peer Review swimlane** -- the flow pauses at the swimlane boundary
-   - Developer sees a confirmation message ("Submitted for peer review!") with the Promotion ID, then the flow ends for them
-8. **"Cancel"** button: Navigate back to Page 3.
+   - Calls `packageAndDeploy` directly with `deploymentTarget = "TEST"`
+   - Shows inline deployment results (no swimlane transition)
+   - On success: Sends test deployment email to submitter, shows results with link to Page 9 (Production Readiness)
+   - Stays in Developer swimlane — no peer review required for test deployments
+
+**Mode 2 — Production from test behavior:**
+
+7c. **Test Deployment Summary Panel**: Shows test deployment details (test date, test Integration Pack, branch info, component counts) from the preceding test deployment
+7d. **"Submit for Production Deployment"** button (primary):
+   - Validates all required fields
+   - Builds deployment request with `deploymentTarget = "PRODUCTION"`, `testPromotionId`, `testIntegrationPackId`, `testIntegrationPackName`
+   - Sends email notification for peer review (subject: "Peer Review Needed: {processName} v{packageVersion}")
+   - Transitions to Peer Review swimlane
+   - Developer sees confirmation message with Promotion ID
+
+**Mode 3 — Hotfix behavior:**
+
+7e. **Hotfix Warning Panel**: Prominent warning banner with hotfix justification displayed. Header: "Emergency Hotfix — Production Deployment"
+7f. **"Submit Hotfix for Peer Review"** button (warning/amber):
+   - Validates all required fields
+   - Builds deployment request with `deploymentTarget = "PRODUCTION"`, `isHotfix = "true"`, `hotfixJustification`
+   - Sends emergency hotfix email notification (subject includes "EMERGENCY HOTFIX")
+   - Transitions to Peer Review swimlane
+   - Developer sees confirmation message with Promotion ID
+
+8. **"Cancel"** button: Navigate back to Page 3 (or Page 9 if coming from production readiness).
+
+#### Page 9: Production Readiness Queue (Developer Swimlane)
+
+Reference: `/flow/page-layouts/page9-production-readiness.md` for full UI specification.
+
+Displays test deployments that are ready to be promoted to production. Developers return here after validating in the test environment.
+
+**Page load:**
+
+1. Message step: action = `queryTestDeployments`, inputs = `devAccountId` (optional filter), `initiatedBy` (optional filter), outputs = `testDeployments` array.
+2. Decision step: check `{queryTestDeploymentsResponse.success} == true`. Failure path goes to Error Page.
+
+**UI components:**
+
+3. **Production Readiness Data Grid** bound to `testDeployments`. Columns: Process Name (bold), Package Version, Test Deployed (date + relative age), Branch Age (color coded: green 0-14 days, amber 15-30 days, red >30 days), Components, Created/Updated counts, Test Pack name, Submitted By. Default sort: `testDeployedAt` descending.
+4. **Stale Branch Warning** (conditional): Shown when any deployment has branch age >30 days. Amber banner: "{count} deployment(s) have been in test for over 30 days. Consider promoting to production or canceling."
+5. On row select: Store selected deployment in `selectedTestDeployment` Flow value. Expand **Test Deployment Detail Panel** below the grid showing promotion details, test deployment info (date, pack, branch status), and component summary.
+6. **"Promote to Production"** button (green, enabled when a row is selected):
+   - Sets Flow values: `testPromotionId`, `targetEnvironment = "PRODUCTION"`, `isHotfix = "false"`, `branchId`, `branchName`, `testIntegrationPackId`, `testIntegrationPackName`
+   - Carries forward: `promotionId`, `processName`, `packageVersion`, component counts
+   - Navigates to Page 4 (pre-filled for production-from-test mode)
+7. **"Refresh"** button: Re-executes `queryTestDeployments` to update the grid.
+
+### Step 5.4 -- Wire Navigation
+
+Connect all pages via Outcome elements on the Flow canvas.
+
+1. **Flow start** -> Page 1 (Package Browser) in the Developer swimlane.
+2. **Page 1** "Review for Promotion" button outcome -> Page 2 (Promotion Review).
+3. **Page 2** "Promote" button (after `executePromotion` Message step + success Decision) -> Page 3 (Promotion Status).
+4. **Page 2** "Cancel" button outcome -> Page 1.
+5. **Page 3** "Continue to Deployment" button outcome -> Page 4 (Deployment Submission).
+6. **Page 3** "Done" button outcome -> End flow.
+7. **Page 4 (Test mode)** "Deploy to Test" button -> Direct `packageAndDeploy` call -> Inline results -> Link to Page 9.
+8. **Page 4 (Production mode)** "Submit for Peer Review" button outcome -> Swimlane transition (Developer -> Peer Review) -> Page 5 (Peer Review Queue).
+9. **Page 4** "Cancel" button outcome -> Page 3 (or Page 9 if production-from-test).
+10. **Page 5** Row select -> Decision (self-review check) -> Page 6 (Peer Review Detail).
+11. **Page 6** "Approve" (after `submitPeerReview` success with decision=APPROVED) -> Swimlane transition (Peer Review -> Admin) -> Page 7 (Admin Approval Queue).
+12. **Page 6** "Reject" (after `submitPeerReview` success with decision=REJECTED) -> Email to submitter -> End flow.
+13. **Page 6** "Back to Peer Review Queue" link outcome -> Page 5.
+14. **Page 7** "Approve and Deploy" (after `packageAndDeploy` success) -> Refresh queue / End flow.
+15. **Page 7** "Deny" (after denial confirmation) -> Refresh queue / End flow.
+16. **Page 7** "View Component Mappings" link outcome -> Page 8 (Mapping Viewer).
+17. **Page 8** "Back to Admin Approval Queue" link outcome -> Page 7.
+18. **Page 9** "Promote to Production" button -> Page 4 (production-from-test mode).
+
+For every Decision step, wire the **failure outcome** to a shared Error Page that displays `{responseObject.errorMessage}` with Back, Retry, and Home buttons.
 
 ---
 Prev: [Phase 4: Flow Service Component](14-flow-service.md) | Next: [Phase 5b: Flow Dashboard — Review & Admin](16-flow-dashboard-review-admin.md) | [Back to Index](index.md)

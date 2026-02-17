@@ -11,7 +11,7 @@ Peer reviewer authenticates via SSO ("Boomi Developers" or "Boomi Admins" group)
 
 **UI components:**
 
-3. **Peer Review Queue Data Grid** bound to `pendingPeerReviews`. Columns: Submitter, Process Name, Components count, Created/Updated counts, Submitted date (default sort descending), Status badge, Notes (truncated).
+3. **Peer Review Queue Data Grid** bound to `pendingPeerReviews`. Columns: Submitter, Process Name, Components count, Created/Updated counts, **Target Environment** badge (`TEST`/`PRODUCTION`), **Hotfix** badge (red "EMERGENCY HOTFIX" when `isHotfix = "true"`, hidden otherwise), Submitted date (default sort descending), Status badge, Notes (truncated).
 4. On row select: Store selected promotion in `selectedPeerReview` Flow value, then navigate to Page 6.
 5. **Self-review guard (fallback):** Add a Decision step after row selection comparing `$User/Email` with `selectedPeerReview.initiatedBy`. If equal, show error banner: "You cannot review your own submission."
 
@@ -24,6 +24,8 @@ Displays full promotion details and allows the peer reviewer to approve or rejec
 **UI components:**
 
 1. **Promotion Detail Panel**: Submission details, promotion results table, credential warning (conditional), source account info.
+   - **Test Deployment Info** (conditional, shown when `testPromotionId` is non-empty): Displays test deployment date (`testDeployedAt`), Test Integration Pack (`testIntegrationPackName`), branch name, and branch age since test deployment. Labeled "Previously Tested" with a green checkmark.
+   - **Hotfix Justification** (conditional, shown when `isHotfix = "true"`): Prominent amber/warning panel displaying the `hotfixJustification` text with "EMERGENCY HOTFIX" header and warning icon.
 2. **Peer Review Comments** textarea: Optional for approval, required for rejection. Max 500 characters.
 3. **"Approve — Send to Admin Review"** button (green):
    - Confirmation modal summarizing the promotion
@@ -49,9 +51,12 @@ Admin authenticates via SSO ("Boomi Admins" group) and reviews promotions that h
 
 **UI components:**
 
-3. **Approval Queue Data Grid** bound to `pendingApprovals`. Columns: Submitter, Process Name, Components count, Created/Updated counts, **Peer Reviewed By**, Submitted date (default sort descending), Status badge, Notes (truncated).
+3. **Approval Queue Data Grid** bound to `pendingApprovals`. Columns: Submitter, Process Name, Components count, Created/Updated counts, **Target Environment** badge (`TEST`/`PRODUCTION`), **Hotfix** badge (red "EMERGENCY HOTFIX" when `isHotfix = "true"`, hidden otherwise), **Peer Reviewed By**, Submitted date (default sort descending), Status badge, Notes (truncated).
 4. On row select: Expand **Promotion Detail Panel** below the grid. Panel sections: Submission Details (submitter, promotion ID, package version, integration pack, target account group, notes), **Peer Review Information** (reviewed by, reviewed at, decision, comments), Promotion Results (component results mini-table with summary badges), Credential Warning (conditional), Source Account info.
+   - **Hotfix Justification** (conditional, shown when `isHotfix = "true"`): Prominent red/danger panel at top of detail section with "EMERGENCY HOTFIX" header, warning icon, and the full `hotfixJustification` text. Ensures admin sees the justification before making a decision.
+   - **Test Deployment History** (conditional, shown when `testPromotionId` is non-empty): Panel showing the preceding test deployment details — test date, test Integration Pack, branch age, test deployment status. Labeled "Test Deployment Record" with link to the test PromotionLog entry.
 5. **Admin Comments** textarea below the detail panel. Optional, max 500 characters.
+5.5. **Hotfix Acknowledgment Checkbox** (conditional, shown when `isHotfix = "true"`): Required checkbox labeled "I acknowledge this is an emergency hotfix bypassing the test environment." Must be checked before the "Approve and Deploy" button is enabled. Positioned between the admin comments and the approve button.
 6. **"Approve and Deploy"** button (green, enabled when a row is selected):
    - Confirmation modal summarizing process name, version, target, component count
    - On confirm: Message step with action = `packageAndDeploy`, inputs = `promotionId` + `deploymentRequest` + `adminComments` + `approvedBy`, outputs = `deploymentResults` + `deploymentId`
