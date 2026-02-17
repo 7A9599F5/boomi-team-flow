@@ -14,7 +14,7 @@ from setup.ui.prompts import (
 )
 
 
-# 6 DataHub Operations — name, entity, action
+# 10 DataHub Operations — name, entity, action
 DH_OPERATIONS: list[tuple[str, str, str]] = [
     ("PROMO - DH Op - Query ComponentMapping", "ComponentMapping", "QUERY"),
     ("PROMO - DH Op - Upsert ComponentMapping", "ComponentMapping", "UPSERT"),
@@ -22,6 +22,11 @@ DH_OPERATIONS: list[tuple[str, str, str]] = [
     ("PROMO - DH Op - Query PromotionLog", "PromotionLog", "QUERY"),
     ("PROMO - DH Op - Upsert PromotionLog", "PromotionLog", "UPSERT"),
     ("PROMO - DH Op - Delete PromotionLog", "PromotionLog", "DELETE"),
+    # Phase 7 — Extension Editor
+    ("PROMO - DH Op - Query ExtensionAccessMapping", "ExtensionAccessMapping", "QUERY"),
+    ("PROMO - DH Op - Upsert ExtensionAccessMapping", "ExtensionAccessMapping", "UPSERT"),
+    ("PROMO - DH Op - Query ClientAccountConfig", "ClientAccountConfig", "QUERY"),
+    ("PROMO - DH Op - Upsert ClientAccountConfig", "ClientAccountConfig", "UPSERT"),
 ]
 
 
@@ -309,12 +314,12 @@ class VerifyPhase2(BaseStep):
         ui.print_step(self.step_id, self.name, self.step_type.value)
 
         if dry_run:
-            ui.print_info("Would verify: 19 HTTP ops, 6 DH ops, 2 connections")
+            ui.print_info("Would verify: 27 HTTP ops, 10 DH ops, 2 connections")
             return StepStatus.COMPLETED
 
         checks = [
-            ("PROMO - HTTP Op", 19, "HTTP operations"),
-            ("PROMO - DH Op", 6, "DataHub operations"),
+            ("PROMO - HTTP Op", 27, "HTTP operations"),
+            ("PROMO - DH Op", 10, "DataHub operations"),
         ]
 
         all_passed = True

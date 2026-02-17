@@ -9,7 +9,7 @@ from setup.ui import console as ui
 from setup.ui.prompts import collect_component_id, guide_and_collect, guide_and_wait
 
 
-# 19 HTTP Client Operations — name, method, URL path
+# 27 HTTP Client Operations — name, method, URL path
 HTTP_OPERATIONS: list[tuple[str, str, str]] = [
     ("PROMO - HTTP Op - GET Component", "GET", "/partner/api/rest/v1/{1}/Component/{2}"),
     ("PROMO - HTTP Op - POST Component Create", "POST", "/partner/api/rest/v1/{1}/Component~{2}"),
@@ -30,6 +30,15 @@ HTTP_OPERATIONS: list[tuple[str, str, str]] = [
     ("PROMO - HTTP Op - POST Add To IntegrationPack", "POST", "/partner/api/rest/v1/{1}/IntegrationPack/{2}/PackagedComponent/{3}"),
     ("PROMO - HTTP Op - POST ReleaseIntegrationPack", "POST", "/partner/api/rest/v1/{1}/ReleaseIntegrationPack"),
     ("PROMO - HTTP Op - GET MergeRequest", "GET", "/partner/api/rest/v1/{1}/MergeRequest/{2}"),
+    # Phase 7 — Extension Editor
+    ("PROMO - HTTP Op - QUERY Account", "POST", "/partner/api/rest/v1/{1}/Account/query"),
+    ("PROMO - HTTP Op - QUERY Environment", "POST", "/partner/api/rest/v1/{1}/Environment/query"),
+    ("PROMO - HTTP Op - GET EnvironmentExtensions", "GET", "/partner/api/rest/v1/{1}/EnvironmentExtensions/{2}"),
+    ("PROMO - HTTP Op - UPDATE EnvironmentExtensions", "POST", "/partner/api/rest/v1/{1}/EnvironmentExtensions/{2}/update"),
+    ("PROMO - HTTP Op - QUERY EnvironmentMapExtensionsSummary", "POST", "/partner/api/rest/v1/{1}/EnvironmentMapExtensions/{2}/query"),
+    ("PROMO - HTTP Op - GET EnvironmentMapExtension", "GET", "/partner/api/rest/v1/{1}/EnvironmentMapExtension/{2}"),
+    ("PROMO - HTTP Op - UPDATE EnvironmentMapExtension", "POST", "/partner/api/rest/v1/{1}/EnvironmentMapExtension/{2}/update"),
+    ("PROMO - HTTP Op - QUERY ComponentReference", "POST", "/partner/api/rest/v1/{1}/ComponentReference/query"),
 ]
 
 
