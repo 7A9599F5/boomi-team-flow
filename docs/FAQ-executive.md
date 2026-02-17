@@ -29,10 +29,11 @@ The result is a single master copy of every component in production with a clean
 
 ### Who uses this system?
 
-Two groups:
+Three groups:
 
-- **Developers** — browse their packages, promote to production, submit for deployment
-- **Admins** — review and approve (or deny) deployment requests, manage component mappings between dev and prod accounts
+- **Developers** — browse their packages, promote to test and production, submit for deployment
+- **Peer Reviewers** (other developers) — review and approve (or reject) promotions they did not submit themselves
+- **Admins** — final approval authority for production deployments, manage component mappings between dev and prod accounts
 
 Access is controlled through existing Azure AD / Entra SSO groups, so no new credentials are needed.
 
@@ -47,7 +48,7 @@ Everything is built entirely within the Boomi platform — no external servers, 
 | Layer | Boomi Feature | Purpose |
 |-------|--------------|---------|
 | User interface | **Boomi Flow** | The web dashboard developers and admins use |
-| Backend logic | **Boomi Integration** (9 processes) | Orchestrates the promotion workflow, API calls, peer review, and data transformations |
+| Backend logic | **Boomi Integration** (12 processes) | Orchestrates the promotion workflow, API calls, peer review, and data transformations |
 | Data storage | **Boomi DataHub** (3 data models) | Stores component mappings, access control lists, and audit logs |
 | API communication | **Boomi Platform API** (Partner API) | Reads and writes components between accounts |
 
@@ -71,6 +72,8 @@ No. This adds a new capability. Existing integrations running on our private Ato
 
 ### What does the promotion workflow look like end-to-end?
 
+The standard path goes through a test environment before production:
+
 ```
 Developer selects a package in their dev account
         |
@@ -81,25 +84,33 @@ System resolves all dependencies (sub-processes, maps, profiles, etc.)
 Developer reviews what will be promoted (new vs. update) and any shared connections
         |
         v
-Developer clicks "Promote" — system copies each component to production,
-maintaining existing versions and rewriting internal cross-references
+Developer reviews side-by-side XML diff of changes (branch vs. production)
         |
         v
-Developer submits for Integration Pack deployment
+Developer clicks "Promote" — system copies each component to a temporary
+branch, maintaining existing versions and rewriting internal cross-references
         |
         v
-Admin receives email notification
+Developer deploys to Test environment (no reviews required)
         |
         v
-Admin reviews and approves (or denies) in the dashboard
+Developer validates in test, then initiates production promotion
+        |
+        v
+A peer developer reviews and approves (cannot review their own submission)
+        |
+        v
+An admin reviews and approves (or denies) in the dashboard
         |
         v
 On approval: system packages and deploys to the production environment
 ```
 
+An **emergency hotfix** path (Dev → Production) is also available when a critical fix must skip the test environment. Hotfixes still require both peer review and admin approval, plus a mandatory written justification that is logged for leadership audit.
+
 ### What is an "Integration Pack" and why does it need approval?
 
-An Integration Pack is Boomi's mechanism for bundling multiple related components into a single deployable unit. Deploying an Integration Pack makes the processes live — meaning they will start handling real data. Because of this impact, an admin must review and approve before deployment occurs.
+An Integration Pack is Boomi's mechanism for bundling multiple related components into a single deployable unit. Deploying an Integration Pack makes the processes live — meaning they will start handling real data. The system uses separate Integration Packs for test and production environments. Test deployments can proceed without reviews, but production deployment requires both a peer review and an admin approval before it occurs.
 
 ### How are connections (database credentials, API keys, etc.) handled?
 
@@ -125,11 +136,21 @@ The system uses a concurrency lock. If a promotion is already in progress, a sec
 
 ### Who can access what?
 
-Access is governed by Azure AD / Entra SSO groups:
+Access is governed by a **two-axis SSO model** using Azure AD / Entra groups:
 
-- **"Boomi Developers" group** — can browse packages and promote from their authorized dev accounts only
-- **"Boomi Admins" group** — can approve deployments and manage component mappings
-- Developers can only see dev accounts their SSO group is linked to (configured by admins in the DevAccountAccess model)
+**Axis 1 — Tier groups** control what level of dashboard access a user has:
+
+- **ADMIN tier** — full access to all dashboard pages, including production approval and component mapping management
+- **CONTRIBUTOR tier** — access to developer and peer review pages; can promote, submit, and review others' work
+- **READONLY / OPERATOR tiers** — no dashboard access (Boomi AtomSphere access only)
+
+**Axis 2 — Team groups** control which dev accounts a user can see:
+
+- Each development team has its own SSO group (e.g., "Boomi Flow DevTeamA")
+- A developer only sees the dev accounts linked to their team group(s)
+- Admins bypass the team filter and can see all accounts
+
+This separation means you can add a developer to a new team's accounts without changing their dashboard role, or promote someone to admin without modifying their team assignments.
 
 ### Is there an audit trail?
 
@@ -138,10 +159,14 @@ Yes. Every promotion creates a **PromotionLog** record in DataHub that captures:
 - Who initiated the promotion (SSO user)
 - When it happened
 - Which components were promoted (created, updated, failed, skipped)
-- The promotion status (in-progress, completed, failed)
+- The target environment (test or production)
+- Whether it was an emergency hotfix (with written justification)
+- Who performed the peer review (and their decision)
+- Who performed the admin review (and their decision)
 - The production package ID and version (after deployment)
+- A link between the test deployment and the subsequent production deployment
 
-These records are permanent and queryable.
+These records are permanent and queryable. Emergency hotfixes are flagged with `isHotfix` and include the developer's written justification, making them easy to filter for leadership reporting.
 
 ### Are credentials or secrets ever exposed?
 
@@ -159,18 +184,19 @@ No. The promotion engine actively strips environment-specific data (passwords, h
 
 ### How big is this project?
 
-The system comprises **51 Boomi components** built across 6 phases:
+The system comprises approximately **69 Boomi components** built across 7 phases:
 
 | Phase | What Gets Built | Components |
 |-------|----------------|------------|
 | 1 | Data models in DataHub | 3 |
 | 2 | API connections and operations | 17 |
-| 3 | Integration processes and data profiles | 21 |
-| 4 | Flow Service (API layer) | 8 |
-| 5 | Flow dashboard (UI) | 2 |
+| 3 | Integration processes and data profiles | 24 |
+| 4 | Flow Service (API layer) | 12 |
+| 5 | Flow dashboard (9 pages) + custom diff viewer component | 3 |
 | 6 | End-to-end testing | — |
+| 7 | Multi-environment deployment (test → production pipeline) | 10 |
 
-Phases are sequential — each builds on the previous.
+Phases are sequential — each builds on the previous. There is also a custom React component (the XML diff viewer) that is built separately and uploaded to the Flow dashboard.
 
 ### Does this require any new licenses or infrastructure purchases?
 
@@ -180,9 +206,10 @@ No. The system uses Boomi Flow, Integration, DataHub, and Platform API — all f
 
 - Partner API must be enabled on the primary Boomi account
 - At least one dev sub-account must exist
-- Azure AD / Entra SSO must be configured in Boomi Flow (already in place)
+- Azure AD / Entra SSO must be configured in Boomi Flow (already in place), with tier and team groups defined
 - DataHub must be accessible in the account
 - A public cloud Atom must be provisioned (or already available)
+- At least one test environment configured in the primary account (for the test deployment path)
 
 ---
 
@@ -193,9 +220,11 @@ No. The system uses Boomi Flow, Integration, DataHub, and Platform API — all f
 | Risk | Mitigation |
 |------|-----------|
 | Boomi Platform API changes or rate limit changes | System uses documented, stable Partner API endpoints; rate limiting is configurable |
-| Accidental promotion of broken code | Admin approval gate prevents deployment; promotion itself doesn't make anything live |
+| Accidental promotion of broken code | Test environment validates before production; peer review + admin approval gates prevent untested code from going live |
 | Lost component mappings | Mappings are stored in DataHub with match rules that prevent duplicates; they persist indefinitely |
-| Developer promotes to wrong account | Developers can only see accounts linked to their SSO group; production account is a fixed system-level configuration |
+| Developer promotes to wrong account | Developers can only see accounts linked to their SSO team group; production account is a fixed system-level configuration |
+| Emergency hotfix bypasses test environment | Both peer review and admin approval are still required; mandatory written justification is logged; admins must explicitly acknowledge the bypass |
+| Stale promotion branches accumulate | Dashboard shows branch age warnings (amber at 15 days, red at 30 days); Boomi's 20-branch limit is monitored with early warnings at 15 |
 
 ### What does this NOT do?
 
@@ -226,5 +255,9 @@ Because everything is built with standard Boomi components (processes, Flow page
 | **Partner API** | Boomi's management API that allows programmatic control of components and deployments |
 | **Platform API** | Same as Partner API — the REST API for managing Boomi account resources |
 | **Promotion** | The act of copying a component from a dev account to production while preserving version history |
+| **Promotion Branch** | A temporary workspace in Boomi where promoted components are staged before merging to main; enables side-by-side diff review |
 | **SSO** | Single Sign-On — users log in once via Azure AD and are authenticated across systems |
 | **Swimlane** | A section of a Flow application restricted to users with specific authorization |
+| **Target Environment** | Where a promoted component will be deployed — either Test (for validation) or Production (for live use) |
+| **Tier Group** | An SSO group that controls a user's dashboard access level (Admin, Contributor, Readonly, Operator) |
+| **Team Group** | An SSO group that controls which dev accounts a user can see (e.g., DevTeamA, DevTeamB) |

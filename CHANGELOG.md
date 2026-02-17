@@ -6,6 +6,56 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [0.6.0] - 2026-02-16
+
+### Added
+
+- **Multi-environment deployment model**: Three deployment paths — Dev→Test→Production (standard), Dev→Production emergency hotfix (with mandatory justification), and flexible rejection/retry at any stage
+- **Page 9 (Production Readiness Queue)**: New developer swimlane page listing test-deployed promotions ready for production; branch age color-coding (green < 14d, amber 15–30d, red > 30d) encourages timely promotion
+- **Process E4 (queryTestDeployments)**: Queries PromotionLog for `targetEnvironment="TEST"` AND `status="TEST_DEPLOYED"` records not yet promoted to production
+- **Emergency hotfix audit trail**: `isHotfix` and `hotfixJustification` fields on PromotionLog; admin acknowledgment checkbox required before approving hotfix deployments; filterable for leadership reporting
+- **Test/production Integration Pack separation**: Packs namespaced with "- TEST" suffix; `packPurpose` filter ("TEST", "PRODUCTION", "ALL") on `listIntegrationPacks`
+- **New profiles**: `queryTestDeployments-request.json`, `queryTestDeployments-response.json`
+- **New DataHub query template**: `query-test-deployed-promotions.xml` for Process E4
+- **New error codes**: `TEST_DEPLOY_FAILED`, `HOTFIX_JUSTIFICATION_REQUIRED`, `INVALID_DEPLOYMENT_TARGET`, `TEST_PROMOTION_NOT_FOUND`
+- **New email notifications**: "Test Deployment Complete" (to submitter) and "EMERGENCY HOTFIX — Peer Review Needed" (to dev + admin distribution lists)
+
+### Changed
+
+- **PromotionLog model**: Added 8 fields — `targetEnvironment`, `isHotfix`, `hotfixJustification`, `testPromotionId`, `testDeployedAt`, `testIntegrationPackId`, `testIntegrationPackName`, `promotedFromTestBy`; new statuses `TEST_DEPLOYING`, `TEST_DEPLOYED`, `TEST_DEPLOY_FAILED`
+- **Process D (packageAndDeploy)**: Now supports 3 modes — TEST (merge + deploy + preserve branch), PRODUCTION from test (skip merge, content already on main + deploy + delete branch), and PRODUCTION hotfix (merge + deploy + delete branch); request adds `deploymentTarget`, `isHotfix`, `hotfixJustification`, `testPromotionId`, `testIntegrationPackId`, `testIntegrationPackName`; response adds `deploymentTarget`, `branchPreserved`, `isHotfix`
+- **Process J (listIntegrationPacks)**: Added `packPurpose` request field; suggestion logic considers target environment
+- **Branch lifecycle**: Branches now persist through test→production lifecycle (potentially weeks); branch limit threshold lowered from 18 to 15 for early warning; 30-day advisory warnings in UI
+- **Page 3 (Promotion Status)**: Added deployment target radio group — "Deploy to Test" (default, recommended) vs "Deploy to Production (Emergency Hotfix)" with mandatory justification textarea
+- **Page 4 (Deployment Submission)**: Three conditional modes — test deployment (blue banner, no reviews, branch preserved), production from test (green banner, test summary panel, peer review flow), emergency hotfix (red warning banner, justification display, peer review flow)
+- **Pages 5–6 (Peer Review)**: Added `targetEnvironment` and `isHotfix` badges; hotfix justification displayed prominently on detail page
+- **Page 7 (Admin Approval Queue)**: Added environment/hotfix badges; hotfix approvals require explicit acknowledgment checkbox; test deployment history shown when available
+- **Flow structure**: Added 8 Flow values (`targetEnvironment`, `isHotfix`, `hotfixJustification`, `testPromotionId`, `testIntegrationPackId`, `testIntegrationPackName`, `testDeployments`, `selectedTestDeployment`); expanded to 9 pages; added message step #12 (`queryTestDeployments`)
+- **Flow Service spec**: Added action #12 (`queryTestDeployments`); documented 3 deployment modes for `packageAndDeploy`; added 4 error codes; updated process count to 12
+- **Architecture docs**: Added multi-environment deployment model section with branch lifecycle diagrams, Integration Pack strategy, hotfix audit trail
+- **Build guide**: Added Phase 7 (`22-phase7-multi-environment.md`) with 8 build steps; updated BOM to ~69 components (12 processes, 24 profiles, 12 FSS operations, 9 pages)
+
+---
+
+## [0.5.0] - 2026-02-16
+
+### Added
+
+- **XmlDiffViewer implementation**: Built the React custom component for Boomi Flow — TypeScript + Webpack 5 production build; 6 sub-components (`DiffToolbar`, `DiffHeader`, `DiffContent`, `CreateView`, `LoadingState`, `ErrorState`), 3 custom hooks (`useResponsive`, `useDiffStats`, `useClipboard`), 4 utility modules; split/unified/create view modes, Prism.js XML syntax highlighting, context collapse, copy buttons, responsive breakpoints; 38 passing tests with 81% coverage; production bundle 64KB gzipped JS + 1.4KB gzipped CSS; React 16 compatibility via CJS alias for `react-diff-viewer-continued`
+- **Two-axis SSO authorization model**: Authorization split into two independent axes — **Tier groups** (`ABC_BOOMI_FLOW_ADMIN`, `ABC_BOOMI_FLOW_CONTRIBUTOR`, `ABC_BOOMI_FLOW_READONLY`, `ABC_BOOMI_FLOW_OPERATOR`) control dashboard access level; **Team groups** (`ABC_BOOMI_FLOW_DEVTEAMA`, etc.) control which dev accounts a user can see; tiers resolved at runtime from SSO group names in Process A0, not stored in DataHub
+- **Defense-in-depth tier validation**: Process C re-validates the user's tier from `userSsoGroups` before executing promotion; rejects with `INSUFFICIENT_TIER` if below CONTRIBUTOR
+- **`INSUFFICIENT_TIER` error code**: Returned when user's SSO groups lack dashboard-access tier
+
+### Changed
+
+- **Process A0 (getDevAccounts)**: Implements tier resolution algorithm — ADMIN bypasses team check (sees all accounts), CONTRIBUTOR filtered by team groups, READONLY/OPERATOR rejected; response now includes `effectiveTier` field
+- **executePromotion request**: Added `userSsoGroups` array field for defense-in-depth tier re-validation
+- **Flow structure**: SSO group references updated to `ABC_BOOMI_FLOW_*` naming convention; swimlane authorization mapped to specific tier groups; added `userEffectiveTier` Flow value; added "Tier Groups (Dashboard Access)" documentation
+- **DevAccountAccess model**: Description updated to document team-specific SSO groups and clarify that tier-level access is resolved at runtime
+- **Build guide**: Restructured from single 3,599-line `BUILD-GUIDE.md` into `docs/build-guide/` directory with 22 focused step files plus index; each file self-contained with navigation footers; original file retained as redirect
+
+---
+
 ## [0.4.0] - 2026-02-16
 
 ### Added
