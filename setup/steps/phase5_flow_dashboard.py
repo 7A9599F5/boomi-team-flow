@@ -19,8 +19,8 @@ FLOW_PAGES = [
     (7, "Admin Approval Queue", "Admin", "16-flow-dashboard-review-admin.md"),
     (8, "Mapping Viewer", "Admin", "16-flow-dashboard-review-admin.md"),
     (9, "Production Readiness Queue", "Developer", "16-flow-dashboard-review-admin.md"),
-    (10, "Extension Manager", "Developer", "17-flow-dashboard-extensions.md"),
-    (11, "Extension Copy Confirmation", "Developer", "17-flow-dashboard-extensions.md"),
+    (10, "Extension Manager", "Developer", "20-extension-editor.md"),
+    (11, "Extension Copy Confirmation", "Developer", "20-extension-editor.md"),
 ]
 
 
@@ -58,7 +58,7 @@ class FlowDashboard(BaseStep):
         ui.print_info(f"Building {len(remaining)} of {total} dashboard items...")
 
         if dry_run:
-            ui.print_info("Would guide user through 11 pages + SSO + custom component + nav.")
+            ui.print_info("Would guide user through 11 pages + SSO + custom components + nav.")
             return StepStatus.COMPLETED
 
         # Build each page
@@ -113,24 +113,28 @@ class FlowDashboard(BaseStep):
                 ui.print_error("SSO configuration not completed.")
                 return StepStatus.FAILED
 
-        # Custom component (XmlDiffViewer)
+        # Custom components (XmlDiffViewer + ExtensionEditor)
         if "custom_component" in remaining:
             done_count = total - len(remaining) + 1
-            ui.print_progress(done_count, total, "XmlDiffViewer Custom Component")
+            ui.print_progress(done_count, total, "Custom Components")
 
             confirmed = guide_and_confirm(
-                "Install the XmlDiffViewer custom component:\n\n"
-                "1. Navigate to the custom component spec:\n"
-                "   flow/custom-components/\n"
-                "2. Build or import the React component into Boomi Flow\n"
-                "3. Register it in the Flow app for use on the Promotion Review page\n"
-                "4. Verify it renders XML diff output correctly",
-                question="Have you installed the XmlDiffViewer custom component?",
+                "Install custom components:\n\n"
+                "1. XmlDiffViewer:\n"
+                "   - Navigate to: flow/custom-components/XmlDiffViewer\n"
+                "   - Build or import the React component into Boomi Flow\n"
+                "   - Register for use on the Promotion Review page\n\n"
+                "2. ExtensionEditor:\n"
+                "   - Navigate to: flow/custom-components/ExtensionEditor\n"
+                "   - Build or import the React component into Boomi Flow\n"
+                "   - Register for use on the Extension Manager page\n\n"
+                "Verify both components render correctly.",
+                question="Have you installed both custom components?",
             )
             if confirmed:
                 state.mark_step_item_complete(self.step_id, "custom_component")
                 remaining = [r for r in remaining if r != "custom_component"]
-                ui.print_success("XmlDiffViewer custom component installed.")
+                ui.print_success("Custom components installed (XmlDiffViewer + ExtensionEditor).")
             else:
                 ui.print_error("Custom component not installed.")
                 return StepStatus.FAILED

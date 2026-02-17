@@ -38,6 +38,7 @@ EXPECTED_COUNTS = {
     "profiles": 38,
     "fss_operations": 19,
     "processes": 18,
+    "scripts": 10,
 }
 
 EXPECTED_TOTAL = 124
