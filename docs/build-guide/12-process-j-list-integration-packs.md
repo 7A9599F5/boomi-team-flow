@@ -15,6 +15,7 @@
    - Receives JSON request from Flow Service with:
      - `primaryAccountId` (string, required)
      - `suggestForProcess` (string, optional) — process name to suggest pack for
+     - `packPurpose` (string, optional) — filter packs: `"TEST"` (packs with "- TEST" suffix), `"PRODUCTION"` (packs without "- TEST" suffix), or `"ALL"` (default, no filter)
 
 2. **HTTP Client Send — QUERY IntegrationPack**
    - Connector: `PROMO - Partner API Connection`
@@ -28,7 +29,13 @@
    - Each pack includes: `id`, `name`, `version`, `installationType`
    - Set DPP `packList` (array)
 
-4. **Decision — Suggest for Process?**
+4. **Decision — Filter by Pack Purpose?**
+   - Condition: DPP `packPurpose` IS NOT EMPTY AND NOT `"ALL"`
+   - **YES** branch (`"TEST"`): Filter `packList` to only packs whose `name` ends with `" - TEST"`
+   - **YES** branch (`"PRODUCTION"`): Filter `packList` to only packs whose `name` does NOT end with `" - TEST"`
+   - **NO** branch (empty or `"ALL"`): Keep all packs, skip to step 5
+
+4.5. **Decision — Suggest for Process?**
    - Condition: DPP `suggestForProcess` IS NOT EMPTY
    - **YES** branch: query PromotionLog for suggestion
    - **NO** branch: skip to response
@@ -42,6 +49,7 @@
    - Response returns most recent deployed promotion for that process
    - Set DPP `suggestedPackId` and `suggestedPackName` from result
    - If no result, leave suggestion fields empty
+   - **Note:** When `packPurpose` is set, the suggestion should come from the matching environment's history (e.g., suggest the most recent TEST pack when `packPurpose = "TEST"`)
 
 6. **Map — Build Response**
    - Combine `packList` array with optional suggestion fields
@@ -70,6 +78,9 @@ Wrap HTTP Client and DataHub steps in a **Try/Catch**:
 - Test with existing packs → returns full list with correct `installationType = "MULTI"`
 - Test with `suggestForProcess` matching a deployed promotion → returns `suggestedPackId` and `suggestedPackName`
 - Test with `suggestForProcess` with no matching promotions → returns pack list without suggestion fields
+- Test with `packPurpose = "TEST"` → returns only packs with "- TEST" suffix in name
+- Test with `packPurpose = "PRODUCTION"` → returns only packs without "- TEST" suffix
+- Test with `packPurpose = "ALL"` or empty → returns all packs (same as no filter)
 
 ---
 

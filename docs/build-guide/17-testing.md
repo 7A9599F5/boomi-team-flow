@@ -373,5 +373,111 @@ Invoke-RestMethod -Uri "https://api.boomi.com/partner/api/rest/v1/{accountId}/Da
 
 ---
 
+### Test 8 -- Dev → Test → Production (Happy Path)
+
+Run the full 3-tier deployment lifecycle.
+
+1. Execute a promotion via Process C — creates branch, promotes components to branch.
+2. On Page 3 (Promotion Status), select "Deploy to Test" (default).
+3. On Page 4 (Deployment Submission), deploy to a Test Integration Pack.
+4. Wait for test deployment to complete (inline results on Page 4).
+
+#### Verification: Test Deployment
+
+- PromotionLog shows `targetEnvironment = "TEST"`, `status = "TEST_DEPLOYED"`, `testDeployedAt` populated
+- `testIntegrationPackId` and `testIntegrationPackName` populated
+- Branch is preserved: `GET /Branch/{branchId}` returns `200` with `ready = true`
+- `branchId` still set in PromotionLog (not null)
+
+5. Navigate to Page 9 (Production Readiness Queue).
+6. Verify the test deployment appears in the queue with correct branch age.
+7. Select it and click "Promote to Production".
+8. On Page 4, submit for peer review (production mode).
+9. Complete peer review (Pages 5-6) — approve.
+10. Complete admin review (Page 7) — approve and deploy to production.
+
+#### Verification: Production Deployment
+
+- PromotionLog for production record shows `targetEnvironment = "PRODUCTION"`, `status = "DEPLOYED"`
+- `testPromotionId` links back to the test deployment's `promotionId`
+- Branch is deleted: `GET /Branch/{branchId}` returns `404`
+- `branchId` set to null in PromotionLog
+- Integration Pack deployed to production environment(s)
+
+**Pass criteria:** Full 3-tier flow completes. Both PromotionLog records correctly linked via `testPromotionId`. Branch created once, preserved through test, deleted after production deploy.
+
+---
+
+### Test 9 -- Emergency Hotfix (Dev → Production)
+
+Test the emergency hotfix bypass path.
+
+1. Execute a promotion via Process C — creates branch.
+2. On Page 3 (Promotion Status), select "Deploy to Production (Emergency Hotfix)".
+3. Enter hotfix justification (required field).
+4. Click "Continue to Deployment".
+5. On Page 4, submit for peer review with hotfix flag.
+
+#### Verification: Peer Review Queue
+
+- On Pages 5-6, verify the EMERGENCY HOTFIX badge is visible on the queue row.
+- On Page 6 (detail), verify `hotfixJustification` is displayed prominently.
+- Peer reviewer approves.
+
+6. On Page 7 (Admin Approval Queue), verify:
+   - Hotfix badge and warning displayed prominently.
+   - `hotfixJustification` visible in the detail panel.
+   - Extra acknowledgment checkbox present for hotfix approvals.
+7. Admin checks the acknowledgment checkbox and approves.
+
+#### Verification: Hotfix Deployment
+
+- PromotionLog shows `targetEnvironment = "PRODUCTION"`, `isHotfix = "true"`, `hotfixJustification` populated
+- `status = "DEPLOYED"`
+- Branch is deleted
+- No `testPromotionId` (bypassed test)
+
+**Pass criteria:** Hotfix deploys directly to production. Hotfix justification visible at every review stage. Acknowledgment required from admin.
+
+---
+
+### Test 10 -- Multi-Environment Rejection Scenarios
+
+Test rejection at each stage of the multi-environment workflow.
+
+#### 10a. Peer Rejection of Hotfix
+
+1. Submit a hotfix for peer review (follow Test 9 steps 1-5).
+2. Peer reviewer rejects with reason.
+
+**Pass criteria:**
+- PromotionLog shows `peerReviewStatus = "PEER_REJECTED"`
+- Branch is deleted (rejection triggers branch cleanup)
+- Submitter receives rejection email with hotfix context
+
+#### 10b. Admin Denial of Production from Test
+
+1. Complete a test deployment (follow Test 8 steps 1-4).
+2. Submit for production promotion (Test 8 steps 5-9).
+3. Admin denies with reason.
+
+**Pass criteria:**
+- PromotionLog for production record shows `adminReviewStatus = "ADMIN_REJECTED"`
+- Branch is deleted
+- Submitter + peer reviewer receive denial emails
+- Test deployment record remains unchanged (`status = "TEST_DEPLOYED"`)
+
+#### 10c. Test Deployment Failure with Retry
+
+1. Trigger a test deployment that will fail (e.g., invalid environment ID).
+2. Verify Page 4 shows the deployment error inline.
+
+**Pass criteria:**
+- PromotionLog shows `status = "TEST_DEPLOY_FAILED"`
+- Branch is preserved (not deleted on test failure — allows retry)
+- Developer can retry the test deployment from Page 4
+
+---
+
 ---
 Prev: [Phase 5b: Flow Dashboard — Review & Admin](16-flow-dashboard-review-admin.md) | Next: [Troubleshooting](18-troubleshooting.md) | [Back to Index](index.md)

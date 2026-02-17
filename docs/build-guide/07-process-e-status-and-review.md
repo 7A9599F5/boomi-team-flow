@@ -65,5 +65,71 @@ Wrap the DataHub Query in a **Try/Catch**. Catch block builds error response wit
 
 ---
 
+### Process E4: Query Test Deployments (`PROMO - Query Test Deployments`)
+
+This process queries the PromotionLog for test deployments that are ready to be promoted to production.
+
+#### Profiles
+
+| Profile | Source File |
+|---------|------------|
+| `PROMO - Profile - QueryTestDeploymentsRequest` | `/integration/profiles/queryTestDeployments-request.json` |
+| `PROMO - Profile - QueryTestDeploymentsResponse` | `/integration/profiles/queryTestDeployments-response.json` |
+
+The request JSON contains:
+- `devAccountId` (string, optional): filter by dev account
+- `initiatedBy` (string, optional): filter by submitter
+
+The response JSON contains:
+- `success`, `errorCode`, `errorMessage` (standard error contract)
+- `testDeployments` (array): each entry contains `promotionId`, `devAccountId`, `prodAccountId`, `processName`, `packageVersion`, `initiatedBy`, `initiatedAt`, `componentsTotal`, `componentsCreated`, `componentsUpdated`, `testDeployedAt`, `testIntegrationPackId`, `testIntegrationPackName`, `branchId`, `branchName`
+
+#### FSS Operation
+
+Create `PROMO - FSS Op - QueryTestDeployments` per Section 3.B, using `PROMO - Profile - QueryTestDeploymentsRequest` and `PROMO - Profile - QueryTestDeploymentsResponse`.
+
+#### Canvas — Shape by Shape
+
+1. **Start shape** — Connector = Boomi Flow Services Server, Action = Listen, Operation = `PROMO - FSS Op - QueryTestDeployments`
+
+2. **Set Properties** (read request fields)
+   - DPP `filterDevAccountId` = document path: `devAccountId`
+   - DPP `filterInitiatedBy` = document path: `initiatedBy`
+
+3. **DataHub Query — Test Deployments**
+   - Connector: `PROMO - DataHub Connection`
+   - Operation: `PROMO - DH Op - Query PromotionLog`
+   - Filter: `targetEnvironment EQUALS "TEST"` AND (`status EQUALS "TEST_DEPLOYED"` OR `status EQUALS "TEST_DEPLOYING"`)
+   - If `filterDevAccountId` is non-empty, add filter `devAccountId EQUALS {value}`
+   - If `filterInitiatedBy` is non-empty, add filter `initiatedBy EQUALS {value}`
+   - Combine filters with `AND` operator
+
+4. **Data Process — Exclude Already-Promoted Records**
+   - Groovy script that filters out test deployments where a matching PRODUCTION record already exists (another PromotionLog record has `testPromotionId` equal to this record's `promotionId` with `status` not `FAILED`)
+   - This ensures only "ready for production" deployments appear in the queue
+
+5. **Map — Build Response JSON**
+   - Source: filtered DataHub PromotionLog query response (XML)
+   - Destination: `PROMO - Profile - QueryTestDeploymentsResponse`
+   - Map each record to a `testDeployments` array entry
+   - Set `success` = `true`
+
+6. **Return Documents** — same as Process F
+
+#### Error Handling
+
+Wrap the DataHub Query in a **Try/Catch**. Catch block builds error response with `errorCode = "DATAHUB_ERROR"`.
+
+**Verify:**
+
+- Seed a PromotionLog record with `targetEnvironment = "TEST"`, `status = "TEST_DEPLOYED"`, and populated test deployment fields
+- Send a Query Test Deployments request
+- **Expected**: response with `success = true` and the `testDeployments` array containing that record
+- Create a second PromotionLog record with `targetEnvironment = "PRODUCTION"` and `testPromotionId` pointing to the first record
+- Re-send the query
+- **Expected**: the first record no longer appears (it has been promoted to production)
+
+---
+
 ---
 Prev: [Process A0: Get Dev Accounts](06-process-a0-get-dev-accounts.md) | Next: [Process A: List Dev Packages](08-process-a-list-dev-packages.md) | [Back to Index](index.md)

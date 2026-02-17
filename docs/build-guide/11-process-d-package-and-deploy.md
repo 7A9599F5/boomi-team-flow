@@ -20,6 +20,12 @@ The request JSON contains:
 - `newPackName` (string): name for new pack (required if `createNewPack = true`)
 - `newPackDescription` (string): description for new pack
 - `targetAccountGroupId` (string): account group to deploy to
+- `deploymentTarget` (string): `"TEST"` or `"PRODUCTION"` — determines deployment mode
+- `isHotfix` (string): `"true"` / `"false"` — flags emergency production bypass
+- `hotfixJustification` (string): required when isHotfix=`"true"` (up to 1000 chars)
+- `testPromotionId` (string): for production-from-test mode, links back to the TEST promotion
+- `testIntegrationPackId` (string): Test Integration Pack ID from the test deployment
+- `testIntegrationPackName` (string): Test Integration Pack name from the test deployment
 
 The response JSON contains:
 - `success`, `errorCode`, `errorMessage` (standard error contract)
@@ -29,6 +35,9 @@ The response JSON contains:
 - `releaseVersion` (string): the released pack version
 - `deploymentStatus` (string): overall deployment status
 - `deployedEnvironments` (array): each entry has `environmentId`, `environmentName`, `status`
+- `deploymentTarget` (string): echoes the deployment mode used
+- `branchPreserved` (string): `"true"` if branch was kept (test mode), `"false"` if deleted
+- `isHotfix` (string): `"true"` if this was an emergency hotfix deployment
 
 #### FSS Operation
 
@@ -42,6 +51,10 @@ Create `PROMO - FSS Op - PackageAndDeploy` per Section 3.B, using `PROMO - Profi
 | `promotionId` | (from request) | Promotion run ID for PromotionLog updates |
 | `mergeRequestId` | (set in step 2.5) | Merge request ID for execute and polling |
 | `packagedComponentId` | (set in step 3) | Created PackagedComponent ID |
+| `deploymentTarget` | (from request) | `"TEST"` or `"PRODUCTION"` |
+| `isHotfix` | (from request) | Emergency hotfix flag |
+| `hotfixJustification` | (from request) | Hotfix justification text |
+| `testPromotionId` | (from request) | Links production to preceding test deployment |
 
 #### Canvas — Shape by Shape
 
@@ -58,6 +71,34 @@ Create `PROMO - FSS Op - PackageAndDeploy` per Section 3.B, using `PROMO - Profi
    - DPP `newPackName` = document path: `newPackName`
    - DPP `newPackDescription` = document path: `newPackDescription`
    - DPP `targetAccountGroupId` = document path: `targetAccountGroupId`
+   - DPP `deploymentTarget` = document path: `deploymentTarget`
+   - DPP `isHotfix` = document path: `isHotfix`
+   - DPP `hotfixJustification` = document path: `hotfixJustification`
+   - DPP `testPromotionId` = document path: `testPromotionId`
+   - DPP `testIntegrationPackId` = document path: `testIntegrationPackId`
+   - DPP `testIntegrationPackName` = document path: `testIntegrationPackName`
+
+2.1. **Decision — Deployment Mode**
+   - The process supports 3 deployment modes based on `deploymentTarget`, `testPromotionId`, and `isHotfix`:
+     - **Mode 1 — TEST** (`deploymentTarget = "TEST"`): Merge → package → deploy to test, preserve branch, update PromotionLog with test status
+     - **Mode 2 — PRODUCTION from test** (`deploymentTarget = "PRODUCTION"` AND `testPromotionId` is non-empty): Skip merge (content already on main from test), package from main → deploy to production, delete branch
+     - **Mode 3 — PRODUCTION hotfix** (`deploymentTarget = "PRODUCTION"` AND `isHotfix = "true"`): Merge → package → deploy to production, delete branch, flag as hotfix
+   - Use a Decision shape on DPP `deploymentTarget`:
+     - **`TEST`** branch → step 2.2 (test-specific pre-processing)
+     - **`PRODUCTION`** branch → Decision on DPP `testPromotionId`:
+       - Non-empty → step 2.4 (skip merge, jump to step 3)
+       - Empty (hotfix) → step 2.5 (merge as normal)
+
+2.2. **TEST Mode Pre-Processing**
+   - No additional pre-processing needed — proceed to step 2.5 (merge) as normal
+   - After merge + package + deploy, the process will:
+     - Preserve the branch (skip step 8.5 DELETE)
+     - Update PromotionLog: `status = "TEST_DEPLOYED"`, `testDeployedAt` = current timestamp, `testIntegrationPackId`, `testIntegrationPackName`
+
+2.4. **PRODUCTION from Test — Skip Merge**
+   - Content is already on main from the test deployment merge
+   - Skip steps 2.5-2.7 (merge) entirely
+   - Jump directly to step 3 (PackagedComponent creation)
 
 2.5. **HTTP Client Send — POST MergeRequest (Create)**
    - Connector: `PROMO - Partner API Connection`
@@ -125,7 +166,11 @@ Create `PROMO - FSS Op - PackageAndDeploy` per Section 3.B, using `PROMO - Profi
    - Accumulate deployment results for each environment (success/failure per environment)
    - Add 120ms gap between deployment calls
 
-8.5. **HTTP Client Send — DELETE Branch (Cleanup)**
+8.5. **Decision — Delete or Preserve Branch**
+   - **TEST mode** (`deploymentTarget = "TEST"`): **SKIP branch deletion** — branch is preserved for future production promotion and diff review
+   - **PRODUCTION mode** (both from-test and hotfix): **DELETE branch**
+
+8.6. **HTTP Client Send — DELETE Branch (Cleanup)** (PRODUCTION modes only)
    - Connector: `PROMO - Partner API Connection`
    - Operation: `PROMO - HTTP Op - DELETE Branch`
    - URL parameter `{1}` = DPP `primaryAccountId`, `{2}` = DPP `branchId`
@@ -144,6 +189,9 @@ Create `PROMO - FSS Op - PackageAndDeploy` per Section 3.B, using `PROMO - Profi
      - `releaseVersion` from step 7 response
      - `deploymentStatus` = `"DEPLOYED"` if all succeeded, `"PARTIAL"` if some failed
      - `deployedEnvironments` array from step 8 results
+     - `deploymentTarget` = DPP `deploymentTarget`
+     - `branchPreserved` = `"true"` if TEST mode, `"false"` if PRODUCTION mode
+     - `isHotfix` = DPP `isHotfix`
      - `success` = `true`
 
 10. **Return Documents** — same as Process F
@@ -157,20 +205,22 @@ Wrap the entire process (steps 2.5-8.5) in a **Try/Catch**:
 - **Deployment failure**: per-environment — mark individual environments as failed in the `deployedEnvironments` array, but continue deploying to remaining environments. Set `deploymentStatus = "PARTIAL"`. Branch is still deleted in step 8.5 (after the deployment loop).
 - **Catch block**: In all catastrophic failure cases, attempt `DELETE /Branch/{branchId}` before returning the error response. Log delete failures but do not mask the original error.
 
-**Verify:**
+**Verify — 3 deployment modes:**
 
-- First, promote a component using Process C so you have a `prodComponentId` in the primary account
-- Send a Package and Deploy request with `createNewPack = true`, a `newPackName`, and a `targetAccountGroupId`
-- **Expected**:
-  - Response with `success = true`
-  - `packagedComponentId` is populated (new PackagedComponent created)
-  - `integrationPackId` is populated (new Integration Pack created)
-  - `releaseVersion` is populated
-  - `deployedEnvironments` shows each target with `status = "DEPLOYED"`
-- Verify in Boomi AtomSphere:
-  - The PackagedComponent appears under the promoted component
-  - The Integration Pack exists with the component included
-  - The deployment appears in Deploy --> Deployments
+**Test deployment (Mode 1):**
+- Promote a component (Process C), then send a Package and Deploy request with `deploymentTarget = "TEST"`, `createNewPack = true`, `newPackName = "Orders - TEST"`
+- **Expected**: `success = true`, `branchPreserved = "true"`, `deploymentTarget = "TEST"`, branch still exists (GET `/Branch/{branchId}` returns `200`)
+- **Expected PromotionLog**: `status = "TEST_DEPLOYED"`, `testDeployedAt` populated, `testIntegrationPackId`/`testIntegrationPackName` populated, `branchId` still set
+
+**Production from test (Mode 2):**
+- Using the test deployment from Mode 1, send a Package and Deploy request with `deploymentTarget = "PRODUCTION"`, `testPromotionId = "{testPromotionId}"`, existing production `integrationPackId`
+- **Expected**: `success = true`, `branchPreserved = "false"`, merge is skipped, branch is deleted (GET `/Branch/{branchId}` returns `404`)
+- **Expected PromotionLog**: `status = "DEPLOYED"`, `testPromotionId` links back to test record
+
+**Hotfix (Mode 3):**
+- Promote a component (Process C), then send a Package and Deploy request with `deploymentTarget = "PRODUCTION"`, `isHotfix = "true"`, `hotfixJustification = "Critical API fix"`
+- **Expected**: `success = true`, `isHotfix = "true"`, `branchPreserved = "false"`, branch is deleted
+- **Expected PromotionLog**: `status = "DEPLOYED"`, `isHotfix = "true"`, `hotfixJustification` populated
 
 ---
 
