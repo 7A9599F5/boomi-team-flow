@@ -1,4 +1,4 @@
 {
   "devAccountId": "string",
-  "componentId": "string"
+  "rootComponentId": "string"
 }

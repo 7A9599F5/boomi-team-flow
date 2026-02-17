@@ -1,7 +1,8 @@
 {
-  "promotionId": "string",
-  "devAccountId": "string",
-  "status": "string",
-  "reviewStage": "string",
-  "limit": 50
+  "queryType": "string",
+  "processName": "string",
+  "componentId": "string",
+  "startDate": "2026-01-01T00:00:00.000Z",
+  "endDate": "2026-01-01T00:00:00.000Z",
+  "reviewStage": "string"
 }

@@ -2,20 +2,13 @@
   "success": true,
   "errorCode": "",
   "errorMessage": "",
-  "rootProcessName": "string",
-  "totalComponents": 0,
-  "components": [
+  "dependencies": [
     {
-      "devComponentId": "string",
-      "name": "string",
-      "type": "string",
-      "devVersion": 0,
-      "prodStatus": "string",
-      "prodComponentId": "string",
-      "prodCurrentVersion": 0,
-      "hasEnvConfig": true,
-      "folderFullPath": "string",
-      "isSharedConnection": false
+      "componentId": "string",
+      "componentName": "string",
+      "componentType": "string",
+      "dependencyType": "string",
+      "depth": 0
     }
   ]
 }

@@ -3,10 +3,10 @@
   "effectiveTier": "string",
   "errorCode": "",
   "errorMessage": "",
-  "accounts": [
+  "devAccounts": [
     {
-      "devAccountId": "string",
-      "devAccountName": "string"
+      "accountId": "string",
+      "accountName": "string"
     }
   ]
 }

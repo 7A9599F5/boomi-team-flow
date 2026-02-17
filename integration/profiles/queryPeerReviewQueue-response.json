@@ -15,7 +15,11 @@
       "notes": "string",
       "packageVersion": "string",
       "devPackageId": "string",
-      "resultDetail": "string"
+      "resultDetail": "string",
+      "targetEnvironment": "string",
+      "isHotfix": "string",
+      "branchId": "string",
+      "branchName": "string"
     }
   ]
 }

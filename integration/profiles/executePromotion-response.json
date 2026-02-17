@@ -5,21 +5,23 @@
   "promotionId": "string",
   "branchId": "string",
   "branchName": "string",
-  "componentsCreated": 0,
-  "componentsUpdated": 0,
-  "componentsFailed": 0,
   "connectionsSkipped": 0,
-  "missingConnectionMappings": [],
-  "results": [
+  "promotionResults": [
+    {
+      "devComponentId": "string",
+      "prodComponentId": "string",
+      "componentName": "string",
+      "componentType": "string",
+      "action": "string",
+      "version": 0
+    }
+  ],
+  "missingConnectionMappings": [
     {
       "devComponentId": "string",
       "name": "string",
-      "action": "string",
-      "prodComponentId": "string",
-      "prodVersion": 0,
-      "status": "string",
-      "errorMessage": "string",
-      "configStripped": true
+      "type": "string",
+      "devAccountId": "string"
     }
   ]
 }

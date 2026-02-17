@@ -2,17 +2,15 @@
   "success": true,
   "errorCode": "",
   "errorMessage": "",
-  "packagedComponentId": "string",
+  "packageId": "string",
   "prodPackageId": "string",
   "integrationPackId": "string",
-  "integrationPackName": "string",
-  "releaseVersion": "string",
-  "deploymentStatus": "string",
-  "deployedEnvironments": [
+  "deploymentResults": [
     {
       "environmentId": "string",
       "environmentName": "string",
-      "status": "string"
+      "deployed": true,
+      "errorMessage": "string"
     }
   ],
   "deploymentTarget": "string",

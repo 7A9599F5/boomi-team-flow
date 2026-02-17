@@ -1,12 +1,18 @@
 {
+  "promotionId": "string",
   "prodComponentId": "string",
-  "prodAccountId": "string",
   "packageVersion": "string",
-  "integrationPackId": "string",
+  "deploymentNotes": "string",
   "createNewPack": false,
   "newPackName": "string",
   "newPackDescription": "string",
-  "targetAccountGroupId": "string",
+  "existingPackId": "string",
+  "targetEnvironments": [
+    {
+      "environmentId": "string",
+      "environmentName": "string"
+    }
+  ],
   "devAccountId": "string",
   "devPackageId": "string",
   "devPackageCreator": "string",
