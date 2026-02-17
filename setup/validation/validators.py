@@ -11,6 +11,8 @@ _MODEL_FIELD_COUNTS = {
     "ComponentMapping": 10,
     "DevAccountAccess": 5,
     "PromotionLog": 34,
+    "ExtensionAccessMapping": 6,
+    "ClientAccountConfig": 7,
 }
 
 # Required DataHub sources
@@ -20,8 +22,8 @@ _REQUIRED_SOURCES = ["PROMOTION_ENGINE", "ADMIN_SEEDING", "ADMIN_CONFIG"]
 def validate_models_deployed(
     datahub_api: Any, state: Any
 ) -> tuple[bool, str]:
-    """Check that 3 DataHub models are deployed with correct field counts."""
-    models = ["ComponentMapping", "DevAccountAccess", "PromotionLog"]
+    """Check that 5 DataHub models are deployed with correct field counts."""
+    models = ["ComponentMapping", "DevAccountAccess", "PromotionLog", "ExtensionAccessMapping", "ClientAccountConfig"]
     errors: list[str] = []
 
     for model_name in models:
@@ -52,7 +54,7 @@ def validate_models_deployed(
 
     if errors:
         return False, "Model validation failed: " + "; ".join(errors)
-    return True, "All 3 models deployed with correct field counts"
+    return True, "All 5 models deployed with correct field counts"
 
 
 def validate_sources_exist(
@@ -83,51 +85,51 @@ def validate_sources_exist(
 def validate_http_ops_count(
     platform_api: Any, state: Any
 ) -> tuple[bool, str]:
-    """Count HTTP operations matching 'PROMO - HTTP Op' prefix, expect 19."""
+    """Count HTTP operations matching 'PROMO - HTTP Op' prefix, expect 27."""
     count = platform_api.count_components_by_prefix("PROMO - HTTP Op")
-    if count != 19:
-        return False, f"Found {count} HTTP operations, expected 19"
-    return True, "All 19 HTTP operations found"
+    if count != 27:
+        return False, f"Found {count} HTTP operations, expected 27"
+    return True, "All 27 HTTP operations found"
 
 
 def validate_dh_ops_count(
     platform_api: Any, state: Any
 ) -> tuple[bool, str]:
-    """Count DataHub operations matching 'PROMO - DH Op' prefix, expect 6."""
+    """Count DataHub operations matching 'PROMO - DH Op' prefix, expect 10."""
     count = platform_api.count_components_by_prefix("PROMO - DH Op")
-    if count != 6:
-        return False, f"Found {count} DataHub operations, expected 6"
-    return True, "All 6 DataHub operations found"
+    if count != 10:
+        return False, f"Found {count} DataHub operations, expected 10"
+    return True, "All 10 DataHub operations found"
 
 
 def validate_profile_count(
     platform_api: Any, state: Any
 ) -> tuple[bool, str]:
-    """Count profiles matching 'PROMO - Profile' prefix, expect 26."""
+    """Count profiles matching 'PROMO - Profile' prefix, expect 38."""
     count = platform_api.count_components_by_prefix("PROMO - Profile")
-    if count != 26:
-        return False, f"Found {count} profiles, expected 26"
-    return True, "All 26 profiles found"
+    if count != 38:
+        return False, f"Found {count} profiles, expected 38"
+    return True, "All 38 profiles found"
 
 
 def validate_fss_ops_count(
     platform_api: Any, state: Any
 ) -> tuple[bool, str]:
-    """Count FSS operations matching 'PROMO - FSS Op' prefix, expect 14."""
+    """Count FSS operations matching 'PROMO - FSS Op' prefix, expect 19."""
     count = platform_api.count_components_by_prefix("PROMO - FSS Op")
-    if count != 14:
-        return False, f"Found {count} FSS operations, expected 14"
-    return True, "All 14 FSS operations found"
+    if count != 19:
+        return False, f"Found {count} FSS operations, expected 19"
+    return True, "All 19 FSS operations found"
 
 
 def validate_process_count(
     platform_api: Any, state: Any
 ) -> tuple[bool, str]:
-    """Count processes matching 'PROMO - Process' prefix, expect 12."""
+    """Count processes matching 'PROMO - Process' prefix, expect 18."""
     count = platform_api.count_components_by_prefix("PROMO - Process")
-    if count != 12:
-        return False, f"Found {count} processes, expected 12"
-    return True, "All 12 processes found"
+    if count != 18:
+        return False, f"Found {count} processes, expected 18"
+    return True, "All 18 processes found"
 
 
 def validate_flow_service_deployed(
@@ -143,8 +145,8 @@ def validate_flow_service_deployed(
 def validate_total_components(
     platform_api: Any, state: Any
 ) -> tuple[bool, str]:
-    """Count all components matching 'PROMO -' prefix, expect 85."""
+    """Count all components matching 'PROMO -' prefix, expect 124."""
     count = platform_api.count_components_by_prefix("PROMO -")
-    if count != 85:
-        return False, f"Found {count} total PROMO components, expected 85"
-    return True, "All 85 PROMO components found"
+    if count != 124:
+        return False, f"Found {count} total PROMO components, expected 124"
+    return True, "All 124 PROMO components found"

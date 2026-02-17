@@ -27,22 +27,26 @@ _FIELD_COUNTS = {
     "ComponentMapping": 10,
     "DevAccountAccess": 5,
     "PromotionLog": 34,
+    "ExtensionAccessMapping": 6,
+    "ClientAccountConfig": 7,
 }
 
 
 class TestValidateModelsDeployed:
     def test_validate_models_deployed_success(self) -> None:
-        """All 3 models return DEPLOYED with correct field counts."""
+        """All 5 models return DEPLOYED with correct field counts."""
         mock_dh = MagicMock()
         mock_dh.get_model.side_effect = [
             _make_model_response("ComponentMapping", "DEPLOYED", 10),
             _make_model_response("DevAccountAccess", "DEPLOYED", 5),
             _make_model_response("PromotionLog", "DEPLOYED", 34),
+            _make_model_response("ExtensionAccessMapping", "DEPLOYED", 6),
+            _make_model_response("ClientAccountConfig", "DEPLOYED", 7),
         ]
 
         success, msg = validate_models_deployed(mock_dh, MagicMock())
         assert success is True
-        assert "All 3 models deployed" in msg
+        assert "All 5 models deployed" in msg
 
     def test_validate_models_deployed_wrong_status(self) -> None:
         """One model not deployed."""
@@ -51,6 +55,8 @@ class TestValidateModelsDeployed:
             _make_model_response("ComponentMapping", "DEPLOYED", 10),
             _make_model_response("DevAccountAccess", "DRAFT", 5),
             _make_model_response("PromotionLog", "DEPLOYED", 34),
+            _make_model_response("ExtensionAccessMapping", "DEPLOYED", 6),
+            _make_model_response("ClientAccountConfig", "DEPLOYED", 7),
         ]
 
         success, msg = validate_models_deployed(mock_dh, MagicMock())
@@ -65,6 +71,8 @@ class TestValidateModelsDeployed:
             _make_model_response("ComponentMapping", "DEPLOYED", 10),
             _make_model_response("DevAccountAccess", "DEPLOYED", 5),
             _make_model_response("PromotionLog", "DEPLOYED", 30),  # expect 34
+            _make_model_response("ExtensionAccessMapping", "DEPLOYED", 6),
+            _make_model_response("ClientAccountConfig", "DEPLOYED", 7),
         ]
 
         success, msg = validate_models_deployed(mock_dh, MagicMock())
@@ -79,6 +87,8 @@ class TestValidateModelsDeployed:
             _make_model_response("ComponentMapping", "DEPLOYED", 10),
             Exception("Connection timeout"),
             _make_model_response("PromotionLog", "DEPLOYED", 34),
+            _make_model_response("ExtensionAccessMapping", "DEPLOYED", 6),
+            _make_model_response("ClientAccountConfig", "DEPLOYED", 7),
         ]
 
         success, msg = validate_models_deployed(mock_dh, MagicMock())
@@ -92,6 +102,8 @@ class TestValidateModelsDeployed:
             _make_model_response("ComponentMapping", "DEPLOYED", 10),
             "<xml>unexpected</xml>",  # str instead of dict
             _make_model_response("PromotionLog", "DEPLOYED", 34),
+            _make_model_response("ExtensionAccessMapping", "DEPLOYED", 6),
+            _make_model_response("ClientAccountConfig", "DEPLOYED", 7),
         ]
 
         success, msg = validate_models_deployed(mock_dh, MagicMock())
@@ -152,13 +164,13 @@ class TestValidateSourcesExist:
 
 class TestValidateHttpOpsCount:
     def test_validate_http_ops_count_correct(self) -> None:
-        """Count returns 19 — success."""
+        """Count returns 27 — success."""
         mock_platform = MagicMock()
-        mock_platform.count_components_by_prefix.return_value = 19
+        mock_platform.count_components_by_prefix.return_value = 27
 
         success, msg = validate_http_ops_count(mock_platform, MagicMock())
         assert success is True
-        assert "19" in msg
+        assert "27" in msg
 
     def test_validate_http_ops_count_wrong(self) -> None:
         """Count returns 15, expect failure."""
@@ -172,19 +184,19 @@ class TestValidateHttpOpsCount:
 
 class TestValidateTotalComponents:
     def test_validate_total_components_success(self) -> None:
-        """Count returns 85, success."""
+        """Count returns 124, success."""
         mock_platform = MagicMock()
-        mock_platform.count_components_by_prefix.return_value = 85
+        mock_platform.count_components_by_prefix.return_value = 124
 
         success, msg = validate_total_components(mock_platform, MagicMock())
         assert success is True
-        assert "85" in msg
+        assert "124" in msg
 
     def test_validate_total_components_wrong(self) -> None:
-        """Count returns 80, expect failure."""
+        """Count returns 100, expect failure."""
         mock_platform = MagicMock()
-        mock_platform.count_components_by_prefix.return_value = 80
+        mock_platform.count_components_by_prefix.return_value = 100
 
         success, msg = validate_total_components(mock_platform, MagicMock())
         assert success is False
-        assert "80" in msg
+        assert "100" in msg
