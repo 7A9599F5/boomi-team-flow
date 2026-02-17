@@ -15,10 +15,22 @@ module.exports = {
                 test: /\.css$/,
                 use: ['style-loader', 'css-loader'],
             },
+            {
+                test: /\.m?js$/,
+                resolve: {
+                    fullySpecified: false,
+                },
+            },
         ],
     },
     resolve: {
         extensions: ['.tsx', '.ts', '.js'],
+        alias: {
+            'react-diff-viewer-continued': path.resolve(
+                __dirname,
+                'node_modules/react-diff-viewer-continued/lib/cjs/src/index.js',
+            ),
+        },
     },
     output: {
         filename: 'xml-diff-viewer.js',
