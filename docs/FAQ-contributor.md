@@ -67,7 +67,7 @@ The standard path (test → production):
 1. **Page 1** — Select a packaged process from your dev account
 2. **Page 2** — Review the resolved dependency tree (what's new vs. update, any unmapped connections)
 3. **Page 2 → Page 3** — Click "Execute Promotion" — components are promoted to a temporary branch (30–120 seconds)
-4. **Page 4** — Deploy to your test Integration Pack (no reviews needed)
+4. **Page 4** — Deploy to your test Integration Pack (automated validation, no manual approval)
 5. **Page 9** — When ready, select the test deployment and click "Promote to Production"
 6. **Page 4** — Select a production Integration Pack, add deployment notes, and submit for peer review
 7. A colleague reviews your promotion on Pages 5–6
@@ -159,7 +159,7 @@ During promotion, environment-specific values (passwords, hostnames, URLs, encry
 
 ### Why is there a test deployment step?
 
-Test deployments let you validate your changes in a test environment before going through the peer and admin review process. The test path requires no reviews and can proceed immediately after promotion. The emergency hotfix path skips test, but both paths still require both approval steps before reaching production.
+Test deployments let you validate your changes in a test environment before going through the peer and admin review process. The test path uses automated validation with no manual approval gates and can proceed immediately after promotion. The emergency hotfix path skips test, but both paths still require both approval steps before reaching production.
 
 ### What is the difference between a test pack and a production pack?
 

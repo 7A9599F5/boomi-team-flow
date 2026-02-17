@@ -8,7 +8,7 @@ The Deployment Submission page handles three deployment modes based on the `targ
 
 ### Mode 1: Test Deployment (`targetEnvironment = "TEST"`)
 - **Header:** "Deploy to Test Environment"
-- **Info banner:** Blue/info — "Components will be deployed to your Test Integration Pack. No reviews required."
+- **Info banner:** Blue/info — "Components will be deployed to your Test Integration Pack. Automated validation only — no manual approval required."
 - **Integration Pack selector:** Filtered to test packs (`listIntegrationPacks` with `packPurpose="TEST"`)
 - **Submit button label:** "Deploy to Test"
 - **On submit:** Directly call `packageAndDeploy` with `deploymentTarget="TEST"`

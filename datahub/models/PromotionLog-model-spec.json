@@ -1,7 +1,7 @@
 {
   "modelName": "PromotionLog",
   "rootElement": "PromotionLog",
-  "description": "Audit log for each promotion run. Tracks metadata, status, and detailed results for every component promotion from dev to test or production environments. Supports 3 deployment paths: Dev→Test (direct), Test→Production (with review), and emergency hotfix Dev→Production (with review). Provides compliance trail and debugging information.",
+  "description": "Audit log for each promotion run. Tracks metadata, status, and detailed results for every component promotion from dev to test or production environments. Supports 3 deployment paths: Dev→Test (automated validation, no manual gates), Test→Production (with review), and emergency hotfix Dev→Production (with review). Provides compliance trail and debugging information.",
   "fields": [
     {
       "name": "promotionId",

@@ -93,7 +93,7 @@ Developer clicks "Promote" — system copies each component to a temporary
 branch, maintaining existing versions and rewriting internal cross-references
         |
         v
-Developer deploys to Test environment (no reviews required)
+Developer deploys to Test environment (automated validation, no manual gates)
         |
         v
 Developer validates in test, then initiates production promotion
@@ -114,7 +114,7 @@ An **emergency hotfix** path (Dev → Production) is also available when a criti
 
 In Boomi, a **package** is a versioned, immutable snapshot of an individual process or API Service component — think of it as a release candidate for a single piece of work. An **Integration Pack** bundles one or more of these packages into a complete, deployable solution. Where a package represents a single building block, an Integration Pack is the finished product that gets installed and run.
 
-Deploying an Integration Pack makes the bundled processes live — meaning they will start handling real data. The system uses separate Integration Packs for test and production environments. Test deployments can proceed without reviews, but production deployment requires both a peer review and an admin approval before it occurs.
+Deploying an Integration Pack makes the bundled processes live — meaning they will start handling real data. The system uses separate Integration Packs for test and production environments. Test deployments use automated validation with no manual approval gates, but production deployment requires both a peer review and an admin approval before it occurs.
 
 ### How are connections (database credentials, API keys, etc.) handled?
 

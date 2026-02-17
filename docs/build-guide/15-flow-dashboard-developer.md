@@ -163,7 +163,7 @@ The developer fills out deployment details and submits for peer review. This pag
 **Mode detection on page load:**
 
 On page load, detect the deployment mode from Flow values:
-- **Mode 1 — Test** (`targetEnvironment = "TEST"`, `testPromotionId` empty): Direct test deployment, no peer review needed
+- **Mode 1 — Test** (`targetEnvironment = "TEST"`, `testPromotionId` empty): Direct test deployment with automated validation, no manual approval gates
 - **Mode 2 — Production from Test** (`targetEnvironment = "PRODUCTION"`, `testPromotionId` non-empty): Production deployment of a previously tested package
 - **Mode 3 — Hotfix** (`targetEnvironment = "PRODUCTION"`, `isHotfix = "true"`): Emergency production deployment bypassing test
 
@@ -184,7 +184,7 @@ On page load, detect the deployment mode from Flow values:
    - Calls `packageAndDeploy` directly with `deploymentTarget = "TEST"`
    - Shows inline deployment results (no swimlane transition)
    - On success: Sends test deployment email to submitter, shows results with link to Page 9 (Production Readiness)
-   - Stays in Developer swimlane — no peer review required for test deployments
+   - Stays in Developer swimlane — automated validation only, no manual approval gates for test deployments
 
 **Mode 2 — Production from test behavior:**
 

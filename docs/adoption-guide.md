@@ -56,7 +56,7 @@ Pick Package
 
 **Promote to Branch** — Components are copied to a temporary staging branch in the production account — not to main. Nothing in production changes yet.
 
-**Deploy to Test** — Push to a test Integration Pack. No reviews needed. Validate it works.
+**Deploy to Test** — Push to a test Integration Pack. Automated validation only — no manual approval gates. Validate it works.
 
 **Validate** — Test in your test environment. When you're ready, come back to the dashboard.
 
@@ -101,7 +101,7 @@ Here's the standard path for a non-emergency promotion.
 
 6. **On Page 3 (Promotion Status), confirm success.** You'll see per-component results. From here, click "Deploy to Test" to push to a test Integration Pack.
 
-7. **On Page 4 (Deployment Submission), select a test Integration Pack** (names ending in "- TEST") and submit. No reviews required. You'll receive an email when the test deployment completes.
+7. **On Page 4 (Deployment Submission), select a test Integration Pack** (names ending in "- TEST") and submit. The system runs automated validation — no manual approval gates. You'll receive an email when the test deployment completes.
 
 8. **Validate in your test environment.** When satisfied, go to Page 9 (Production Readiness Queue), select your deployment, and click "Promote to Production." Fill in deployment notes and select a production Integration Pack. Your submission goes to the peer review queue. From there, a peer reviews it, then an admin approves and deploys. You'll receive email updates at each step.
 

@@ -232,7 +232,7 @@
 
 ## C-07: Deploy Directly to Test Environment
 
-**As a** Contributor, **I want to** deploy my promoted components directly to a test Integration Pack without requiring peer or admin review, **so that** I can validate the changes in a safe environment before requesting production approval.
+**As a** Contributor, **I want to** deploy my promoted components directly to a test Integration Pack with automated validation and no manual approval gates, **so that** I can validate the changes in a safe environment before requesting production approval.
 
 **Preconditions:**
 - User is on Page 4 in Test mode (`targetEnvironment="TEST"`)
@@ -240,7 +240,7 @@
 - Required form fields are filled: Package Version, Integration Pack (filtered to test packs), Target Account Group
 
 **Flow:**
-1. Page 4 loads with the header "Deploy to Test Environment" and a blue info banner: "Components will be deployed to your Test Integration Pack. No reviews required."
+1. Page 4 loads with the header "Deploy to Test Environment" and a blue info banner: "Components will be deployed to your Test Integration Pack. Automated validation only — no manual approval required."
 2. On page load, `listIntegrationPacks` fires with `packPurpose="TEST"` to populate the Integration Pack combobox with test packs only
 3. If a suggested pack is found (most recently used for this process in test), it is pre-selected in the combobox
 4. User fills in or confirms: Package Version, Integration Pack (select existing or create new), Target Account Group, optional Deployment Notes

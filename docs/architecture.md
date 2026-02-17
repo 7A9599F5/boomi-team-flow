@@ -287,7 +287,7 @@ The system supports three deployment paths to balance velocity with safety:
 
 The recommended path for all non-emergency changes:
 
-1. **Dev → Test (no reviews):** Developer promotes components (Process C), then deploys directly to a Test Integration Pack (Process D, TEST mode). Branch merges to main for test packaging but is preserved for future production diffing.
+1. **Dev → Test (automated validation, no manual gates):** Developer promotes components (Process C), then deploys directly to a Test Integration Pack (Process D, TEST mode). Branch merges to main for test packaging but is preserved for future production diffing.
 2. **Test validation:** Developer validates components in the test environment.
 3. **Test → Production (with reviews):** Developer initiates production promotion from Page 9. Since content is already on main, Process D skips the merge step. Peer review (Pages 5-6) and admin review (Page 7) gate the production deployment.
 4. **Branch cleanup:** Branch deleted after successful production deployment.
