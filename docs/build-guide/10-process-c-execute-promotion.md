@@ -1,5 +1,7 @@
 ### Process C: Execute Promotion (`PROMO - Execute Promotion`)
 
+> **Diagram:** See the [Process C Execution Flow](../diagrams/process-c-flow.md) for a visual flowchart of the complete promotion pipeline.
+
 > **API Alternative:** This process can be created programmatically via `POST /Component` with `type="process"`. Due to the complexity of process canvas XML (shapes, routing, DPP mappings, script references), the recommended workflow is: (1) build the process manually following the steps below, (2) use `GET /Component/{processId}` to export the XML, (3) store the XML as a template for automated recreation. See [Appendix D: API Automation Guide](22-api-automation-guide.md) for the full workflow.
 
 This is the core engine of the system. It promotes components from a dev sub-account to the primary account, handling XML retrieval, credential stripping, reference rewriting, and component creation or update via the Platform API. This is the most detailed process.
