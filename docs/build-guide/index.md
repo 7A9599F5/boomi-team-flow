@@ -8,7 +8,7 @@ This guide walks through building every component of the Promotion System step b
 |---|------|---------|
 | 00 | [Overview & Prerequisites](00-overview.md) | Intro, how to use, prerequisites, BOM, naming convention, dependency build order, repo file reference |
 | 01 | [Phase 1: DataHub Foundation](01-datahub-foundation.md) | 3 DataHub models, seed data, CRUD test & cleanup |
-| 02 | [Phase 2a: HTTP Client Setup](02-http-client-setup.md) | HTTP Client connection + 12 HTTP Client operations |
+| 02 | [Phase 2a: HTTP Client Setup](02-http-client-setup.md) | HTTP Client connection + 19 HTTP Client operations |
 | 03 | [Phase 2b: DataHub Connection Setup](03-datahub-connection-setup.md) | DataHub connection + 6 DataHub operations + Phase 2 verify & checklist |
 | 04 | [Phase 3: Process Canvas Fundamentals](04-process-canvas-fundamentals.md) | Phase 3 intro: shapes, profile import, Groovy scripts, DPP pattern, general process skeleton |
 | 05 | [Process F: Mapping CRUD](05-process-f-mapping-crud.md) | Process F — template "hello world" process, fully detailed shape-by-shape |
@@ -20,7 +20,7 @@ This guide walks through building every component of the Promotion System step b
 | 11 | [Process D: Package and Deploy](11-process-d-package-and-deploy.md) | Process D — merge branch, create PackagedComponent, Integration Pack, deploy |
 | 12 | [Process J: List Integration Packs](12-process-j-list-integration-packs.md) | Process J — query Integration Packs with smart suggestion |
 | 13 | [Process G: Component Diff & Build Order](13-process-g-component-diff.md) | Process G — branch vs main XML diff + normalize-xml.groovy + build order checklist |
-| 14 | [Phase 4: Flow Service Component](14-flow-service.md) | Create Flow Service (12 actions), deploy, configure, verify listeners |
+| 14 | [Phase 4: Flow Service Component](14-flow-service.md) | Create Flow Service (13 actions), deploy, configure, verify listeners |
 | 15 | [Phase 5a: Flow Dashboard — Developer Swimlane](15-flow-dashboard-developer.md) | Install connector + Pages 1-4 (Developer Swimlane) |
 | 16 | [Phase 5b: Flow Dashboard — Review & Admin](16-flow-dashboard-review-admin.md) | Pages 5-9, SSO config, wire navigation, XmlDiffViewer custom component |
 | 17 | [Phase 6: Testing](17-testing.md) | Smoke test + 7 test scenarios |

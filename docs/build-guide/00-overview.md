@@ -2,12 +2,21 @@
 
 This guide walks through building every component of the Promotion System step by step. Follow the phases in order — each phase builds on the previous.
 
+## Build Approach
+
+Every build step offers two paths:
+
+1. **Via API** (primary) — `curl` (Linux/macOS) and PowerShell (Windows) commands that create components programmatically through the Boomi Platform API or DataHub Model API. Copy-paste ready with full request payloads.
+2. **Via UI (Manual Fallback)** — step-by-step manual instructions using the Boomi AtomSphere UI. Use this if the API path encounters issues or if you prefer visual configuration.
+
+For components with complex internal XML (Integration Processes, Maps), the guide recommends the **API-First Discovery Workflow**: build one component in the UI, export it via `GET /Component/{id}`, then use the XML as a template for batch creation. See [Appendix D: API Automation Guide](22-api-automation-guide.md) for the complete dependency-ordered workflow.
+
 ## How to Use This Guide
 
 - **Linear build**: Follow Phases 1-6 sequentially for a first-time build
 - **Reference lookup**: Jump to a specific phase/step using the table of contents
 - **Validation**: Every major step ends with a "**Verify:**" checkpoint — do not skip these
-- **API examples**: All verification commands are shown in both `curl` (Linux/macOS) and PowerShell (Windows) formats
+- **API examples**: All commands are shown in both `curl` (Linux/macOS) and PowerShell (Windows) formats
 - **File references**: Templates, profiles, and scripts are in this repository — the guide shows HOW to use them, not duplicates of their content
 
 ---
@@ -19,13 +28,14 @@ This guide walks through building every component of the Promotion System step b
 - Azure AD/Entra SSO configured in Boomi Flow
 - Access to DataHub in your Boomi account
 - A public Boomi cloud atom (or ability to provision one)
-- API token generated at **Settings → Account Information → Platform API Tokens**
+- **Platform API token** generated at **Settings → Account Information → Platform API Tokens** — used for all `curl`/PowerShell commands in the build guide (format: `BOOMI_TOKEN.user@company.com:api-token`)
+- **DataHub Hub Authentication Token** retrieved from **Services → DataHub → Repositories → [your repo] → Configure** tab — required for DataHub Model API calls (Phase 1) and DataHub connection setup (Phase 2)
 
 ---
 
 ## Bill of Materials
 
-The system comprises **74 components** across 6 phases:
+The system comprises **85 components** across 6 phases:
 
 | Phase | Category | Count | Components |
 |-------|----------|-------|------------|
@@ -33,14 +43,14 @@ The system comprises **74 components** across 6 phases:
 | 2 | Connections | 2 | HTTP Client (Partner API), DataHub |
 | 2 | HTTP Client Operations | 19 | GET/POST/QUERY for Component, Reference, Metadata, Package, Deploy, IntegrationPack; Branch (create, query, get, delete), MergeRequest (create, execute, get); Add To IntegrationPack, ReleaseIntegrationPack |
 | 2 | DataHub Operations | 6 | Query + Update for each of 3 models |
-| 3 | JSON Profiles | 24 | Request + Response for each of 12 processes |
+| 3 | JSON Profiles | 26 | Request + Response for each of 13 message actions |
 | 3 | Integration Processes | 12 | A0, A, B, C, D, E, E2, E3, E4, F, G, J |
-| 4 | FSS Operations | 12 | One per process |
+| 4 | FSS Operations | 13 | One per message action |
 | 4 | Flow Service | 1 | PROMO - Flow Service |
 | 5 | Custom Component | 1 | XmlDiffViewer (React diff viewer for Flow custom player) |
 | 5 | Flow Connector | 1 | Promotion Service Connector |
 | 5 | Flow Application | 1 | Promotion Dashboard (3 swimlanes, 9 pages) |
-| | **Total** | **74** | |
+| | **Total** | **85** | |
 
 ---
 
@@ -89,9 +99,9 @@ F (Mapping CRUD) → A0 (Get Dev Accounts) → E (Query Status) → E2 (Query Pe
 |-----------|----------|---------|
 | `/datahub/models/` | DataHub model specifications (3 JSON files) | Phase 1 |
 | `/datahub/api-requests/` | Test XML for DataHub CRUD validation (3 files) | Phase 1, 6 |
-| `/integration/profiles/` | JSON request/response profiles (24 files, 12 processes × 2) | Phase 3 |
-| `/integration/scripts/` | Groovy scripts for XML manipulation (6 files) | Phase 3 |
-| `/integration/api-requests/` | API request templates (19 files) | Phase 2, 3 |
+| `/integration/profiles/` | JSON request/response profiles (26 files, 13 actions × 2) | Phase 3 |
+| `/integration/scripts/` | Groovy scripts for XML manipulation (7 files) | Phase 3 |
+| `/integration/api-requests/` | API request templates (20 files) | Phase 2, 3 |
 | `/integration/flow-service/` | Flow Service component specification | Phase 4 |
 | `/flow/` | Flow app structure and page layouts (9 files) | Phase 5 |
 | `/docs/` | This guide and architecture reference | All |

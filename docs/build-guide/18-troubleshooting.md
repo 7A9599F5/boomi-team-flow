@@ -151,7 +151,7 @@ Each FSS Operation must be linked in the Message Actions tab of the `PROMO - Flo
 **"Configuration value not set"**
 The `primaryAccountId` configuration value must be set after deployment via component configuration (Manage, Deployed Components, select the Flow Service, Configuration tab). This value is NOT set at build time -- it is set per deployment. If this value is empty, all HTTP operations using `{1}` in their URL will fail.
 
-**Diagnostic:** Check Runtime Management, Listeners tab. All 12 processes should appear as active listeners. If fewer than 12 appear, verify each FSS Operation is correctly linked and the deployment is current.
+**Diagnostic:** Check Runtime Management, Listeners tab. All 13 processes should appear as active listeners. If fewer than 13 appear, verify each FSS Operation is correctly linked and the deployment is current.
 
 ---
 
@@ -161,7 +161,7 @@ The `primaryAccountId` configuration value must be set after deployment via comp
 Verify all of the following: (1) The atom is running. (2) The `PROMO - Flow Service` is deployed to the atom. (3) The Path to Service is exactly `/fs/PromotionService` (case-sensitive, no trailing slash). (4) Basic Auth credentials match the Shared Web Server User Management settings on the atom. If any of these are wrong, the retrieval will fail silently or return an error.
 
 **"Flow Types not generated (fewer than 14)"**
-After a successful "Retrieve Connector Configuration Data," Flow should auto-generate 24 types (2 per message action: request and response). If fewer than 24 appear, the Flow Service may have fewer than 12 message actions linked. Fix the Flow Service (Phase 4), re-deploy, then re-retrieve connector configuration data in Flow.
+After a successful "Retrieve Connector Configuration Data," Flow should auto-generate 26 types (2 per message action: request and response). If fewer than 26 appear, the Flow Service may have fewer than 13 message actions linked. Fix the Flow Service (Phase 4), re-deploy, then re-retrieve connector configuration data in Flow.
 
 **"Message step returns empty response"**
 Check the Flow value bindings on the Message step. Both input values (request type) and output values (response type) must be bound. The connector action name must match the message action name exactly (e.g., `executePromotion`, not `ExecutePromotion`). Verify the Flow Value type matches the auto-generated type name (e.g., `executePromotion REQUEST - executePromotionRequest`).
