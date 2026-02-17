@@ -12,6 +12,8 @@ This process creates a PackagedComponent from a promoted component, optionally c
 The request JSON contains:
 - `prodComponentId` (string): the promoted root process component in the primary account
 - `prodAccountId` (string): the primary account ID
+- `branchId` (string): promotion branch ID from Process C (to merge before packaging)
+- `promotionId` (string): promotion run ID (for PromotionLog updates)
 - `packageVersion` (string): version label for the package (e.g., `"1.2.0"`)
 - `integrationPackId` (string): existing Integration Pack ID (used when `createNewPack = false`)
 - `createNewPack` (boolean): `true` to create a new Integration Pack, `false` to add to existing
@@ -32,6 +34,15 @@ The response JSON contains:
 
 Create `PROMO - FSS Op - PackageAndDeploy` per Section 3.B, using `PROMO - Profile - PackageAndDeployRequest` and `PROMO - Profile - PackageAndDeployResponse`.
 
+#### DPP Initialization
+
+| DPP Name | Initial Value | Purpose |
+|----------|--------------|---------|
+| `branchId` | (from request) | Promotion branch to merge before packaging |
+| `promotionId` | (from request) | Promotion run ID for PromotionLog updates |
+| `mergeRequestId` | (set in step 2.5) | Merge request ID for execute and polling |
+| `packagedComponentId` | (set in step 3) | Created PackagedComponent ID |
+
 #### Canvas — Shape by Shape
 
 1. **Start shape** — Operation = `PROMO - FSS Op - PackageAndDeploy`
@@ -39,12 +50,32 @@ Create `PROMO - FSS Op - PackageAndDeploy` per Section 3.B, using `PROMO - Profi
 2. **Set Properties — Read Request**
    - DPP `prodComponentId` = document path: `prodComponentId`
    - DPP `prodAccountId` = document path: `prodAccountId`
+   - DPP `branchId` = document path: `branchId`
+   - DPP `promotionId` = document path: `promotionId`
    - DPP `packageVersion` = document path: `packageVersion`
    - DPP `createNewPack` = document path: `createNewPack`
    - DPP `integrationPackId` = document path: `integrationPackId`
    - DPP `newPackName` = document path: `newPackName`
    - DPP `newPackDescription` = document path: `newPackDescription`
    - DPP `targetAccountGroupId` = document path: `targetAccountGroupId`
+
+2.5. **HTTP Client Send — POST MergeRequest (Create)**
+   - Connector: `PROMO - Partner API Connection`
+   - Operation: `PROMO - HTTP Op - POST MergeRequest`
+   - URL parameter `{1}` = DPP `primaryAccountId`
+   - Request body: `source` = DPP `branchId`, `strategy` = `"OVERRIDE"`, `priorityBranch` = DPP `branchId`. See `/integration/api-requests/create-merge-request.json`
+   - OVERRIDE strategy ensures promotion branch content wins (no conflict resolution needed — Process C is the sole writer to the branch)
+   - Extract `mergeRequestId` from the response; store in DPP `mergeRequestId`
+
+2.6. **HTTP Client Send — POST MergeRequest Execute**
+   - Connector: `PROMO - Partner API Connection`
+   - Operation: `PROMO - HTTP Op - POST MergeRequest Execute`
+   - URL parameter `{1}` = DPP `primaryAccountId`, `{2}` = DPP `mergeRequestId`
+   - Request body: `action` = `"MERGE"`. See `/integration/api-requests/execute-merge-request.json`
+   - After execution, poll `GET /MergeRequest/{mergeRequestId}` until `stage = MERGED`
+   - On merge failure: error with `errorCode = "MERGE_FAILED"`, attempt `DELETE /Branch/{branchId}`, return error
+
+2.7. **Note**: After a successful merge, the promoted components now exist on main. Packaging (step 3) reads from main, so the merge must complete before proceeding.
 
 3. **HTTP Client Send — POST PackagedComponent**
    - Connector: `PROMO - Partner API Connection`
@@ -94,6 +125,15 @@ Create `PROMO - FSS Op - PackageAndDeploy` per Section 3.B, using `PROMO - Profi
    - Accumulate deployment results for each environment (success/failure per environment)
    - Add 120ms gap between deployment calls
 
+8.5. **HTTP Client Send — DELETE Branch (Cleanup)**
+   - Connector: `PROMO - Partner API Connection`
+   - Operation: `PROMO - HTTP Op - DELETE Branch`
+   - URL parameter `{1}` = DPP `primaryAccountId`, `{2}` = DPP `branchId`
+   - See `/integration/api-requests/delete-branch.json`
+   - Idempotent: both `200` (deleted) and `404` (already deleted) are success
+   - **Ignore delete failures** — log the error but do not fail the process (the merge and deployment already succeeded)
+   - Update PromotionLog: set `branchId` = `null` (branch no longer exists)
+
 9. **Map — Build Response JSON**
    - Source: accumulated results and DPPs
    - Destination: `PROMO - Profile - PackageAndDeployResponse`
@@ -110,10 +150,12 @@ Create `PROMO - FSS Op - PackageAndDeploy` per Section 3.B, using `PROMO - Profi
 
 #### Error Handling
 
-Wrap the entire process (steps 3-8) in a **Try/Catch**:
-- **PackagedComponent creation failure**: return error with `errorCode = "PROMOTION_FAILED"`
-- **Integration Pack failure**: return error with `errorCode = "PROMOTION_FAILED"`
-- **Deployment failure**: per-environment — mark individual environments as failed in the `deployedEnvironments` array, but continue deploying to remaining environments. Set `deploymentStatus = "PARTIAL"`.
+Wrap the entire process (steps 2.5-8.5) in a **Try/Catch**:
+- **Merge failure** (step 2.6): attempt `DELETE /Branch/{branchId}`, return error with `errorCode = "MERGE_FAILED"`
+- **PackagedComponent creation failure**: attempt `DELETE /Branch/{branchId}`, return error with `errorCode = "PROMOTION_FAILED"`
+- **Integration Pack failure**: attempt `DELETE /Branch/{branchId}`, return error with `errorCode = "PROMOTION_FAILED"`
+- **Deployment failure**: per-environment — mark individual environments as failed in the `deployedEnvironments` array, but continue deploying to remaining environments. Set `deploymentStatus = "PARTIAL"`. Branch is still deleted in step 8.5 (after the deployment loop).
+- **Catch block**: In all catastrophic failure cases, attempt `DELETE /Branch/{branchId}` before returning the error response. Log delete failures but do not mask the original error.
 
 **Verify:**
 
