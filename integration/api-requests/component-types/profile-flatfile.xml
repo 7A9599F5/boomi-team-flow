@@ -1,0 +1,135 @@
+<!--
+  Component Object Reference: Flat File Profile
+  API type attribute: profile.flatfile
+
+  Defines CSV, delimited, or fixed-width file structures.
+
+  Source: Real exported component XML from DarkoMirchevski/ComponentsXML GitHub repo
+  Confidence: HIGH
+
+  Key structural points:
+    - Root element: <FlatFileProfile xmlns="" modelVersion="2" strict="true">
+    - ProfileProperties: GeneralInfo (fileType, useColumnHeaders) + Options
+    - Delimited: DelimitedOptions (fileDelimiter, textQualifier)
+    - Fixed-width: FixedWidthOptions (maxLength/minLength per field)
+    - DataElements: FlatFileRecord > FlatFileElements > FlatFileElement
+    - FlatFileElement attrs: dataType, enforceUnique, mandatory, maxLength, minLength
+-->
+
+<!-- === DELIMITED (CSV) PROFILE === -->
+
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<bns:Component
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns:bns="http://api.platform.boomi.com/"
+    folderFullPath="Promoted/Profiles"
+    componentId="{uuid}"
+    version="1"
+    name="PROMO - Profile - CustomerDataCSV"
+    type="profile.flatfile"
+    createdDate="2026-01-15T10:00:00Z"
+    createdBy="admin@example.com"
+    modifiedDate="2026-02-17T09:00:00Z"
+    modifiedBy="admin@example.com"
+    deleted="false"
+    currentVersion="true"
+    folderName="Profiles"
+    folderId="{folder-id}">
+    <bns:encryptedValues/>
+    <bns:description>Comma-delimited customer data file with headers</bns:description>
+    <bns:object>
+        <FlatFileProfile xmlns="" modelVersion="2" strict="true">
+            <ProfileProperties>
+                <!-- fileType: "delimited" or "fixedwidth" -->
+                <GeneralInfo fileType="delimited" useColumnHeaders="true"/>
+                <Options>
+                    <DataOptions/>
+                    <!-- fileDelimiter: commadelimited, tabdelimited, pipedelimited, custom -->
+                    <!-- textQualifier: textqualifierdouble, textqualifiersingle, none -->
+                    <DelimitedOptions fileDelimiter="commadelimited" removeEscape="false"
+                        textQualifier="textqualifierdouble"/>
+                </Options>
+            </ProfileProperties>
+            <DataElements>
+                <!-- detectFormat: "numberofcolumns" or "firstfield" -->
+                <FlatFileRecord detectFormat="numberofcolumns" isNode="true" key="1" name="Record">
+                    <FlatFileElements isNode="true" key="2" name="Elements">
+                        <FlatFileElement dataType="character" enforceUnique="false" isMappable="true"
+                            isNode="true" key="3" mandatory="false" maxLength="0" minLength="0"
+                            name="ID" useToIdentifyFormat="false" validateData="false">
+                            <DataFormat>
+                                <ProfileCharacterFormat/>
+                            </DataFormat>
+                        </FlatFileElement>
+                        <FlatFileElement dataType="character" enforceUnique="false" isMappable="true"
+                            isNode="true" key="4" mandatory="false" maxLength="0" minLength="0"
+                            name="FIRST_NAME" useToIdentifyFormat="false" validateData="false">
+                            <DataFormat>
+                                <ProfileCharacterFormat/>
+                            </DataFormat>
+                        </FlatFileElement>
+                        <FlatFileElement dataType="character" enforceUnique="false" isMappable="true"
+                            isNode="true" key="5" mandatory="false" maxLength="0" minLength="0"
+                            name="EMAIL" useToIdentifyFormat="false" validateData="false">
+                            <DataFormat>
+                                <ProfileCharacterFormat/>
+                            </DataFormat>
+                        </FlatFileElement>
+                        <FlatFileElement dataType="datetime" enforceUnique="false" isMappable="true"
+                            isNode="true" key="6" mandatory="false" maxLength="0" minLength="0"
+                            name="CREATED_DATE" useToIdentifyFormat="false" validateData="false">
+                            <DataFormat>
+                                <ProfileDateFormat/>
+                            </DataFormat>
+                        </FlatFileElement>
+                        <FlatFileElement dataType="number" enforceUnique="false" isMappable="true"
+                            isNode="true" key="7" mandatory="false" maxLength="0" minLength="0"
+                            name="ORDER_COUNT" useToIdentifyFormat="false" validateData="false">
+                            <DataFormat>
+                                <ProfileNumberFormat/>
+                            </DataFormat>
+                        </FlatFileElement>
+                    </FlatFileElements>
+                </FlatFileRecord>
+            </DataElements>
+        </FlatFileProfile>
+    </bns:object>
+</bns:Component>
+
+
+<!-- === FIXED-WIDTH PROFILE VARIANT === -->
+
+<!--
+<bns:object>
+    <FlatFileProfile xmlns="" modelVersion="2" strict="true">
+        <ProfileProperties>
+            <GeneralInfo fileType="fixedwidth" useColumnHeaders="false"/>
+            <Options>
+                <DataOptions/>
+                <FixedWidthOptions/>
+            </Options>
+        </ProfileProperties>
+        <DataElements>
+            <FlatFileRecord detectFormat="firstfield" isNode="true" key="1" name="Record">
+                <FlatFileElements isNode="true" key="2" name="Elements">
+                    <FlatFileElement dataType="character" enforceUnique="false" isMappable="true"
+                        isNode="true" key="3" mandatory="false" maxLength="10" minLength="10"
+                        name="RECORD_TYPE" useToIdentifyFormat="true" validateData="false">
+                        <DataFormat><ProfileCharacterFormat/></DataFormat>
+                    </FlatFileElement>
+                    <FlatFileElement dataType="character" enforceUnique="false" isMappable="true"
+                        isNode="true" key="4" mandatory="false" maxLength="20" minLength="0"
+                        name="ACCOUNT_NUM" useToIdentifyFormat="false" validateData="false">
+                        <DataFormat><ProfileCharacterFormat/></DataFormat>
+                    </FlatFileElement>
+                    <FlatFileElement dataType="number" enforceUnique="false" isMappable="true"
+                        isNode="true" key="5" mandatory="false" maxLength="12" minLength="0"
+                        name="AMOUNT" useToIdentifyFormat="false" validateData="false">
+                        <DataFormat><ProfileNumberFormat/></DataFormat>
+                    </FlatFileElement>
+                </FlatFileElements>
+            </FlatFileRecord>
+        </DataElements>
+    </FlatFileProfile>
+</bns:object>
+-->

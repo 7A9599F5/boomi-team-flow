@@ -1,0 +1,130 @@
+<!--
+  Component Object Reference: XML Profile
+  API type attribute: profile.xml
+
+  Defines the structure of an XML document. Used for Platform API request/response
+  profiles (XML-based endpoints like Component CRUD, queries).
+
+  Source: Real exported component XML from boomilabs/boomiComponent GitHub repo
+  Confidence: HIGH
+
+  Key structural points:
+    - Root element: <XMLProfile xmlns="" modelVersion="2" strict="true">
+    - ProfileProperties: XMLGeneralInfo + XMLOptions (encoding, ordering, etc.)
+    - DataElements: nested XMLElement tree (recursive)
+    - XMLAttribute: attributes on XML elements
+    - Namespaces section for namespace-aware profiles
+    - Key attributes on XMLElement: dataType, key, maxOccurs, minOccurs,
+      loopingOption, typeExpanded, typeKey, useNamespace, validateData
+-->
+
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<bns:Component
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns:bns="http://api.platform.boomi.com/"
+    folderFullPath="PROMO/Profiles"
+    componentId="{uuid}"
+    version="1"
+    name="PROMO - Profile - ComponentQueryResponse"
+    type="profile.xml"
+    createdDate="2026-01-15T10:00:00Z"
+    createdBy="admin@example.com"
+    modifiedDate="2026-02-17T09:00:00Z"
+    modifiedBy="admin@example.com"
+    deleted="false"
+    currentVersion="true"
+    folderName="Profiles"
+    folderId="{folder-id}">
+    <bns:encryptedValues/>
+    <bns:description>XML profile for Platform API component query responses</bns:description>
+    <bns:object>
+        <XMLProfile xmlns="" modelVersion="2" strict="true">
+            <ProfileProperties>
+                <XMLGeneralInfo/>
+                <XMLOptions
+                    encoding="utf8"
+                    implicitElementOrdering="true"
+                    parseRespectMaxOccurs="true"
+                    respectMinOccurs="false"
+                    respectMinOccursAlways="false"/>
+            </ProfileProperties>
+            <DataElements>
+                <!-- Root element -->
+                <XMLElement dataType="character" isMappable="true" isNode="true" key="3"
+                    maxOccurs="1" minOccurs="1" name="QueryResult"
+                    typeExpanded="false" typeKey="-1" useNamespace="-1">
+                    <DataFormat>
+                        <ProfileCharacterFormat/>
+                    </DataFormat>
+
+                    <!-- Attribute on root element -->
+                    <XMLAttribute dataType="character" isMappable="true" isNode="true"
+                        key="4" name="numberOfResults" required="false"
+                        useNamespace="-1" validateData="false">
+                        <DataFormat>
+                            <ProfileCharacterFormat/>
+                        </DataFormat>
+                    </XMLAttribute>
+
+                    <!-- Repeating child element (maxOccurs="-1" = unbounded) -->
+                    <XMLElement dataType="character" isMappable="true" isNode="true" key="5"
+                        loopingOption="unique" maxOccurs="-1" minOccurs="0" name="result"
+                        typeExpanded="false" typeKey="-1" useNamespace="-1" validateData="false">
+                        <DataFormat>
+                            <ProfileCharacterFormat/>
+                        </DataFormat>
+
+                        <!-- Attribute on child element -->
+                        <XMLAttribute dataType="character" isMappable="true" isNode="true"
+                            key="6" name="componentId" required="false"
+                            useNamespace="-1" validateData="false">
+                            <DataFormat>
+                                <ProfileCharacterFormat/>
+                            </DataFormat>
+                        </XMLAttribute>
+
+                        <!-- Nested elements -->
+                        <XMLElement dataType="character" isMappable="true" isNode="true" key="7"
+                            loopingOption="unique" maxOccurs="1" minOccurs="1" name="name"
+                            typeExpanded="false" typeKey="-1" useNamespace="-1" validateData="false">
+                            <DataFormat>
+                                <ProfileCharacterFormat/>
+                            </DataFormat>
+                        </XMLElement>
+
+                        <XMLElement dataType="character" isMappable="true" isNode="true" key="8"
+                            loopingOption="unique" maxOccurs="1" minOccurs="1" name="type"
+                            typeExpanded="false" typeKey="-1" useNamespace="-1" validateData="false">
+                            <DataFormat>
+                                <ProfileCharacterFormat/>
+                            </DataFormat>
+                        </XMLElement>
+
+                        <!-- Number field -->
+                        <XMLElement dataType="number" isMappable="true" isNode="true" key="9"
+                            loopingOption="unique" maxOccurs="1" minOccurs="0" name="version"
+                            typeExpanded="false" typeKey="-1" useNamespace="-1" validateData="false">
+                            <DataFormat>
+                                <ProfileNumberFormat numberFormat=""/>
+                            </DataFormat>
+                        </XMLElement>
+
+                        <!-- DateTime field -->
+                        <XMLElement dataType="datetime" isMappable="true" isNode="true" key="10"
+                            loopingOption="unique" maxOccurs="1" minOccurs="0" name="modifiedDate"
+                            typeExpanded="false" typeKey="-1" useNamespace="-1" validateData="false">
+                            <DataFormat>
+                                <ProfileDateFormat/>
+                            </DataFormat>
+                        </XMLElement>
+                    </XMLElement>
+                </XMLElement>
+            </DataElements>
+            <Namespaces>
+                <XMLNamespace key="-1" name="Empty Namespace" prefix="ns1">
+                    <Types/>
+                </XMLNamespace>
+            </Namespaces>
+        </XMLProfile>
+    </bns:object>
+</bns:Component>

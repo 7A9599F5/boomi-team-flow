@@ -1,0 +1,272 @@
+<!--
+  Component Object Reference: Process
+  API type attribute: process
+
+  The <bns:object> for a process component contains the full canvas definition:
+  shapes, connections between shapes, and per-shape configuration.
+
+  Source: Official Boomi Platform API Reference response sample
+  Confidence: HIGH
+
+  Key structural points:
+    - Root element: <process xmlns="">
+    - All steps live inside <shapes> as <shape> elements
+    - Canvas topology encoded via <dragpoint toShape="..."> edges
+    - Each shape has: shapetype, name (unique), image (icon), x/y position
+    - <configuration> holds shape-type-specific settings
+    - Shape types include: start, stop, map, connector, message, branch,
+      decision, route, try, catch, processcall, processroute, dataprocess,
+      exception, setproperties, notify, returnDoc, documentcache, businessrules
+-->
+
+<!-- === COMPLETE PROCESS COMPONENT (GET response) === -->
+
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<bns:Component
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns:bns="http://api.platform.boomi.com/"
+    folderFullPath="Boomi/Admin"
+    componentId="bb302dbb-2e30-41a8-9e59-035f491e6da6"
+    version="1"
+    name="PROMO - Process A - listDevPackages"
+    type="process"
+    createdDate="2026-01-15T10:00:00Z"
+    createdBy="admin@example.com"
+    modifiedDate="2026-02-17T09:00:00Z"
+    modifiedBy="admin@example.com"
+    deleted="false"
+    currentVersion="true"
+    folderName="Admin"
+    folderId="RjozMDk2OQ">
+    <bns:encryptedValues/>
+    <bns:description>Lists dev account PackagedComponents via Platform API</bns:description>
+    <bns:object>
+        <process
+            xmlns=""
+            allowSimultaneous="false"
+            enableUserLog="false"
+            processLogOnErrorOnly="false"
+            purgeDataImmediately="false"
+            updateRunDates="true"
+            workload="general">
+            <shapes>
+                <!-- ===== START SHAPE ===== -->
+                <!-- No Data start (Flow Service listener provides input) -->
+                <shape image="start" name="shape1" shapetype="start" userlabel="" x="96.0" y="94.0">
+                    <configuration>
+                        <noaction/>
+                    </configuration>
+                    <dragpoints>
+                        <dragpoint name="shape1.dragpoint1" toShape="shape2" x="240.0" y="120.0"/>
+                    </dragpoints>
+                </shape>
+
+                <!-- ===== CONNECTOR SHAPE (HTTP Client) ===== -->
+                <shape image="http_icon" name="shape2" shapetype="connector" userlabel="Query Packages" x="256.0" y="112.0">
+                    <configuration>
+                        <connector
+                            connectortype="httpclnt"
+                            connectorname="HTTP Client"
+                            connectionId="{connection-component-uuid}"
+                            operationId="{operation-component-uuid}"
+                            connectorId="{connector-type-id}"/>
+                    </configuration>
+                    <dragpoints>
+                        <dragpoint name="shape2.dragpoint1" toShape="shape3" x="400.0" y="120.0"/>
+                    </dragpoints>
+                </shape>
+
+                <!-- ===== MAP SHAPE ===== -->
+                <shape image="map_icon" name="shape3" shapetype="map" userlabel="Transform Response" x="416.0" y="112.0">
+                    <configuration>
+                        <map mapId="{map-component-uuid}"/>
+                    </configuration>
+                    <dragpoints>
+                        <dragpoint name="shape3.dragpoint1" toShape="shape4" x="560.0" y="120.0"/>
+                    </dragpoints>
+                </shape>
+
+                <!-- ===== STOP SHAPE ===== -->
+                <shape image="stop_icon" name="shape4" shapetype="stop" userlabel="" x="576.0" y="112.0">
+                    <configuration>
+                        <stop continue="true"/>
+                    </configuration>
+                    <dragpoints/>
+                </shape>
+            </shapes>
+        </process>
+    </bns:object>
+    <bns:processOverrides/>
+</bns:Component>
+
+
+<!-- === ADDITIONAL SHAPE EXAMPLES (for reference) === -->
+
+<!--
+  Connector Start (scheduled/listener process):
+  <shape image="start" name="shape1" shapetype="start" userlabel="" x="96.0" y="94.0">
+      <configuration>
+          <start>
+              <connector connectortype="httpclnt" connectorname="HTTP Client"
+                  connectionId="{connection-uuid}" operationId="{operation-uuid}"
+                  connectorId="{connector-type-id}"/>
+          </start>
+      </configuration>
+      <dragpoints>
+          <dragpoint name="shape1.dragpoint1" toShape="shape2" x="240.0" y="120.0"/>
+      </dragpoints>
+  </shape>
+
+  Decision Shape (if/else routing):
+  <shape image="decision_icon" name="shape5" shapetype="decision" userlabel="Check Status" x="256.0" y="200.0">
+      <configuration>
+          <decision>
+              <condition>
+                  <input type="document_property" name="{property-name}"/>
+                  <operator>EQUALS</operator>
+                  <value>someValue</value>
+              </condition>
+          </decision>
+      </configuration>
+      <dragpoints>
+          <dragpoint name="shape5.dragpoint1" toShape="shape6" x="400.0" y="200.0"/>
+          <dragpoint name="shape5.dragpoint2" toShape="shape7" x="400.0" y="260.0"/>
+      </dragpoints>
+  </shape>
+
+  Branch Shape (parallel paths):
+  <shape image="branch_icon" name="shape5" shapetype="branch" userlabel="" x="256.0" y="200.0">
+      <configuration>
+          <branch>
+              <paths>
+                  <path name="path1"/>
+                  <path name="path2"/>
+              </paths>
+          </branch>
+      </configuration>
+      <dragpoints>
+          <dragpoint name="shape5.dragpoint1" toShape="shape6" x="400.0" y="200.0"/>
+          <dragpoint name="shape5.dragpoint2" toShape="shape7" x="400.0" y="260.0"/>
+      </dragpoints>
+  </shape>
+
+  Try/Catch Shapes:
+  <shape image="try_icon" name="shape5" shapetype="try" userlabel="" x="256.0" y="200.0">
+      <configuration>
+          <try/>
+      </configuration>
+      <dragpoints>
+          <dragpoint name="shape5.dragpoint1" toShape="shape6" x="400.0" y="200.0"/>
+      </dragpoints>
+  </shape>
+  <shape image="catch_icon" name="shape_catch" shapetype="catch" userlabel="" x="256.0" y="300.0">
+      <configuration>
+          <catch/>
+      </configuration>
+      <dragpoints>
+          <dragpoint name="shape_catch.dragpoint1" toShape="shape8" x="400.0" y="300.0"/>
+      </dragpoints>
+  </shape>
+
+  Process Call Shape (subprocess):
+  <shape image="processcall_icon" name="shape5" shapetype="processcall" userlabel="Run Subprocess" x="256.0" y="200.0">
+      <configuration>
+          <processcall processId="{subprocess-component-uuid}" waitForCompletion="true"/>
+      </configuration>
+      <dragpoints>
+          <dragpoint name="shape5.dragpoint1" toShape="shape6" x="400.0" y="200.0"/>
+      </dragpoints>
+  </shape>
+
+  Data Process Shape (with external script reference):
+  <shape image="dataprocess_icon" name="shape5" shapetype="dataprocess" userlabel="Run Script" x="256.0" y="200.0">
+      <configuration>
+          <dataprocess>
+              <step index="1" key="2" name="Custom Scripting" processtype="12">
+                  <dataprocessscript language="groovy2" useCache="true">
+                      <scriptComponent
+                          component="{script-component-uuid}"
+                          componentName="My Process Script"/>
+                  </dataprocessscript>
+              </step>
+          </dataprocess>
+      </configuration>
+      <dragpoints>
+          <dragpoint name="shape5.dragpoint1" toShape="shape6" x="400.0" y="200.0"/>
+      </dragpoints>
+  </shape>
+
+  Data Process Shape (with inline script):
+  <shape image="dataprocess_icon" name="shape5" shapetype="dataprocess" userlabel="Inline Script" x="256.0" y="200.0">
+      <configuration>
+          <dataprocess>
+              <step index="1" key="2" name="Custom Scripting" processtype="12">
+                  <dataprocessscript language="groovy2" useCache="true">
+                      <script><![CDATA[
+import com.boomi.execution.ExecutionUtil
+for (int i = 0; i < dataContext.getDataCount(); i++) {
+    InputStream is = dataContext.getStream(i)
+    Properties props = dataContext.getProperties(i)
+    dataContext.storeStream(is, props)
+}
+                      ]]></script>
+                  </dataprocessscript>
+              </step>
+          </dataprocess>
+      </configuration>
+      <dragpoints>
+          <dragpoint name="shape5.dragpoint1" toShape="shape6" x="400.0" y="200.0"/>
+      </dragpoints>
+  </shape>
+
+  Set Properties Shape:
+  <shape image="setproperties_icon" name="shape5" shapetype="setproperties" userlabel="Set DPPs" x="256.0" y="200.0">
+      <configuration>
+          <setproperties>
+              <properties>
+                  <property name="{property-name}" type="static" value="{static-value}"/>
+                  <property name="{property-name}" type="profile_element" profileId="{profile-uuid}" element="{element-path}"/>
+              </properties>
+          </setproperties>
+      </configuration>
+      <dragpoints>
+          <dragpoint name="shape5.dragpoint1" toShape="shape6" x="400.0" y="200.0"/>
+      </dragpoints>
+  </shape>
+
+  Message Shape:
+  <shape image="message_icon" name="shape5" shapetype="message" userlabel="Build Response" x="256.0" y="200.0">
+      <configuration>
+          <message mimeType="text/plain"><![CDATA[Your message content here]]></message>
+      </configuration>
+      <dragpoints>
+          <dragpoint name="shape5.dragpoint1" toShape="shape6" x="400.0" y="200.0"/>
+      </dragpoints>
+  </shape>
+
+  Exception Shape (terminate with error):
+  <shape image="exception_icon" name="shape5" shapetype="exception" userlabel="Fail" x="256.0" y="200.0">
+      <configuration>
+          <exception message="Error: {custom message}" displayType="error"/>
+      </configuration>
+      <dragpoints/>
+  </shape>
+
+  Route Shape (value-based routing):
+  <shape image="route_icon" name="shape5" shapetype="route" userlabel="Route by Type" x="256.0" y="200.0">
+      <configuration>
+          <route>
+              <routeBy type="document_property" name="{property-name}"/>
+              <routeValues>
+                  <routeValue value="valueA"/>
+                  <routeValue value="valueB"/>
+              </routeValues>
+          </route>
+      </configuration>
+      <dragpoints>
+          <dragpoint name="shape5.dragpoint1" toShape="shape6" x="400.0" y="200.0"/>
+          <dragpoint name="shape5.dragpoint2" toShape="shape7" x="400.0" y="260.0"/>
+          <dragpoint name="shape5.dragpoint3" toShape="shape8" x="400.0" y="320.0"/>
+      </dragpoints>
+  </shape>
+-->

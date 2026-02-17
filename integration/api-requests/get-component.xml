@@ -31,6 +31,21 @@
     - The overrideAccount parameter allows reading from sub-accounts using the primary account API token
     - Response includes all component settings, references, and configuration
     - Connection components will contain encrypted credential values (stripped in next step)
+
+  Component Type Reference (see component-types/ for full <bns:object> examples):
+    type="process"           → component-types/process.xml
+    type="profile.json"      → component-types/profile-json.xml
+    type="profile.xml"       → component-types/profile-xml.xml
+    type="profile.flatfile"  → component-types/profile-flatfile.xml
+    type="profile.edi"       → component-types/profile-edi.xml
+    type="profile.db"        → component-types/profile-db.xml
+    type="connector-settings"→ component-types/connector-settings.xml
+    type="connector-action"  → component-types/connector-action.xml
+    type="map"               → component-types/map.xml
+    type="scripting"         → component-types/scripting-mapscript.xml
+                               component-types/scripting-processscript.xml
+    type="processroute"      → component-types/processroute.xml
+    type="crossref"          → component-types/crossref.xml
 -->
 <bns:Component xmlns:bns="http://api.platform.boomi.com/" componentId="{componentId}" version="{version}" name="{componentName}" type="{componentType}" folderFullPath="{folderPath}">
   <bns:object>

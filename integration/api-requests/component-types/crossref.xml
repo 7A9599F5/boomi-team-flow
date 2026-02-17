@@ -1,0 +1,69 @@
+<!--
+  Component Object Reference: Cross Reference Table
+  API type attribute: crossref
+
+  A static lookup table used in Map Functions (Lookup category) to translate
+  values between systems. Supports 2-20 columns and up to 10,000 rows.
+
+  Source: Boomi documentation on Cross Reference Table structure
+  Confidence: MEDIUM
+
+  Key structural points:
+    - Root element: <CrossRefTable xmlns=""> (PascalCase)
+    - matchType: "exact", "regex", or "wildcard"
+    - <headers>: column definitions with ref keys (ref1..ref20)
+    - <rows>: data rows with <col ref="refN"> for each cell
+-->
+
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<bns:Component
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns:bns="http://api.platform.boomi.com/"
+    folderFullPath="Promoted/Lookups"
+    componentId="{uuid}"
+    version="1"
+    name="PROMO - CrossRef - State Code Lookup"
+    type="crossref"
+    createdDate="2026-01-15T10:00:00Z"
+    createdBy="admin@example.com"
+    modifiedDate="2026-02-17T09:00:00Z"
+    modifiedBy="admin@example.com"
+    deleted="false"
+    currentVersion="true"
+    folderName="Lookups"
+    folderId="{folder-id}">
+    <bns:encryptedValues/>
+    <bns:description>Maps state abbreviations to full names and regions</bns:description>
+    <bns:object>
+        <CrossRefTable xmlns="" matchType="exact">
+            <headers>
+                <!-- ref keys are sequential: ref1, ref2, ... ref20 (max 20 columns) -->
+                <header ref="ref1" name="Source Code"/>
+                <header ref="ref2" name="Target Name"/>
+                <header ref="ref3" name="Category"/>
+            </headers>
+            <rows>
+                <row>
+                    <col ref="ref1">CA</col>
+                    <col ref="ref2">California</col>
+                    <col ref="ref3">West</col>
+                </row>
+                <row>
+                    <col ref="ref1">NY</col>
+                    <col ref="ref2">New York</col>
+                    <col ref="ref3">East</col>
+                </row>
+                <row>
+                    <col ref="ref1">TX</col>
+                    <col ref="ref2">Texas</col>
+                    <col ref="ref3">South</col>
+                </row>
+                <row>
+                    <col ref="ref1">IL</col>
+                    <col ref="ref2">Illinois</col>
+                    <col ref="ref3">Central</col>
+                </row>
+            </rows>
+        </CrossRefTable>
+    </bns:object>
+</bns:Component>

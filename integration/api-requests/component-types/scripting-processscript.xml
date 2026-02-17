@@ -1,0 +1,135 @@
+<!--
+  Component Object Reference: Process Script (Scripting Component)
+  API type attribute: scripting
+
+  A reusable Groovy or JavaScript component used inside Data Process steps
+  (Custom Scripting step type). Distinguished from Map Script by scriptType.
+
+  Source: Boomi scripting docs + confirmed real XML from GitHub repos
+  Confidence: HIGH
+
+  Key structural points:
+    - Root element: <scripting xmlns="" scriptType="processscript" language="groovy2">
+    - NO <inputs>/<outputs> (unlike Map Scripts)
+    - Uses dataContext API to iterate over documents
+    - Must call dataContext.storeStream() to pass documents forward
+    - Can use ExecutionUtil for dynamic process properties and logging
+    - <script>: CDATA block with the actual code
+
+  Key APIs available:
+    - dataContext.getDataCount()     — number of documents
+    - dataContext.getStream(i)       — get document InputStream
+    - dataContext.getProperties(i)   — get document Properties
+    - dataContext.storeStream(is, p) — output document to next shape
+    - ExecutionUtil.getDynamicProcessProperty(name)
+    - ExecutionUtil.setDynamicProcessProperty(name, value, persist)
+    - ExecutionUtil.getBaseLogger()  — get Logger for process reporting
+
+  Language values:
+    - "groovy"     — Groovy 1.5 (legacy)
+    - "groovy2"    — Groovy 2.4 (recommended)
+    - "javascript" — JavaScript (Nashorn engine)
+-->
+
+<!-- === GROOVY PROCESS SCRIPT === -->
+
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<bns:Component
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns:bns="http://api.platform.boomi.com/"
+    folderFullPath="Promoted/Scripts"
+    componentId="{uuid}"
+    version="4"
+    name="PROMO - Script - BuildVisitedSet"
+    type="scripting"
+    createdDate="2026-01-15T10:00:00Z"
+    createdBy="admin@example.com"
+    modifiedDate="2026-02-17T09:00:00Z"
+    modifiedBy="admin@example.com"
+    deleted="false"
+    currentVersion="true"
+    folderName="Scripts"
+    folderId="{folder-id}">
+    <bns:encryptedValues/>
+    <bns:description>Builds visited set for recursive dependency traversal in Process B</bns:description>
+    <bns:object>
+        <scripting xmlns="" scriptType="processscript" language="groovy2">
+            <!-- Process scripts have NO input/output declarations -->
+            <!-- They use dataContext API to read/write documents -->
+            <script><![CDATA[
+import java.util.Properties
+import java.io.InputStream
+import java.io.ByteArrayInputStream
+import com.boomi.execution.ExecutionUtil
+import groovy.json.JsonSlurper
+import groovy.json.JsonOutput
+
+def logger = ExecutionUtil.getBaseLogger()
+
+// Read a dynamic process property
+String promotionId = ExecutionUtil.getDynamicProcessProperty("promotionId")
+
+for (int i = 0; i < dataContext.getDataCount(); i++) {
+    InputStream is = dataContext.getStream(i)
+    Properties props = dataContext.getProperties(i)
+
+    // Parse JSON document
+    def json = new JsonSlurper().parse(is)
+
+    // Process the document
+    json.promotionId = promotionId
+    json.processedAt = new Date().format("yyyy-MM-dd'T'HH:mm:ss'Z'")
+
+    // Set a dynamic process property (false = non-persistent)
+    ExecutionUtil.setDynamicProcessProperty("processedCount",
+        String.valueOf(i + 1), false)
+
+    logger.info("Processed document ${i + 1}")
+
+    // Serialize back and store
+    String outJson = JsonOutput.prettyPrint(JsonOutput.toJson(json))
+    InputStream outStream = new ByteArrayInputStream(outJson.getBytes("UTF-8"))
+    dataContext.storeStream(outStream, props)
+}
+            ]]></script>
+        </scripting>
+    </bns:object>
+</bns:Component>
+
+
+<!-- === MINIMAL PROCESS SCRIPT (pass-through) === -->
+
+<!--
+<bns:object>
+    <scripting xmlns="" scriptType="processscript" language="groovy2">
+        <script><![CDATA[
+import java.util.Properties
+import java.io.InputStream
+
+for (int i = 0; i < dataContext.getDataCount(); i++) {
+    InputStream is = dataContext.getStream(i)
+    Properties props = dataContext.getProperties(i)
+    // Pass document through unchanged
+    dataContext.storeStream(is, props)
+}
+        ]]></script>
+    </scripting>
+</bns:object>
+-->
+
+
+<!-- === JAVASCRIPT PROCESS SCRIPT === -->
+
+<!--
+<bns:object>
+    <scripting xmlns="" scriptType="processscript" language="javascript">
+        <script><![CDATA[
+for (var i = 0; i < dataContext.getDataCount(); i++) {
+    var is = dataContext.getStream(i);
+    var props = dataContext.getProperties(i);
+    dataContext.storeStream(is, props);
+}
+        ]]></script>
+    </scripting>
+</bns:object>
+-->

@@ -1,0 +1,140 @@
+<!--
+  Component Object Reference: Connector Operation (Connector Action)
+  API type attribute: connector-action
+
+  Stores behavioral configuration for how to USE a connection: HTTP method,
+  content type, resource path, profile references, headers.
+  IS PROMOTED — contains no credentials; connection/profile IDs are rewritten
+  by rewrite-references.groovy during Process C.
+
+  Source: Boomi developer docs + connector operation reference
+  Confidence: HIGH
+
+  Key structural points:
+    - Root element inside <bns:object>: <GenericConnectorConfig xmlns="">
+    - Same <field id="..."> pattern as connections
+    - subType on Component wrapper: httpclnt, db, disk, sftp, etc.
+    - Profile references (requestProfile, responseProfile) are component UUIDs
+      that get rewritten during promotion
+    - <bns:encryptedValues/> is always empty (no credentials in operations)
+    - Operations reference their parent connection via the process shape XML,
+      NOT within the operation component itself
+
+  How operations reference connections (in process XML):
+    <connector>
+        <connectionId>{connection-component-uuid}</connectionId>
+        <operationId>{operation-component-uuid}</operationId>
+    </connector>
+-->
+
+<!-- === HTTP CLIENT OPERATION — GET (Send action) === -->
+
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<bns:Component
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns:bns="http://api.platform.boomi.com/"
+    folderFullPath="Promoted/Integrations/Ops"
+    componentId="e5f6a7b8-c9d0-1234-efab-345678901234"
+    version="5"
+    name="PROMO - Op - HTTP GET Component"
+    type="connector-action"
+    subType="httpclnt"
+    createdDate="2024-01-15T10:00:00Z"
+    createdBy="admin@example.com"
+    modifiedDate="2024-06-01T12:00:00Z"
+    modifiedBy="admin@example.com"
+    deleted="false"
+    currentVersion="true"
+    folderName="Ops"
+    folderId="RjoxMjM0NTc">
+    <bns:encryptedValues/>
+    <bns:description>HTTP GET operation for fetching component XML from Platform API</bns:description>
+    <bns:object>
+        <GenericConnectorConfig xmlns="">
+            <!-- HTTP Client uses SEND action for both GET and POST -->
+            <field id="action">SEND</field>
+            <field id="httpMethod">GET</field>                           <!-- GET|POST|PUT|DELETE|PATCH -->
+            <field id="contentType">application/xml</field>
+            <!-- Profile references: component UUIDs rewritten by rewrite-references.groovy -->
+            <field id="requestProfile">{request-profile-component-uuid}</field>
+            <field id="responseProfile">{response-profile-component-uuid}</field>
+            <!-- Resource path appended to connection base URL -->
+            <field id="resourcePath">/api/rest/v1/{1}/Component/{2}</field>
+            <field id="returnErrors">true</field>                        <!-- Return 4xx/5xx as documents -->
+            <field id="followRedirects">true</field>
+            <field id="trackingDirection">Output Documents</field>       <!-- Input Documents|Output Documents -->
+            <!-- Static request headers -->
+            <field id="headers">
+                <header name="Accept">application/xml</header>
+                <header name="Content-Type">application/xml</header>
+            </field>
+        </GenericConnectorConfig>
+    </bns:object>
+</bns:Component>
+
+
+<!-- === HTTP CLIENT OPERATION — POST === -->
+
+<!--
+<bns:Component ... type="connector-action" subType="httpclnt"
+    name="PROMO - Op - HTTP POST Query" ...>
+    <bns:encryptedValues/>
+    <bns:object>
+        <GenericConnectorConfig xmlns="">
+            <field id="action">SEND</field>
+            <field id="httpMethod">POST</field>
+            <field id="contentType">application/xml</field>
+            <field id="requestProfile">{request-profile-uuid}</field>
+            <field id="responseProfile">{response-profile-uuid}</field>
+            <field id="resourcePath">/data/v1/{1}/models/{2}/records/query</field>
+            <field id="returnErrors">true</field>
+            <field id="followRedirects">false</field>
+            <field id="trackingDirection">Output Documents</field>
+            <field id="headers">
+                <header name="Accept">application/xml</header>
+                <header name="Content-Type">application/xml</header>
+            </field>
+        </GenericConnectorConfig>
+    </bns:object>
+</bns:Component>
+-->
+
+
+<!-- === DATABASE OPERATION — QUERY === -->
+
+<!--
+<bns:Component ... type="connector-action" subType="db"
+    name="PROMO - Op - DB Query Orders" ...>
+    <bns:encryptedValues/>
+    <bns:object>
+        <GenericConnectorConfig xmlns="">
+            <field id="action">QUERY</field>
+            <field id="statement">SELECT order_id, customer_id, status FROM orders WHERE status = ?</field>
+            <field id="profile">{database-profile-component-uuid}</field>
+            <field id="maxRows">1000</field>
+            <field id="batchSize">100</field>
+            <field id="commitEvery">100</field>
+        </GenericConnectorConfig>
+    </bns:object>
+</bns:Component>
+-->
+
+
+<!-- === DISK OPERATION — GET (read files) === -->
+
+<!--
+<bns:Component ... type="connector-action" subType="disk"
+    name="PROMO - Op - Disk Read Archive" ...>
+    <bns:encryptedValues/>
+    <bns:object>
+        <GenericConnectorConfig xmlns="">
+            <field id="action">GET</field>
+            <field id="fileFilter">*.xml</field>
+            <field id="useSubDir">false</field>
+            <field id="moveFile">false</field>
+            <field id="archiveDir"></field>
+            <field id="maxFiles">100</field>
+        </GenericConnectorConfig>
+    </bns:object>
+</bns:Component>
+-->

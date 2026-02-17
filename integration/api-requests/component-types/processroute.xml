@@ -1,0 +1,95 @@
+<!--
+  Component Object Reference: Process Route
+  API type attribute: processroute
+
+  A Process Route component defines dynamic subprocess selection rules.
+  Referenced by a Process Route step (shapetype="processroute") inside a process.
+
+  Source: Boomi documentation on Process Route component structure
+  Confidence: MEDIUM
+
+  Key structural points:
+    - Root element: <processRoute xmlns=""> (camelCase)
+    - passthrough attribute: whether documents pass through to subprocess
+    - <returnPaths>: named paths for subprocess return documents
+    - <routeKeys>: keys used at runtime to select which subprocess
+    - <routes>: each maps a key-value combination to a subprocess UUID
+-->
+
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<bns:Component
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns:bns="http://api.platform.boomi.com/"
+    folderFullPath="Promoted/Routes"
+    componentId="{uuid}"
+    version="1"
+    name="PROMO - Route - Document Type Router"
+    type="processroute"
+    createdDate="2026-01-15T10:00:00Z"
+    createdBy="admin@example.com"
+    modifiedDate="2026-02-17T09:00:00Z"
+    modifiedBy="admin@example.com"
+    deleted="false"
+    currentVersion="true"
+    folderName="Routes"
+    folderId="{folder-id}">
+    <bns:encryptedValues/>
+    <bns:description>Routes documents to different subprocesses based on document type</bns:description>
+    <bns:object>
+        <processRoute xmlns="" passthrough="false">
+            <returnPaths>
+                <returnPath name="SuccessPath"/>
+                <returnPath name="ErrorPath"/>
+            </returnPaths>
+            <routeKeys>
+                <routeKey name="documentType"/>
+                <routeKey name="sourceSystem"/>
+            </routeKeys>
+            <routes>
+                <!-- Each route maps key-value combinations to a subprocess -->
+                <route processId="{subprocess-component-uuid-1}">
+                    <keyValues>
+                        <keyValue key="documentType" value="Invoice"/>
+                        <keyValue key="sourceSystem" value="SAP"/>
+                    </keyValues>
+                    <returnPathMappings>
+                        <returnPathMapping returnPath="SuccessPath"
+                            returnDocumentShape="{return-doc-shape-name-in-subprocess}"/>
+                    </returnPathMappings>
+                </route>
+                <route processId="{subprocess-component-uuid-2}">
+                    <keyValues>
+                        <keyValue key="documentType" value="PurchaseOrder"/>
+                        <keyValue key="sourceSystem" value="Oracle"/>
+                    </keyValues>
+                    <returnPathMappings>
+                        <returnPathMapping returnPath="SuccessPath"
+                            returnDocumentShape="{return-doc-shape-name}"/>
+                    </returnPathMappings>
+                </route>
+            </routes>
+        </processRoute>
+    </bns:object>
+</bns:Component>
+
+
+<!-- === MINIMAL PROCESS ROUTE (single key, no return paths) === -->
+
+<!--
+<bns:object>
+    <processRoute xmlns="" passthrough="false">
+        <returnPaths/>
+        <routeKeys>
+            <routeKey name="routeKey1"/>
+        </routeKeys>
+        <routes>
+            <route processId="{subprocess-uuid}">
+                <keyValues>
+                    <keyValue key="routeKey1" value="ValueA"/>
+                </keyValues>
+                <returnPathMappings/>
+            </route>
+        </routes>
+    </processRoute>
+</bns:object>
+-->

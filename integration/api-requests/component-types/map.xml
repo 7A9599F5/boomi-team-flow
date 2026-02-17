@@ -1,0 +1,176 @@
+<!--
+  Component Object Reference: Map
+  API type attribute: map
+
+  Transforms data from a source profile to a destination profile with
+  field-to-field mappings and optional functions (built-in, user-defined, scripting).
+
+  Source: Boomi docs + Environment Map Extension XML patterns
+  Confidence: MEDIUM (element/attribute names inferred from docs)
+
+  Key structural points:
+    - Root element: <map xmlns="">
+    - <sourceProfile>: references source profile component by UUID
+    - <destinationProfile>: references destination profile component by UUID
+    - <mappings>: field-to-field connections (sourceElement → destElement)
+    - <functions>: transformation functions applied during mapping
+    - Function types: UpperCase, LowerCase, Concatenate, Substring, DateFormat,
+      Scripting (inline/external), UserDefined (map function component ref),
+      Lookup (cross-ref table ref), and many more
+    - Profile references and map function refs are rewritten during promotion
+
+  Note: Map scripts embedded via <function type="Scripting"> can reference
+  external Map Script components or contain inline Groovy/JavaScript.
+-->
+
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<bns:Component
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns:bns="http://api.platform.boomi.com/"
+    folderFullPath="Promoted/Maps"
+    componentId="{uuid}"
+    version="3"
+    name="PROMO - Map - PromotionResponseTransform"
+    type="map"
+    createdDate="2026-01-15T10:00:00Z"
+    createdBy="admin@example.com"
+    modifiedDate="2026-02-17T09:00:00Z"
+    modifiedBy="admin@example.com"
+    deleted="false"
+    currentVersion="true"
+    folderName="Maps"
+    folderId="{folder-id}">
+    <bns:encryptedValues/>
+    <bns:description>Transforms promotion API response to Flow-consumable format</bns:description>
+    <bns:object>
+        <map xmlns="">
+            <!-- Source profile reference (component UUID rewritten during promotion) -->
+            <sourceProfile
+                component="{source-profile-component-uuid}"
+                componentName="PROMO - Profile - ExecutePromotionRequest"
+                type="profile.json"/>
+
+            <!-- Destination profile reference -->
+            <destinationProfile
+                component="{dest-profile-component-uuid}"
+                componentName="PROMO - Profile - ExecutePromotionResponse"
+                type="profile.json"/>
+
+            <mappings>
+                <!-- Direct field-to-field mapping -->
+                <!-- sourceElement/destElement are numeric IDs from profile element keys -->
+                <mapping
+                    sourceElement="1"
+                    sourceElementName="Root/promotionId"
+                    destElement="1"
+                    destElementName="Root/promotionId"/>
+
+                <mapping
+                    sourceElement="2"
+                    sourceElementName="Root/componentId"
+                    destElement="2"
+                    destElementName="Root/componentId"/>
+
+                <!-- Mapping with function applied (function output → destination) -->
+                <mapping
+                    sourceElement="3"
+                    sourceElementName="Root/status"
+                    destElement="5"
+                    destElementName="Root/statusDisplay"
+                    functionId="FUNC-1"/>
+
+                <!-- Mapping without source (function-only, e.g., static value or date) -->
+                <mapping
+                    destElement="6"
+                    destElementName="Root/processedDate"
+                    functionId="FUNC-2"/>
+            </mappings>
+
+            <functions>
+                <!-- Standard built-in function: uppercase -->
+                <function id="FUNC-1" cacheType="None" type="UpperCase">
+                    <inputs>
+                        <input key="1" name="String to Convert"/>
+                    </inputs>
+                    <outputs>
+                        <output key="1" name="Converted String"/>
+                    </outputs>
+                </function>
+
+                <!-- Date function: current date/time -->
+                <function id="FUNC-2" cacheType="None" type="CurrentDate">
+                    <inputs/>
+                    <outputs>
+                        <output key="1" name="Current Date"/>
+                    </outputs>
+                </function>
+
+                <!-- User-defined map function component reference -->
+                <function id="FUNC-3" cacheType="None" type="UserDefined">
+                    <inputs>
+                        <input key="1" name="inputValue"/>
+                    </inputs>
+                    <outputs>
+                        <output key="1" name="outputValue"/>
+                    </outputs>
+                    <configuration>
+                        <!-- References a Map Function component by UUID -->
+                        <mapFunctionComponent
+                            component="{map-function-component-uuid}"
+                            componentName="Custom Validation Function"/>
+                    </configuration>
+                </function>
+
+                <!-- Inline scripting function (Groovy code in map) -->
+                <function id="FUNC-4" cacheType="None" type="Scripting">
+                    <inputs>
+                        <input key="1" name="inputStr" type="Character" default=""/>
+                    </inputs>
+                    <outputs>
+                        <output key="1" name="outputStr"/>
+                    </outputs>
+                    <configuration>
+                        <script language="groovy2"><![CDATA[
+// inputStr is pre-declared by the mapping engine
+outputStr = inputStr.trim().toLowerCase()
+                        ]]></script>
+                    </configuration>
+                </function>
+
+                <!-- External Map Script component reference -->
+                <function id="FUNC-5" cacheType="None" type="Scripting">
+                    <inputs>
+                        <input key="1" name="rawValue" type="Character" default=""/>
+                    </inputs>
+                    <outputs>
+                        <output key="1" name="cleanedValue"/>
+                    </outputs>
+                    <configuration>
+                        <!-- References a Map Script component instead of inline code -->
+                        <scriptComponent
+                            component="{map-script-component-uuid}"
+                            componentName="Data Cleansing Script"/>
+                    </configuration>
+                </function>
+
+                <!-- Cross Reference Table lookup function -->
+                <function id="FUNC-6" cacheType="None" type="Lookup">
+                    <inputs>
+                        <input key="1" name="Lookup Value"/>
+                    </inputs>
+                    <outputs>
+                        <output key="1" name="Matched Value"/>
+                    </outputs>
+                    <configuration>
+                        <!-- References a Cross Reference Table component -->
+                        <crossRefTable
+                            component="{crossref-component-uuid}"
+                            componentName="State Code Lookup"
+                            sourceRef="ref1"
+                            destRef="ref2"/>
+                    </configuration>
+                </function>
+            </functions>
+        </map>
+    </bns:object>
+</bns:Component>

@@ -18,6 +18,21 @@
     - Response returns the new componentId and version=1
     - The component exists only on the branch until merged to main via MergeRequest
 
+  Component Type Reference (see component-types/ for full <bns:object> examples):
+    type="process"           → component-types/process.xml
+    type="profile.json"      → component-types/profile-json.xml
+    type="profile.xml"       → component-types/profile-xml.xml
+    type="profile.flatfile"  → component-types/profile-flatfile.xml
+    type="profile.edi"       → component-types/profile-edi.xml
+    type="profile.db"        → component-types/profile-db.xml
+    type="connector-settings"→ component-types/connector-settings.xml  (NOT promoted)
+    type="connector-action"  → component-types/connector-action.xml
+    type="map"               → component-types/map.xml
+    type="scripting"         → component-types/scripting-mapscript.xml
+                               component-types/scripting-processscript.xml
+    type="processroute"      → component-types/processroute.xml
+    type="crossref"          → component-types/crossref.xml
+
   HTTP Client Operation Configuration:
     Action: Send
     HTTP Method: POST

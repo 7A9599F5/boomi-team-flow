@@ -1,0 +1,117 @@
+<!--
+  Component Object Reference: EDI Profile
+  API type attribute: profile.edi
+
+  Defines EDI document structures (X12, EDIFACT, TRADACOMS).
+  Typically imported from Boomi's built-in EDI library rather than
+  created element-by-element via the API.
+
+  Source: Boomi EDI documentation + standard EDI naming conventions
+  Confidence: MEDIUM
+
+  Key structural points:
+    - Root element: <EDIProfile xmlns="" modelVersion="2" strict="false">
+    - EDIGeneralInfo: ediStandard, version, transaction, agencyCode
+    - Hierarchy: EDISegment > EDIElement, EDILoop > EDISegment, EDIComposite > EDIElement
+    - EDIElement attrs: mandatory ("M"/"O"), maxLength, minLength
+    - Segment names follow EDI conventions (BEG, N1, PO1, CTT, etc.)
+-->
+
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<bns:Component
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns:bns="http://api.platform.boomi.com/"
+    folderFullPath="Promoted/Profiles/EDI"
+    componentId="{uuid}"
+    version="1"
+    name="X12 850 Purchase Order"
+    type="profile.edi"
+    createdDate="2026-01-15T10:00:00Z"
+    createdBy="admin@example.com"
+    modifiedDate="2026-02-17T09:00:00Z"
+    modifiedBy="admin@example.com"
+    deleted="false"
+    currentVersion="true"
+    folderName="EDI"
+    folderId="{folder-id}">
+    <bns:encryptedValues/>
+    <bns:description>X12 850 Purchase Order v005010</bns:description>
+    <bns:object>
+        <EDIProfile xmlns="" modelVersion="2" strict="false">
+            <ProfileProperties>
+                <!-- ediStandard: X12, EDIFACT, TRADACOMS -->
+                <!-- EDIFACT uses releaseNumber (e.g., "D") and agencyCode ("UN") -->
+                <EDIGeneralInfo ediStandard="X12" version="005010" transaction="850"
+                    releaseNumber="" agencyCode="X"/>
+            </ProfileProperties>
+            <DataElements>
+                <!-- BEG segment: Beginning Segment for Purchase Order -->
+                <EDISegment isNode="true" key="1" maxOccurs="1" minOccurs="1" name="BEG">
+                    <EDIElement dataType="character" isMappable="true" isNode="true" key="2"
+                        mandatory="M" maxLength="2" minLength="2" name="BEG01">
+                        <DataFormat><ProfileCharacterFormat/></DataFormat>
+                    </EDIElement>
+                    <EDIElement dataType="character" isMappable="true" isNode="true" key="3"
+                        mandatory="M" maxLength="2" minLength="2" name="BEG02">
+                        <DataFormat><ProfileCharacterFormat/></DataFormat>
+                    </EDIElement>
+                    <EDIElement dataType="character" isMappable="true" isNode="true" key="4"
+                        mandatory="M" maxLength="22" minLength="1" name="BEG03">
+                        <DataFormat><ProfileCharacterFormat/></DataFormat>
+                    </EDIElement>
+                    <EDIElement dataType="datetime" isMappable="true" isNode="true" key="5"
+                        mandatory="M" maxLength="8" minLength="8" name="BEG05">
+                        <DataFormat><ProfileDateFormat/></DataFormat>
+                    </EDIElement>
+                </EDISegment>
+
+                <!-- N1 Loop: Name/Address information -->
+                <EDILoop isNode="true" key="6" maxOccurs="200" minOccurs="0" name="N1Loop">
+                    <EDISegment isNode="true" key="7" maxOccurs="1" minOccurs="1" name="N1">
+                        <EDIElement dataType="character" isMappable="true" isNode="true" key="8"
+                            mandatory="M" maxLength="3" minLength="2" name="N101">
+                            <DataFormat><ProfileCharacterFormat/></DataFormat>
+                        </EDIElement>
+                        <EDIElement dataType="character" isMappable="true" isNode="true" key="9"
+                            mandatory="O" maxLength="60" minLength="1" name="N102">
+                            <DataFormat><ProfileCharacterFormat/></DataFormat>
+                        </EDIElement>
+                    </EDISegment>
+                </EDILoop>
+
+                <!-- PO1 Loop: Line items -->
+                <EDILoop isNode="true" key="10" maxOccurs="100000" minOccurs="1" name="PO1Loop">
+                    <EDISegment isNode="true" key="11" maxOccurs="1" minOccurs="1" name="PO1">
+                        <EDIElement dataType="character" isMappable="true" isNode="true" key="12"
+                            mandatory="O" maxLength="20" minLength="1" name="PO101">
+                            <DataFormat><ProfileCharacterFormat/></DataFormat>
+                        </EDIElement>
+                        <EDIElement dataType="number" isMappable="true" isNode="true" key="13"
+                            mandatory="M" maxLength="15" minLength="1" name="PO102">
+                            <DataFormat><ProfileNumberFormat/></DataFormat>
+                        </EDIElement>
+                        <!-- Composite data element (sub-elements separated by component separator) -->
+                        <EDIComposite isMappable="false" isNode="true" key="14" mandatory="O" name="PO107">
+                            <EDIElement dataType="character" isMappable="true" isNode="true" key="15"
+                                mandatory="M" maxLength="2" minLength="2" name="PO10701">
+                                <DataFormat><ProfileCharacterFormat/></DataFormat>
+                            </EDIElement>
+                            <EDIElement dataType="character" isMappable="true" isNode="true" key="16"
+                                mandatory="M" maxLength="30" minLength="1" name="PO10702">
+                                <DataFormat><ProfileCharacterFormat/></DataFormat>
+                            </EDIElement>
+                        </EDIComposite>
+                    </EDISegment>
+                </EDILoop>
+
+                <!-- CTT segment: Transaction Totals -->
+                <EDISegment isNode="true" key="17" maxOccurs="1" minOccurs="1" name="CTT">
+                    <EDIElement dataType="number" isMappable="true" isNode="true" key="18"
+                        mandatory="M" maxLength="6" minLength="1" name="CTT01">
+                        <DataFormat><ProfileNumberFormat/></DataFormat>
+                    </EDIElement>
+                </EDISegment>
+            </DataElements>
+        </EDIProfile>
+    </bns:object>
+</bns:Component>

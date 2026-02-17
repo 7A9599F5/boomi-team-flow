@@ -1,0 +1,111 @@
+<!--
+  Component Object Reference: Database Profile (Legacy)
+  API type attribute: profile.db
+
+  Defines database table/query structures for the legacy Database connector.
+  Note: Boomi now recommends Database V2 connector which does not use separate profiles.
+
+  Source: Boomi documentation on Database Profile configuration
+  Confidence: MEDIUM
+
+  Key structural points:
+    - Root element: <DatabaseProfile xmlns="" modelVersion="2" strict="false">
+    - DBGeneralInfo: executionType ("READ" or "WRITE")
+    - READ profiles: DBStatementSettings (type="Select") + DBResultSet + DBParameters
+    - WRITE profiles: DBStatementSettings (type="Insert"|"Update"|"Delete", table="TABLE") + DBFields
+    - DBField attrs: dataType, isOutput (true for results, false for params/write fields)
+-->
+
+<!-- === READ PROFILE (SELECT query) === -->
+
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<bns:Component
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns:bns="http://api.platform.boomi.com/"
+    folderFullPath="Promoted/Profiles/DB"
+    componentId="{uuid}"
+    version="1"
+    name="PROMO - Profile - OrderQueryRead"
+    type="profile.db"
+    createdDate="2026-01-15T10:00:00Z"
+    createdBy="admin@example.com"
+    modifiedDate="2026-02-17T09:00:00Z"
+    modifiedBy="admin@example.com"
+    deleted="false"
+    currentVersion="true"
+    folderName="DB"
+    folderId="{folder-id}">
+    <bns:encryptedValues/>
+    <bns:description>Database read profile for order queries</bns:description>
+    <bns:object>
+        <DatabaseProfile xmlns="" modelVersion="2" strict="false">
+            <ProfileProperties>
+                <DBGeneralInfo executionType="READ"/>
+            </ProfileProperties>
+            <DataElements>
+                <DBStatement isNode="true" key="1" name="Statement">
+                    <!-- type: Select, StoredProcedureRead -->
+                    <DBStatementSettings type="Select"/>
+                    <!-- Result columns (isOutput="true") -->
+                    <DBResultSet isNode="true" key="2" name="Results">
+                        <DBField dataType="number" isMappable="true" isNode="true"
+                            isOutput="true" key="3" name="ORDER_ID">
+                            <DataFormat><ProfileNumberFormat/></DataFormat>
+                        </DBField>
+                        <DBField dataType="character" isMappable="true" isNode="true"
+                            isOutput="true" key="4" name="CUSTOMER_NAME">
+                            <DataFormat><ProfileCharacterFormat/></DataFormat>
+                        </DBField>
+                        <DBField dataType="character" isMappable="true" isNode="true"
+                            isOutput="true" key="5" name="STATUS">
+                            <DataFormat><ProfileCharacterFormat/></DataFormat>
+                        </DBField>
+                        <DBField dataType="datetime" isMappable="true" isNode="true"
+                            isOutput="true" key="6" name="CREATED_DATE">
+                            <DataFormat><ProfileDateFormat/></DataFormat>
+                        </DBField>
+                    </DBResultSet>
+                    <!-- WHERE clause parameters (isOutput="false") -->
+                    <DBParameters isNode="true" key="7" name="Parameters">
+                        <DBField dataType="character" isMappable="true" isNode="true"
+                            isOutput="false" key="8" name="STATUS_FILTER">
+                            <DataFormat><ProfileCharacterFormat/></DataFormat>
+                        </DBField>
+                    </DBParameters>
+                </DBStatement>
+            </DataElements>
+        </DatabaseProfile>
+    </bns:object>
+</bns:Component>
+
+
+<!-- === WRITE PROFILE (INSERT) === -->
+
+<!--
+<bns:object>
+    <DatabaseProfile xmlns="" modelVersion="2" strict="false">
+        <ProfileProperties>
+            <DBGeneralInfo executionType="WRITE"/>
+        </ProfileProperties>
+        <DataElements>
+            <DBStatement isNode="true" key="1" name="Statement">
+                <DBStatementSettings table="AUDIT_LOG" type="Insert"/>
+                <DBFields isNode="true" key="2" name="Fields">
+                    <DBField dataType="character" isMappable="true" isNode="true"
+                        isOutput="false" key="3" name="LOG_ID">
+                        <DataFormat><ProfileCharacterFormat/></DataFormat>
+                    </DBField>
+                    <DBField dataType="character" isMappable="true" isNode="true"
+                        isOutput="false" key="4" name="ACTION">
+                        <DataFormat><ProfileCharacterFormat/></DataFormat>
+                    </DBField>
+                    <DBField dataType="datetime" isMappable="true" isNode="true"
+                        isOutput="false" key="5" name="CREATED_AT">
+                        <DataFormat><ProfileDateFormat/></DataFormat>
+                    </DBField>
+                </DBFields>
+            </DBStatement>
+        </DataElements>
+    </DatabaseProfile>
+</bns:object>
+-->

@@ -1,0 +1,152 @@
+<!--
+  Component Object Reference: Connection (Connector Settings)
+  API type attribute: connector-settings
+
+  Stores environment-specific connection settings: URLs, credentials, SSL config.
+  NOT PROMOTED — connections are pre-configured in prod by admins and mapped via
+  ComponentMapping DataHub records.
+
+  Source: Boomi developer docs + connector configuration reference
+  Confidence: HIGH
+
+  Key structural points:
+    - Root element inside <bns:object>: <GenericConnectorConfig xmlns="">
+    - All settings stored as <field id="...">value</field> key-value pairs
+    - subType on Component wrapper identifies connector: httpclnt, db, disk, sftp, ftp, etc.
+    - Encrypted fields stored as <EncryptedValue> inside <field>
+    - <bns:encryptedValues> uses XPath to track which fields are encrypted
+    - strip-env-config.groovy empties: password, host, url, port, EncryptedValue,
+      apiKey, apiToken, secretKey, clientSecret, connectionString, jdbcUrl,
+      privateKey, keystorePassword, proxyPassword (plus regex catch-all)
+
+  IMPORTANT: This component type is NOT promoted. Admin-seeded ComponentMapping
+  records map dev connection IDs → prod connection IDs.
+-->
+
+<!-- === HTTP CLIENT CONNECTION === -->
+
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<bns:Component
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns:bns="http://api.platform.boomi.com/"
+    folderFullPath="Promoted/#Connections"
+    componentId="a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+    version="3"
+    name="PROMO - HTTP Connection - Boomi API"
+    type="connector-settings"
+    subType="httpclnt"
+    createdDate="2024-01-15T10:00:00Z"
+    createdBy="admin@example.com"
+    modifiedDate="2024-06-01T12:00:00Z"
+    modifiedBy="admin@example.com"
+    deleted="false"
+    currentVersion="true"
+    folderName="#Connections"
+    folderId="RjoxMjM0NTY">
+    <bns:encryptedValues>
+        <!-- XPath expressions pointing into <bns:object> to identify encrypted fields -->
+        <bns:encryptedValue path="//GenericConnectorConfig/field[@id='password']/text()" isSet="true"/>
+    </bns:encryptedValues>
+    <bns:description>HTTP Client connection for Boomi Platform REST API calls</bns:description>
+    <bns:object>
+        <GenericConnectorConfig xmlns="">
+            <field id="url">https://api.boomi.com</field>               <!-- STRIPPED by strip-env-config -->
+            <field id="authType">basic</field>                           <!-- none|basic|passworddigest|custom|ntlm|oauth|oauth2|awssig -->
+            <field id="username">BOOMI_TOKEN.user@example.com</field>
+            <field id="password">
+                <EncryptedValue>AQEDAHh...base64ciphertext...==</EncryptedValue>  <!-- STRIPPED -->
+            </field>
+            <field id="cookieScope">none</field>                         <!-- none|process|account -->
+            <field id="connectTimeout">30000</field>                     <!-- milliseconds -->
+            <field id="readTimeout">120000</field>                       <!-- milliseconds -->
+            <!-- SSL Options (when configured):
+            <field id="clientCertificate">{certComponentId}</field>
+            <field id="trustAllCerts">false</field>
+            -->
+        </GenericConnectorConfig>
+    </bns:object>
+</bns:Component>
+
+
+<!-- === DATABASE CONNECTION === -->
+
+<!--
+<bns:Component ... type="connector-settings" subType="db" name="PROMO - DB Connection - Oracle" ...>
+    <bns:encryptedValues>
+        <bns:encryptedValue path="//GenericConnectorConfig/field[@id='password']/text()" isSet="true"/>
+    </bns:encryptedValues>
+    <bns:object>
+        <GenericConnectorConfig xmlns="">
+            <field id="host">oracle-dev.internal.example.com</field>     STRIPPED
+            <field id="port">1521</field>                                 STRIPPED
+            <field id="dbName">ERPPRD</field>
+            <field id="dbType">Oracle</field>
+            <field id="jdbcUrl">jdbc:oracle:thin:@host:1521:ERPPRD</field>  STRIPPED
+            <field id="username">erp_boomi_user</field>
+            <field id="password">
+                <EncryptedValue>AQEDAHh...base64ciphertext...==</EncryptedValue>  STRIPPED
+            </field>
+            <field id="maxPoolSize">10</field>
+            <field id="minPoolSize">1</field>
+        </GenericConnectorConfig>
+    </bns:object>
+</bns:Component>
+-->
+
+
+<!-- === SFTP CONNECTION === -->
+
+<!--
+<bns:Component ... type="connector-settings" subType="sftp" name="PROMO - SFTP Connection" ...>
+    <bns:encryptedValues>
+        <bns:encryptedValue path="//GenericConnectorConfig/field[@id='password']/text()" isSet="true"/>
+        <bns:encryptedValue path="//GenericConnectorConfig/field[@id='privateKey']/text()" isSet="true"/>
+    </bns:encryptedValues>
+    <bns:object>
+        <GenericConnectorConfig xmlns="">
+            <field id="host">sftp.partner.example.com</field>            STRIPPED
+            <field id="port">22</field>                                   STRIPPED
+            <field id="username">boomi_transfer</field>
+            <field id="authType">password</field>
+            <field id="password">
+                <EncryptedValue>AQEDAHh...base64ciphertext...==</EncryptedValue>  STRIPPED
+            </field>
+            <field id="privateKey">
+                <EncryptedValue>AQEDAHh...base64ciphertext...==</EncryptedValue>  STRIPPED
+            </field>
+            <field id="connectTimeout">30000</field>
+        </GenericConnectorConfig>
+    </bns:object>
+</bns:Component>
+-->
+
+
+<!-- === DISK CONNECTION === -->
+
+<!--
+<bns:Component ... type="connector-settings" subType="disk" name="PROMO - Disk Connection" ...>
+    <bns:encryptedValues/>
+    <bns:object>
+        <GenericConnectorConfig xmlns="">
+            <field id="path">/data/boomi/archive</field>
+        </GenericConnectorConfig>
+    </bns:object>
+</bns:Component>
+-->
+
+
+<!-- === AFTER strip-env-config.groovy (sensitive fields emptied) === -->
+
+<!--
+<GenericConnectorConfig xmlns="">
+    <field id="url"></field>
+    <field id="authType">basic</field>
+    <field id="username">BOOMI_TOKEN.user@example.com</field>
+    <field id="password">
+        <EncryptedValue></EncryptedValue>
+    </field>
+    <field id="cookieScope">none</field>
+    <field id="connectTimeout">30000</field>
+    <field id="readTimeout">120000</field>
+</GenericConnectorConfig>
+-->

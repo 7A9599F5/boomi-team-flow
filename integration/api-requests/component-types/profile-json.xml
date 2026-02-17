@@ -1,0 +1,155 @@
+<!--
+  Component Object Reference: JSON Profile
+  API type attribute: profile.json
+
+  Defines the structure of a JSON document for use in Maps, Connectors, and
+  Data Process steps. Most common profile type in the PROMO system.
+
+  Source: Real exported component XML from boomilabs/boomiComponent GitHub repo
+  Confidence: HIGH
+
+  Key structural points:
+    - Root element: <JSONProfile xmlns="" strict="false">
+    - Hierarchy: JSONRootValue > JSONObject > JSONObjectEntry
+    - Arrays: JSONArray (elementType="repeating") > JSONArrayElement > JSONObject
+    - Each leaf element has: dataType, isMappable, isNode, key (sequential int), name
+    - Data types: "character", "number", "boolean", "datetime"
+    - DataFormat child: ProfileCharacterFormat, ProfileNumberFormat, ProfileDateFormat
+    - Boolean fields use empty <DataFormat/> (no sub-element)
+-->
+
+<!-- === PROMO SYSTEM EXAMPLE: executePromotion request profile === -->
+
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<bns:Component
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns:bns="http://api.platform.boomi.com/"
+    folderFullPath="PROMO/Profiles"
+    componentId="{uuid}"
+    version="1"
+    name="PROMO - Profile - ExecutePromotionRequest"
+    type="profile.json"
+    createdDate="2026-01-15T10:00:00Z"
+    createdBy="admin@example.com"
+    modifiedDate="2026-02-17T09:00:00Z"
+    modifiedBy="admin@example.com"
+    deleted="false"
+    currentVersion="true"
+    folderName="Profiles"
+    folderId="{folder-id}">
+    <bns:encryptedValues/>
+    <bns:description>Request profile for executePromotion message action</bns:description>
+    <bns:object>
+        <JSONProfile xmlns="" strict="false">
+            <DataElements>
+                <JSONRootValue dataType="character" isMappable="true" isNode="true" key="1" name="Root">
+                    <DataFormat>
+                        <ProfileCharacterFormat/>
+                    </DataFormat>
+                    <JSONObject isMappable="false" isNode="true" key="2" name="Object">
+
+                        <!-- Simple string field -->
+                        <JSONObjectEntry dataType="character" isMappable="true" isNode="true" key="3" name="promotionId">
+                            <DataFormat>
+                                <ProfileCharacterFormat/>
+                            </DataFormat>
+                        </JSONObjectEntry>
+
+                        <JSONObjectEntry dataType="character" isMappable="true" isNode="true" key="4" name="devAccountId">
+                            <DataFormat>
+                                <ProfileCharacterFormat/>
+                            </DataFormat>
+                        </JSONObjectEntry>
+
+                        <JSONObjectEntry dataType="character" isMappable="true" isNode="true" key="5" name="packageId">
+                            <DataFormat>
+                                <ProfileCharacterFormat/>
+                            </DataFormat>
+                        </JSONObjectEntry>
+
+                        <JSONObjectEntry dataType="character" isMappable="true" isNode="true" key="6" name="initiatedBy">
+                            <DataFormat>
+                                <ProfileCharacterFormat/>
+                            </DataFormat>
+                        </JSONObjectEntry>
+
+                        <!-- Array of objects -->
+                        <JSONObjectEntry dataType="character" isMappable="true" isNode="true" key="7" name="components">
+                            <DataFormat>
+                                <ProfileCharacterFormat/>
+                            </DataFormat>
+                            <JSONArray elementType="repeating" isMappable="false" isNode="true" key="8" name="Array">
+                                <JSONArrayElement dataType="character" isMappable="true" isNode="true" key="9" maxOccurs="-1" minOccurs="0" name="ArrayElement1">
+                                    <DataFormat>
+                                        <ProfileCharacterFormat/>
+                                    </DataFormat>
+                                    <JSONObject isMappable="false" isNode="true" key="10" name="Object">
+                                        <JSONObjectEntry dataType="character" isMappable="true" isNode="true" key="11" name="componentId">
+                                            <DataFormat>
+                                                <ProfileCharacterFormat/>
+                                            </DataFormat>
+                                        </JSONObjectEntry>
+                                        <JSONObjectEntry dataType="character" isMappable="true" isNode="true" key="12" name="componentType">
+                                            <DataFormat>
+                                                <ProfileCharacterFormat/>
+                                            </DataFormat>
+                                        </JSONObjectEntry>
+                                        <JSONObjectEntry dataType="character" isMappable="true" isNode="true" key="13" name="componentName">
+                                            <DataFormat>
+                                                <ProfileCharacterFormat/>
+                                            </DataFormat>
+                                        </JSONObjectEntry>
+                                    </JSONObject>
+                                </JSONArrayElement>
+                            </JSONArray>
+                        </JSONObjectEntry>
+
+                    </JSONObject>
+                    <Qualifiers>
+                        <QualifierList/>
+                    </Qualifiers>
+                </JSONRootValue>
+            </DataElements>
+            <tagLists/>
+        </JSONProfile>
+    </bns:object>
+</bns:Component>
+
+
+<!-- === DATA TYPE EXAMPLES === -->
+
+<!--
+  Number field:
+  <JSONObjectEntry dataType="number" isMappable="true" isNode="true" key="N" name="quantity">
+      <DataFormat>
+          <ProfileNumberFormat/>
+      </DataFormat>
+  </JSONObjectEntry>
+
+  Boolean field:
+  <JSONObjectEntry dataType="boolean" isMappable="true" isNode="true" key="N" name="isActive">
+      <DataFormat/>
+  </JSONObjectEntry>
+
+  DateTime field:
+  <JSONObjectEntry dataType="datetime" isMappable="true" isNode="true" key="N" name="createdDate">
+      <DataFormat>
+          <ProfileDateFormat/>
+      </DataFormat>
+  </JSONObjectEntry>
+
+  Nested object:
+  <JSONObjectEntry dataType="character" isMappable="true" isNode="true" key="N" name="address">
+      <DataFormat>
+          <ProfileCharacterFormat/>
+      </DataFormat>
+      <JSONObject isMappable="false" isNode="true" key="N+1" name="Object">
+          <JSONObjectEntry dataType="character" isMappable="true" isNode="true" key="N+2" name="street">
+              <DataFormat><ProfileCharacterFormat/></DataFormat>
+          </JSONObjectEntry>
+          <JSONObjectEntry dataType="character" isMappable="true" isNode="true" key="N+3" name="city">
+              <DataFormat><ProfileCharacterFormat/></DataFormat>
+          </JSONObjectEntry>
+      </JSONObject>
+  </JSONObjectEntry>
+-->

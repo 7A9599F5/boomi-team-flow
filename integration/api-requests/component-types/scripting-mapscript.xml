@@ -1,0 +1,96 @@
+<!--
+  Component Object Reference: Map Script (Scripting Component)
+  API type attribute: scripting
+
+  A reusable Groovy or JavaScript function used inside Map components for
+  custom field transformation logic. Distinguished from Process Script by
+  the scriptType attribute.
+
+  Source: Boomi scripting docs + Map Function component reference
+  Confidence: MEDIUM-HIGH
+
+  Key structural points:
+    - Root element: <scripting xmlns="" scriptType="mapscript" language="groovy2">
+    - <inputs>: named input variables with data type
+    - <outputs>: named output variables (type inferred)
+    - <script>: CDATA block with the actual code
+    - Input data types: Character (default), Date, Integer, Float
+    - Input variables are pre-declared by the mapping engine — do NOT redeclare
+    - Output variables must be assigned a value
+    - Map scripts CANNOT use dataContext or ExecutionUtil (those are Process Script only)
+    - Map scripts CANNOT make network calls or access the file system
+
+  Language values:
+    - "groovy"     — Groovy 1.5 (legacy)
+    - "groovy2"    — Groovy 2.4 (recommended)
+    - "javascript" — JavaScript (Nashorn engine)
+-->
+
+<!-- === GROOVY MAP SCRIPT === -->
+
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<bns:Component
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns:bns="http://api.platform.boomi.com/"
+    folderFullPath="Promoted/Scripts"
+    componentId="{uuid}"
+    version="2"
+    name="PROMO - MapScript - FormatComponentName"
+    type="scripting"
+    createdDate="2026-01-15T10:00:00Z"
+    createdBy="admin@example.com"
+    modifiedDate="2026-02-17T09:00:00Z"
+    modifiedBy="admin@example.com"
+    deleted="false"
+    currentVersion="true"
+    folderName="Scripts"
+    folderId="{folder-id}">
+    <bns:encryptedValues/>
+    <bns:description>Formats component names for display in Flow dashboard</bns:description>
+    <bns:object>
+        <scripting xmlns="" scriptType="mapscript" language="groovy2">
+            <inputs>
+                <!-- Input variables with data types -->
+                <!-- Character is default; Date, Integer, Float also available -->
+                <input name="componentName" type="Character"/>
+                <input name="prefix" type="Character"/>
+            </inputs>
+            <outputs>
+                <!-- Output variables (type inferred by engine) -->
+                <output name="formattedName"/>
+            </outputs>
+            <script><![CDATA[
+// Inputs are pre-declared — do NOT redeclare them with def/String
+// Character inputs are never null (empty string if no source value)
+// Date/Integer/Float inputs CAN be null
+
+if (componentName == null || componentName.isEmpty()) {
+    formattedName = ""
+} else {
+    formattedName = prefix + " - " + componentName.trim()
+}
+            ]]></script>
+        </scripting>
+    </bns:object>
+</bns:Component>
+
+
+<!-- === JAVASCRIPT MAP SCRIPT === -->
+
+<!--
+<bns:object>
+    <scripting xmlns="" scriptType="mapscript" language="javascript">
+        <inputs>
+            <input name="jsonString" type="Character"/>
+        </inputs>
+        <outputs>
+            <output name="parsedValue"/>
+        </outputs>
+        <script><![CDATA[
+// JavaScript map script (Nashorn engine)
+var obj = JSON.parse(jsonString);
+parsedValue = obj.value || "";
+        ]]></script>
+    </scripting>
+</bns:object>
+-->
