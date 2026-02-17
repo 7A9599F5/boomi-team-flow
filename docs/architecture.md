@@ -377,3 +377,89 @@ The `devAccountId` parameter in several message actions (particularly Process C 
 /flow/              - Flow dashboard structure and page layouts
 /docs/              - Build guide and architecture reference
 ```
+
+## Extension Editor Architecture
+
+### Purpose
+
+The Extension Editor provides a professional, role-based interface for managing Boomi Environment Extensions and Map Extensions directly within the Flow dashboard. It replaces the native Boomi UI's all-or-nothing access model with fine-grained, process-level access control, supports client (sub-account) environments, and enables Test-to-Production extension copying — capabilities that don't exist in vanilla Boomi.
+
+### Extension Types
+
+The editor manages two types of Boomi extensions:
+
+| Type | API Object | Partial Update | Phase |
+|------|-----------|----------------|-------|
+| **Environment Extensions** | `EnvironmentExtensions` | Yes (`partial="true"`) | Phase 1 — full editing |
+| **Map Extensions** | `EnvironmentMapExtension` | No (full replacement) | Phase 1 read-only + copy; Phase 2 editing |
+
+Environment Extensions include: connections, operations, trading partners, shared communications, cross-reference tables, process properties, dynamic process properties, and PGP certificates. Map Extensions define field mapping overrides for deployed maps.
+
+### Access Control Model
+
+Access is enforced through a cached authorization chain stored in the **ExtensionAccessMapping** DataHub model:
+
+```
+EnvironmentExtensions (GET by environmentId)
+  └── <component id="{prodComponentId}">
+        └── ExtensionAccessMapping (DataHub: environmentId + prodComponentId)
+              ├── authorizedSsoGroups → user SSO groups check
+              ├── isConnectionExtension → admin-only gate
+              └── isSharedComponent → impact warning
+```
+
+**Role-based rules:**
+- **ADMIN** (`ABC_BOOMI_FLOW_ADMIN`): Full edit access to all extension types including connections
+- **CONTRIBUTOR** (authorized SSO group): Edit non-connection extensions for processes originating from their dev account
+- **CONTRIBUTOR** (unauthorized): View-only for extensions outside their scope
+- **Connection extensions**: Always admin-only (passwords, hosts, API keys — cross-team blast radius)
+
+The cache is refreshed automatically by Process D after each deployment, computing: extension component → ComponentMapping → DevAccountAccess → SSO groups.
+
+### Client Account Support
+
+Client accounts (sub-accounts that consume Integration Packs) are managed through the **ClientAccountConfig** DataHub model, which maps SSO groups to client accounts and caches their Test/Production environment IDs.
+
+The Test-to-Production copy workflow:
+1. GET extensions from Test environment (via Partner API `overrideAccount`)
+2. Strip connections and PGP certificates (different credentials per environment)
+3. Set `partial="true"` to preserve existing Production connection config
+4. POST transformed extensions to Production environment
+
+Encrypted values (passwords, API keys) are never returned in GET responses and cannot be copied — they must be configured independently per environment.
+
+### New Integration Processes
+
+| Code | Action | Purpose |
+|------|--------|---------|
+| **K** | `listClientAccounts` | SSO group → accessible client accounts + environments |
+| **L** | `getExtensions` | Read env extensions + map summaries + access data, merged response |
+| **M** | `updateExtensions` | Save env extension changes (partial update, access-validated) |
+| **N** | `copyExtensionsTestToProd` | Copy non-connection env extensions from Test to Prod |
+| **O** | `updateMapExtension` | Save map extension changes (Phase 2; Phase 1 read-only) |
+
+### Custom React Component
+
+The **ExtensionEditor** component is a custom Boomi Flow component using the legacy runtime (`manywho.component.register`), matching the XmlDiffViewer pattern. Key features:
+
+- **Process-centric tree navigation**: Extensions organized by process in a left panel, not by the Boomi tab/dropdown model
+- **Inline-editable property table**: Click-to-edit with type-appropriate inputs
+- **Shared resource banner**: Components used by 2+ processes show impact warning with confirmation dialog
+- **DPP banner**: Dynamic process properties show "environment-wide" warning (cannot reliably trace DPP→process)
+- **Connection banner**: Admin-only indicator with lock icon for connection extensions
+- **Undo/Redo**: Session-level edit history via `useReducer`
+- **Fuzzy search**: Client-side search across all extension names and values
+
+Data flows as JSON-serialized strings through Flow values (`extensionData`, `accessMappings`). The component parses these client-side, maintaining a local edit state, and serializes changes back to Flow values on save. Backend operations (load, save, copy) are triggered via Flow outcomes that invoke message steps.
+
+### Key Design Decisions
+
+| Decision | Choice | Rationale |
+|----------|--------|-----------|
+| Extension data as JSON strings | Serialized in profile fields | Avoids deeply nested Flow objectData complexity |
+| Cached access model | ExtensionAccessMapping DataHub model | 1 query vs N queries per page load; pre-computed auth chain |
+| Connection admin-only | Backend + UI enforcement | Security: passwords, cross-team blast radius |
+| Map extensions read-only (Phase 1) | UPDATE deletes omitted mappings | Too risky without field-level granularity |
+| Partial updates only | `partial="true"` always | Full update risks wiping unmodified extensions |
+| Process-centric tree nav | Not tab/dropdown | Maps to Boomi's natural hierarchy; reduces clicks from 6+ to 1 |
+| Shared resource union access | Both teams get edit access | Both teams' processes are affected by shared extension changes |
