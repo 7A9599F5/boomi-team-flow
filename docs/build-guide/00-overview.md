@@ -109,7 +109,7 @@ F (Mapping CRUD) → A0 (Get Dev Accounts) → E (Query Status) → E2 (Query Pe
 | `/datahub/api-requests/` | Test XML for DataHub CRUD validation (5 files) | Phase 1, 6, 7 |
 | `/integration/profiles/` | JSON request/response profiles (38 files, 19 message actions × 2) | Phase 3, 7 |
 | `/integration/scripts/` | Groovy scripts for XML manipulation (10 files) | Phase 3, 7 |
-| `/integration/api-requests/` | API request templates (28 files) | Phase 2, 3, 7 |
+| `/integration/api-requests/` | API request templates (27 files) | Phase 2, 3, 7 |
 | `/integration/flow-service/` | Flow Service component specification | Phase 4 |
 | `/flow/` | Flow app structure and page layouts (11 files) | Phase 5, 7 |
 | `/docs/` | This guide and architecture reference | All |

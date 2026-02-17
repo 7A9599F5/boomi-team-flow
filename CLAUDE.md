@@ -57,7 +57,7 @@ datahub/
 integration/
   profiles/            38 JSON request/response profiles (19 message actions × 2)
   scripts/             10 Groovy scripts (dependency traversal, sorting, stripping, validation, rewriting, XML normalization, test deployment filtering, extension access cache, connection stripping for copy, extension data merging)
-  api-requests/        28 XML/JSON Platform API templates (Component CRUD, PackagedComponent, DeployedPackage, IntegrationPack, Branch, MergeRequest, Environment Extensions, Map Extensions)
+  api-requests/        27 XML/JSON Platform API templates (Component CRUD, PackagedComponent, DeployedPackage, IntegrationPack, Branch, MergeRequest, Environment Extensions, Map Extensions)
   flow-service/        Flow Service specification (message actions, config, error codes)
 flow/
   flow-structure.md    App structure — 3 swimlanes, 11 pages, Flow values, navigation
@@ -113,7 +113,7 @@ Located in `integration/scripts/`, these run as Data Process steps inside Integr
 ## Working with the Build Guide
 
 - **Count references are scattered** — when changing component counts (processes, profiles, pages, actions, types), grep `docs/build-guide/`, `.claude/skills/`, `.claude/rules/`, and `CHANGELOG.md` for stale numbers. Key files: `00-overview.md`, `index.md`, `14-flow-service.md`, `15-flow-dashboard-developer.md`, `18-troubleshooting.md`, `19-appendix-naming-and-inventory.md`, `22-api-automation-guide.md`
-- **Current component counts** (verify before editing): 124 total — 5 models, 2 connections, 27 HTTP ops, 10 DH ops, 38 profiles, 18 processes, 19 FSS ops, 1 Flow Service, 2 custom components, 1 Flow connector, 1 Flow app, 10 scripts, 28 API request templates
+- **Current component counts** (verify before editing): 124 total — 5 models, 2 connections, 27 HTTP ops, 10 DH ops, 38 profiles, 18 processes, 19 FSS ops, 1 Flow Service, 2 custom components, 1 Flow connector, 1 Flow app, 10 scripts, 27 API request templates
 - **BOM total must be recomputed** — the total in `00-overview.md` drifts when individual row counts change. Always sum the rows: Models + Connections + HTTP Ops + DH Ops + Profiles + Processes + FSS Ops + Flow Service + Custom Component + Flow Connector + Flow App
 - **Spec files are source of truth** — `datahub/models/*.json`, `integration/profiles/*.json`, `flow/flow-structure.md`, and `flow/page-layouts/` define the system. Build guide docs must match them.
 - **Nav footer pattern** — every build guide file ends with `Prev: [...] | Next: [...] | [Back to Index](index.md)`
