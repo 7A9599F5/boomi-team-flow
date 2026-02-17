@@ -1,0 +1,39 @@
+{
+  "_comment": "POST https://api.boomi.com/partner/api/rest/v1/{primaryAccountId}/Branch/query",
+  "_notes": [
+    "Queries all branches in the account to enforce the branch limit before creation",
+    "Uses an empty QueryFilter to return all branches",
+    "Count the results — if >= 15, reject with BRANCH_LIMIT_REACHED",
+    "Called by Process C (step 3.5) before creating a promotion branch"
+  ],
+  "_http_operation": {
+    "method": "POST",
+    "url": "/partner/api/rest/v1/{primaryAccountId}/Branch/query",
+    "urlParameters": {
+      "{primaryAccountId}": "DPP: primaryAccountId"
+    },
+    "headers": {
+      "Accept": "application/json",
+      "Content-Type": "application/json"
+    }
+  },
+  "_response_structure": {
+    "numberOfResults": "integer — total branch count",
+    "result": [
+      {
+        "@type": "Branch",
+        "branchId": "string — unique branch ID",
+        "name": "string — branch name",
+        "ready": "boolean — whether branch is ready for use",
+        "createdDate": "string — ISO 8601 timestamp",
+        "createdBy": "string — email of creator"
+      }
+    ]
+  },
+  "QueryFilter": {
+    "expression": {
+      "operator": "and",
+      "nestedExpression": []
+    }
+  }
+}

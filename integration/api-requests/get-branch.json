@@ -1,0 +1,29 @@
+{
+  "_comment": "GET https://api.boomi.com/partner/api/rest/v1/{primaryAccountId}/Branch/{branchId}",
+  "_notes": [
+    "Retrieves a single branch by ID to poll for readiness after creation",
+    "Poll with 5-second delay, max 6 retries (30 seconds total)",
+    "Branch is ready when ready=true in the response",
+    "Called by Process C (step 3.8) after creating a promotion branch",
+    "If branch never becomes ready, error with BRANCH_CREATION_TIMEOUT and delete branch"
+  ],
+  "_http_operation": {
+    "method": "GET",
+    "url": "/partner/api/rest/v1/{primaryAccountId}/Branch/{branchId}",
+    "urlParameters": {
+      "{primaryAccountId}": "DPP: primaryAccountId",
+      "{branchId}": "DPP: branchId"
+    },
+    "headers": {
+      "Accept": "application/json"
+    }
+  },
+  "_response_structure": {
+    "@type": "Branch",
+    "branchId": "string — unique branch ID",
+    "name": "string — branch name (e.g., promo-{promotionId})",
+    "ready": "boolean — true when branch is ready for component writes",
+    "createdDate": "string — ISO 8601 timestamp",
+    "createdBy": "string — email of creator"
+  }
+}

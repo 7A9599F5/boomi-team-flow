@@ -1,0 +1,30 @@
+{
+  "_comment": "DELETE https://api.boomi.com/partner/api/rest/v1/{primaryAccountId}/Branch/{branchId}",
+  "_notes": [
+    "Deletes a promotion branch — called on ALL terminal paths",
+    "Idempotent: 200 = deleted, 404 = already deleted (both are success)",
+    "Must be called even on error paths to avoid branch leakage",
+    "Process C: on error, delete branch in outer catch before returning",
+    "Process D: after successful merge and packaging, delete as final cleanup",
+    "Reject/Deny: delete branch when promotion is rejected or denied"
+  ],
+  "_http_operation": {
+    "method": "DELETE",
+    "url": "/partner/api/rest/v1/{primaryAccountId}/Branch/{branchId}",
+    "urlParameters": {
+      "{primaryAccountId}": "DPP: primaryAccountId",
+      "{branchId}": "DPP: branchId"
+    },
+    "headers": {
+      "Accept": "application/json"
+    },
+    "successCodes": [200, 404],
+    "errorCodes": [429, 503]
+  },
+  "_lifecycle_paths": {
+    "approve": "Process D: merge → package → deploy → DELETE branch",
+    "reject": "Peer review reject → DELETE branch",
+    "deny": "Admin deny → DELETE branch",
+    "error": "Process C outer catch → DELETE branch before error response"
+  }
+}

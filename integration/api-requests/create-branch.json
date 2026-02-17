@@ -21,7 +21,7 @@
     "method": "POST",
     "url": "/partner/api/rest/v1/{primaryAccountId}/Branch/query",
     "body": "<QueryFilter xmlns='http://api.platform.boomi.com/'/>",
-    "threshold": 18,
+    "threshold": 15,
     "errorCode": "BRANCH_LIMIT_REACHED",
     "errorMessage": "Too many active promotions. Please wait for pending reviews to complete."
   },

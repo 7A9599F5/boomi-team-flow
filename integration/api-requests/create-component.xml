@@ -2,7 +2,7 @@
   CREATE Component in Primary Account via Partner API
 
   HTTP Method: POST
-  URL: https://api.boomi.com/partner/api/rest/v1/{primaryAccountId}/Component
+  URL: https://api.boomi.com/partner/api/rest/v1/{primaryAccountId}/Component~{branchId}
 
   Headers:
     Accept: application/xml
@@ -10,18 +10,21 @@
 
   Notes:
     - componentId should be EMPTY or omitted for creation (API assigns new ID)
+    - Tilde syntax (~{branchId}) writes the new component to the promotion branch instead of main
     - folderFullPath: /Promoted{devFolderFullPath} - mirrors the dev account's folder hierarchy under /Promoted/
       (e.g., dev path /DevTeamARoot/Orders/MyProcess/ becomes /Promoted/DevTeamARoot/Orders/MyProcess/)
       Folders are auto-created by the API if they don't exist
     - The <bns:object> contains the stripped and reference-rewritten XML from dev
     - Response returns the new componentId and version=1
+    - The component exists only on the branch until merged to main via MergeRequest
 
   HTTP Client Operation Configuration:
     Action: Send
     HTTP Method: POST
-    Request URL: /partner/api/rest/v1/{1}/Component
+    Request URL: /partner/api/rest/v1/{1}/Component~{2}
     Request URL Parameters:
       {1} = Dynamic Process Property: primaryAccountId
+      {2} = Dynamic Process Property: branchId
 -->
 <bns:Component xmlns:bns="http://api.platform.boomi.com/" name="{componentName}" type="{componentType}" folderFullPath="/Promoted{devFolderFullPath}">
   <bns:object>
