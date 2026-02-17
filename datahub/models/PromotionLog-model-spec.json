@@ -55,7 +55,7 @@
     {
       "name": "status",
       "type": "String",
-      "description": "Current promotion status. Process C writes COMPLETED (all components promoted successfully) or FAILED (any component failed — branch deleted). Intermediate statuses (PENDING_PEER_REVIEW, PENDING_ADMIN_APPROVAL, TEST_DEPLOYED) are set by downstream processes. PARTIALLY_COMPLETED is NOT a valid status — the fail-fast policy ensures binary outcomes. Full lifecycle: IN_PROGRESS → COMPLETED → TEST_DEPLOYING → TEST_DEPLOYED (for test deployments) or IN_PROGRESS → COMPLETED → PENDING_PEER_REVIEW → PEER_APPROVED → PENDING_ADMIN_REVIEW → ADMIN_APPROVED → DEPLOYED (for production deployments). Rejection branches: PENDING_PEER_REVIEW → PEER_REJECTED, PENDING_ADMIN_REVIEW → ADMIN_REJECTED.",
+      "description": "Current promotion status. Process C writes COMPLETED (all components promoted successfully) or FAILED (any component failed — branch deleted). Intermediate statuses (PENDING_PEER_REVIEW, PENDING_ADMIN_APPROVAL, TEST_DEPLOYED) are set by downstream processes. PARTIALLY_COMPLETED is NOT a valid status — the fail-fast policy ensures binary outcomes. Full lifecycle: IN_PROGRESS → COMPLETED → TEST_DEPLOYING → TEST_DEPLOYED (for test deployments) or IN_PROGRESS → COMPLETED → PENDING_PEER_REVIEW → PEER_APPROVED → PENDING_ADMIN_REVIEW → ADMIN_APPROVED → DEPLOYED (for production deployments). Rejection branches: PENDING_PEER_REVIEW → PEER_REJECTED, PENDING_ADMIN_REVIEW → ADMIN_REJECTED. Withdrawal branches: PENDING_PEER_REVIEW → WITHDRAWN, PENDING_ADMIN_REVIEW → WITHDRAWN.",
       "required": true,
       "matchField": false
     },
@@ -247,6 +247,20 @@
       "description": "SSO user email who initiated the test→production promotion",
       "required": false,
       "matchField": false
+    },
+    {
+      "name": "withdrawnAt",
+      "type": "Date",
+      "description": "Timestamp when the promotion was withdrawn by the initiator (format: yyyy-MM-dd'T'HH:mm:ss.SSS'Z')",
+      "required": false,
+      "matchField": false
+    },
+    {
+      "name": "withdrawalReason",
+      "type": "String",
+      "description": "Optional reason for withdrawal provided by the initiator (up to 500 characters)",
+      "required": false,
+      "matchField": false
     }
   ],
   "matchRules": [
@@ -260,9 +274,9 @@
     {
       "name": "PROMOTION_ENGINE",
       "type": "contribute-only",
-      "description": "Written by promotion engine at start (IN_PROGRESS), updated at completion by Process C with exactly COMPLETED or FAILED (the only two terminal statuses from Process C — fail-fast policy guarantees no partial state), updated during test deployment lifecycle (TEST_DEPLOYING/TEST_DEPLOYED/TEST_DEPLOY_FAILED), and updated by peer review (Process E2) and admin review (Process E3) during the 2-layer approval workflow"
+      "description": "Written by promotion engine at start (IN_PROGRESS), updated at completion by Process C with exactly COMPLETED or FAILED (the only two terminal statuses from Process C — fail-fast policy guarantees no partial state), updated during test deployment lifecycle (TEST_DEPLOYING/TEST_DEPLOYED/TEST_DEPLOY_FAILED), and updated by peer review (Process E2) and admin review (Process E3) during the 2-layer approval workflow, and updated by Process E5 on withdrawal (status=WITHDRAWN, branchId cleared, withdrawnAt/withdrawalReason set)"
     }
   ],
   "dataQualitySteps": [],
-  "notes": "This model provides complete audit trail for compliance and troubleshooting. The promotion engine creates a record at the start of each promotion (status=IN_PROGRESS) and updates it when complete. For test deployments (targetEnvironment=TEST), the record transitions through TEST_DEPLOYING → TEST_DEPLOYED and the branch is preserved for future production review. For production deployments, the record enters a 2-layer approval workflow: peer review (peerReviewStatus) followed by admin review (adminReviewStatus). Emergency hotfixes (isHotfix=true) go directly to production with full reviews but skip the test-first requirement — hotfixJustification is required. When a test deployment is promoted to production, the new PRODUCTION record links back via testPromotionId. Self-review prevention is enforced at the backend level (reviewer cannot equal initiatedBy). The resultDetail field stores structured JSON for detailed analysis of individual component outcomes. The branchId field tracks the Boomi Branching promotion branch lifecycle — set on creation, cleared after cleanup (note: for test deployments, the branch persists through the test→production lifecycle for diff/audit purposes). The processName and integrationPackId fields enable smart Integration Pack suggestions for repeat promotions."
+  "notes": "This model provides complete audit trail for compliance and troubleshooting. The promotion engine creates a record at the start of each promotion (status=IN_PROGRESS) and updates it when complete. For test deployments (targetEnvironment=TEST), the record transitions through TEST_DEPLOYING → TEST_DEPLOYED and the branch is preserved for future production review. For production deployments, the record enters a 2-layer approval workflow: peer review (peerReviewStatus) followed by admin review (adminReviewStatus). Emergency hotfixes (isHotfix=true) go directly to production with full reviews but skip the test-first requirement — hotfixJustification is required. When a test deployment is promoted to production, the new PRODUCTION record links back via testPromotionId. Self-review prevention is enforced at the backend level (reviewer cannot equal initiatedBy). The resultDetail field stores structured JSON for detailed analysis of individual component outcomes. The branchId field tracks the Boomi Branching promotion branch lifecycle — set on creation, cleared after cleanup (note: for test deployments, the branch persists through the test→production lifecycle for diff/audit purposes). Contributors can withdraw their own promotions while in PENDING_PEER_REVIEW or PENDING_ADMIN_REVIEW status via Process E5 — the branch is deleted, status set to WITHDRAWN, and withdrawnAt/withdrawalReason recorded. The processName and integrationPackId fields enable smart Integration Pack suggestions for repeat promotions."
 }

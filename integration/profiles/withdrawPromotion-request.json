@@ -1,0 +1,5 @@
+{
+  "promotionId": "string",
+  "initiatorEmail": "string",
+  "reason": ""
+}

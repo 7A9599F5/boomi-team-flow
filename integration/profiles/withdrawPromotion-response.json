@@ -1,0 +1,10 @@
+{
+  "success": true,
+  "errorCode": "",
+  "errorMessage": "",
+  "promotionId": "string",
+  "previousStatus": "string",
+  "newStatus": "WITHDRAWN",
+  "branchDeleted": true,
+  "message": "string"
+}
