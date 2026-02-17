@@ -307,12 +307,14 @@ curl -s -u "BOOMI_TOKEN.user@company.com:your-api-token" \
     {"name": "prodAccountId", "type": "String", "required": true},
     {"name": "devPackageId", "type": "String", "required": true},
     {"name": "prodPackageId", "type": "String", "required": false},
-    /* ... 34 fields — see /datahub/models/PromotionLog-model-spec.json for complete list */
+    /* ... 37 fields — see /datahub/models/PromotionLog-model-spec.json for complete list */
     {"name": "testPromotionId", "type": "String", "required": false},
     {"name": "testDeployedAt", "type": "Date", "required": false},
     {"name": "testIntegrationPackId", "type": "String", "required": false},
     {"name": "testIntegrationPackName", "type": "String", "required": false},
-    {"name": "promotedFromTestBy", "type": "String", "required": false}
+    {"name": "promotedFromTestBy", "type": "String", "required": false},
+    {"name": "withdrawnAt", "type": "Date", "required": false},
+    {"name": "withdrawalReason", "type": "String", "required": false}
   ],
   "matchRules": [{"type": "EXACT", "fields": ["promotionId"]}],
   "sources": [
@@ -338,12 +340,14 @@ $body = @'
     {"name": "prodAccountId", "type": "String", "required": true},
     {"name": "devPackageId", "type": "String", "required": true},
     {"name": "prodPackageId", "type": "String", "required": false},
-    /* ... 34 fields -- see /datahub/models/PromotionLog-model-spec.json for complete list */
+    /* ... 37 fields -- see /datahub/models/PromotionLog-model-spec.json for complete list */
     {"name": "testPromotionId", "type": "String", "required": false},
     {"name": "testDeployedAt", "type": "Date", "required": false},
     {"name": "testIntegrationPackId", "type": "String", "required": false},
     {"name": "testIntegrationPackName", "type": "String", "required": false},
-    {"name": "promotedFromTestBy", "type": "String", "required": false}
+    {"name": "promotedFromTestBy", "type": "String", "required": false},
+    {"name": "withdrawnAt", "type": "Date", "required": false},
+    {"name": "withdrawalReason", "type": "String", "required": false}
   ],
   "matchRules": [{"type": "EXACT", "fields": ["promotionId"]}],
   "sources": [
@@ -407,7 +411,7 @@ Invoke-RestMethod -Uri "https://api.boomi.com/mdm/api/rest/v1/{accountId}/reposi
   -Method GET -Headers $headers
 ```
 
-**Verify:** GET the model endpoint and confirm the response shows status `"DEPLOYED"`, 34 fields, 1 match rule, and source `PROMOTION_ENGINE`.
+**Verify:** GET the model endpoint and confirm the response shows status `"DEPLOYED"`, 37 fields, 1 match rule, and source `PROMOTION_ENGINE`.
 
 #### Via UI (Manual Fallback)
 
@@ -452,6 +456,8 @@ Invoke-RestMethod -Uri "https://api.boomi.com/mdm/api/rest/v1/{accountId}/reposi
 | `testIntegrationPackId` | String | No | No | Test Integration Pack ID |
 | `testIntegrationPackName` | String | No | No | Test Integration Pack name |
 | `promotedFromTestBy` | String | No | No | Email of user who initiated test→production promotion |
+| `withdrawnAt` | Date | No | No | Timestamp of withdrawal (format: `yyyy-MM-dd'T'HH:mm:ss.SSS'Z'`) |
+| `withdrawalReason` | String | No | No | Optional reason for withdrawal (up to 500 chars) |
 
 **PromotionLog Status Values** — The `status` field tracks the full promotion lifecycle across 5 paths (promotion, peer review, admin review, deployment, failure):
 
@@ -467,6 +473,7 @@ Invoke-RestMethod -Uri "https://api.boomi.com/mdm/api/rest/v1/{accountId}/reposi
 | `ADMIN_APPROVED` | Admin approved, ready for deployment |
 | `TEST_DEPLOYING` | Test deployment in progress |
 | `TEST_DEPLOYED` | Test deployment completed, ready for production promotion |
+| `WITHDRAWN` | Promotion withdrawn by initiator before review completion |
 
 > **Fail-Fast Policy**: Process C uses a fail-fast approach — if any component fails during promotion, the entire promotion branch is deleted and the status is set to `FAILED`. There is no partial state; promotions are either fully `COMPLETED` or `FAILED`. This simplifies recovery (just re-run the promotion) and prevents Process D from merging incomplete branches to main.
 
@@ -474,7 +481,7 @@ Invoke-RestMethod -Uri "https://api.boomi.com/mdm/api/rest/v1/{accountId}/reposi
 5. Source: `PROMOTION_ENGINE` (Contribute Only).
 6. Skip Data Quality. **Save --> Publish --> Deploy**.
 
-**Verify:** Model shows 34 fields, 1 match rule, source `PROMOTION_ENGINE`.
+**Verify:** Model shows 37 fields, 1 match rule, source `PROMOTION_ENGINE`.
 
 ### Step 1.4 -- Seed DevAccountAccess Data
 

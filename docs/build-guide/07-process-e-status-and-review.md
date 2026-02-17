@@ -352,7 +352,167 @@ Wrap the DataHub Query in a **Try/Catch**. Catch block builds error response wit
 
 ---
 
-### Testing — Processes E2, E3, E4
+### Process E5: Withdraw Promotion (`PROMO - Withdraw Promotion`)
+
+This process allows the original initiator to withdraw their promotion while it is awaiting review. It validates ownership and status, deletes the promotion branch, and updates the PromotionLog to WITHDRAWN status.
+
+#### Profiles
+
+| Profile | Source File |
+|---------|------------|
+| `PROMO - Profile - WithdrawPromotionRequest` | `/integration/profiles/withdrawPromotion-request.json` |
+| `PROMO - Profile - WithdrawPromotionResponse` | `/integration/profiles/withdrawPromotion-response.json` |
+
+The request JSON contains:
+- `promotionId` (string, required): the promotion ID to withdraw
+- `initiatorEmail` (string, required): email of the user requesting withdrawal; must match `initiatedBy`
+- `reason` (string, optional): reason for withdrawal (up to 500 characters)
+
+The response JSON contains:
+- `success`, `errorCode`, `errorMessage` (standard error contract)
+- `promotionId` (string): echoed back for confirmation
+- `previousStatus` (string): the status before withdrawal
+- `newStatus` (string): always `WITHDRAWN` on success
+- `branchDeleted` (boolean): true if the branch was successfully deleted (or already absent)
+- `message` (string): human-readable confirmation message
+
+#### FSS Operation
+
+Create `PROMO - FSS Op - WithdrawPromotion` following the pattern in [Step 14 (Flow Service Setup)](14-flow-service.md). Configure the operation with `PROMO - Profile - WithdrawPromotionRequest` as the request profile and `PROMO - Profile - WithdrawPromotionResponse` as the response profile. Link it to the `PROMO - Withdraw Promotion` process.
+
+#### DPP Initialization
+
+| DPP Name | Initial Value | Purpose |
+|----------|--------------|---------|
+| `promotionId` | (from request) | Target promotion to withdraw |
+| `initiatorEmail` | (from request) | Requester's email for ownership check |
+| `reason` | (from request) | Optional withdrawal reason |
+| `initiatedBy` | (from DataHub query) | Original submitter email for ownership check |
+| `currentStatus` | (from DataHub query) | Current promotion status for validation |
+| `branchId` | (from DataHub query) | Branch ID for deletion |
+| `previousStatus` | (from DPP) | Captured before status update |
+| `branchDeleted` | `"false"` | Set to `"true"` after successful branch deletion |
+| `responseMessage` | `""` | Human-readable confirmation message |
+
+#### Canvas — Shape by Shape
+
+1. **Start shape** — Connector = Boomi Flow Services Server, Action = Listen, Operation = `PROMO - FSS Op - WithdrawPromotion`
+
+2. **Set Properties — Read Request**
+   - DPP `promotionId` = document path: `promotionId`
+   - DPP `initiatorEmail` = document path: `initiatorEmail`
+   - DPP `reason` = document path: `reason`
+
+3. **DataHub Query — Fetch Promotion Record**
+   - Connector: `PROMO - DataHub Connection`
+   - Operation: `PROMO - DH Op - Query PromotionLog`
+   - Filter: `promotionId EQUALS` DPP `promotionId`
+   - If no record found: build error response with `success = false`, `errorCode = "PROMOTION_NOT_FOUND"`, `errorMessage = "Promotion not found: {promotionId}"` → **Return Documents** (exit)
+   - Extract from the returned record:
+     - DPP `initiatedBy` = `initiatedBy` field
+     - DPP `currentStatus` = `status` field
+     - DPP `branchId` = `branchId` field
+   - DPP `previousStatus` = DPP `currentStatus` (capture before update)
+
+4. **Decision — Status Validation**
+   - **Decision shape**: Check if DPP `currentStatus` equals `"PENDING_PEER_REVIEW"` OR `"PENDING_ADMIN_REVIEW"`
+   - Groovy script evaluation (Data Process shape):
+   ```groovy
+   import com.boomi.execution.ExecutionUtil
+   import java.util.logging.Logger
+
+   Logger logger = Logger.getLogger("PROMO.E5.StatusValidation")
+
+   try {
+       String currentStatus = ExecutionUtil.getDynamicProcessProperty("currentStatus")
+       boolean isWithdrawable = (currentStatus == "PENDING_PEER_REVIEW" || currentStatus == "PENDING_ADMIN_REVIEW")
+       ExecutionUtil.setDynamicProcessProperty("isWithdrawable", isWithdrawable ? "true" : "false", false)
+
+       if (!isWithdrawable) {
+           logger.warning("Withdrawal rejected: promotion status is " + currentStatus +
+               " (expected PENDING_PEER_REVIEW or PENDING_ADMIN_REVIEW)")
+       }
+   } catch (Exception e) {
+       logger.severe("Status validation failed: " + e.getMessage())
+       throw new Exception("Status validation failed: " + e.getMessage())
+   }
+   ```
+   - **Decision shape**: DPP `isWithdrawable` **EQUALS** `"false"`
+     - **YES (not withdrawable)**: Build error response with `success = false`, `errorCode = "INVALID_PROMOTION_STATUS"`, `errorMessage = "Cannot withdraw promotion with status {currentStatus}; expected PENDING_PEER_REVIEW or PENDING_ADMIN_REVIEW"` → **Return Documents** (exit)
+     - **NO (withdrawable)**: Continue to step 5
+
+5. **Decision — Ownership Validation**
+   - Groovy script evaluation (Data Process shape):
+   ```groovy
+   import com.boomi.execution.ExecutionUtil
+   import java.util.logging.Logger
+
+   Logger logger = Logger.getLogger("PROMO.E5.OwnershipValidation")
+
+   try {
+       String initiatorEmail = ExecutionUtil.getDynamicProcessProperty("initiatorEmail")
+       String initiatedBy = ExecutionUtil.getDynamicProcessProperty("initiatedBy")
+
+       // Case-insensitive comparison — mandatory for Azure AD compatibility
+       boolean isOwner = initiatorEmail.toLowerCase() == initiatedBy.toLowerCase()
+       ExecutionUtil.setDynamicProcessProperty("isOwner", isOwner ? "true" : "false", false)
+
+       if (!isOwner) {
+           logger.warning("Withdrawal rejected: " + initiatorEmail +
+               " is not the initiator (" + initiatedBy + ") of promotion " +
+               ExecutionUtil.getDynamicProcessProperty("promotionId"))
+       }
+   } catch (Exception e) {
+       logger.severe("Ownership validation failed: " + e.getMessage())
+       throw new Exception("Ownership validation failed: " + e.getMessage())
+   }
+   ```
+   - **Decision shape**: DPP `isOwner` **EQUALS** `"false"`
+     - **YES (not owner)**: Build error response with `success = false`, `errorCode = "NOT_PROMOTION_INITIATOR"`, `errorMessage = "Only the promotion initiator can withdraw this promotion"` → **Return Documents** (exit)
+     - **NO (is owner)**: Continue to step 6
+
+6. **HTTP Client Send — Delete Promotion Branch**
+   - Connector: `PROMO - Partner API Connection`
+   - Operation: `PROMO - HTTP Op - DELETE Branch`
+   - URL: `/Branch/{branchId}` (substitute DPP `branchId`)
+   - **Idempotent handling**: HTTP 200 (deleted) and HTTP 404 (already absent) are both treated as success → set DPP `branchDeleted` = `"true"`
+   - HTTP 4xx/5xx (except 404): set DPP `branchDeleted` = `"false"`, log warning but continue (branch cleanup is best-effort)
+
+7. **DataHub Update — Record Withdrawal**
+   - Connector: `PROMO - DataHub Connection`
+   - Operation: `PROMO - DH Op - Update PromotionLog`
+   - Build the update XML:
+     - `promotionId` = DPP `promotionId` (match field)
+     - `status` = `"WITHDRAWN"`
+     - `branchId` = `""` (clear the branch reference)
+     - `withdrawnAt` = current timestamp (format: `yyyy-MM-dd'T'HH:mm:ss.SSS'Z'`)
+     - `withdrawalReason` = DPP `reason`
+
+8. **Map — Build Success Response JSON**
+   - Source: DPPs
+   - Destination: `PROMO - Profile - WithdrawPromotionResponse`
+   - Map:
+     - `success` = `true`
+     - `promotionId` = DPP `promotionId`
+     - `previousStatus` = DPP `previousStatus`
+     - `newStatus` = `"WITHDRAWN"`
+     - `branchDeleted` = DPP `branchDeleted`
+     - `message` = `"Promotion {promotionId} withdrawn successfully. Branch deleted."`
+
+9. **Return Documents** — same as Process F
+
+#### Error Handling
+
+Wrap steps 3 through 8 in a **Try/Catch**. Catch block builds error response with `errorCode = "DATAHUB_ERROR"`.
+
+**Error Codes (specific to this process)**:
+- `PROMOTION_NOT_FOUND` — `promotionId` references a non-existent PromotionLog record
+- `INVALID_PROMOTION_STATUS` — promotion is not in `PENDING_PEER_REVIEW` or `PENDING_ADMIN_REVIEW` status
+- `NOT_PROMOTION_INITIATOR` — `initiatorEmail` does not match the promotion's `initiatedBy` field
+
+---
+
+### Testing — Processes E2, E3, E4, E5
 
 #### E2 — queryPeerReviewQueue
 
@@ -379,6 +539,18 @@ Wrap the DataHub Query in a **Try/Catch**. Catch block builds error response wit
 | 1 | Test deployments ready for production | PromotionLog record with `targetEnvironment = "TEST"`, `status = "TEST_DEPLOYED"`, no matching PRODUCTION record | `success = true`, `testDeployments` contains the record |
 | 2 | Test deployment already promoted | Same as Test 1, plus a second PromotionLog record with `targetEnvironment = "PRODUCTION"`, `testPromotionId` = first record's `promotionId`, `status != "FAILED"` | `success = true`, `testDeployments` does NOT contain the first record (filtered out) |
 | 3 | No test deployments | No PromotionLog records with `targetEnvironment = "TEST"` | `success = true`, `testDeployments = []` |
+
+#### E5 — withdrawPromotion
+
+| # | Scenario | Setup | Expected Result |
+|---|----------|-------|-----------------|
+| 1 | Withdraw from PENDING_PEER_REVIEW | PromotionLog record with `status = "PENDING_PEER_REVIEW"`, `initiatedBy = "alice@company.com"`, `branchId` populated. Withdraw with `initiatorEmail = "alice@company.com"` | `success = true`, `previousStatus = "PENDING_PEER_REVIEW"`, `newStatus = "WITHDRAWN"`, `branchDeleted = true`. PromotionLog updated: `status = "WITHDRAWN"`, `branchId = ""`, `withdrawnAt` populated |
+| 2 | Withdraw from PENDING_ADMIN_REVIEW | Same as Test 1 but `status = "PENDING_ADMIN_REVIEW"` | `success = true`, `previousStatus = "PENDING_ADMIN_REVIEW"`, `newStatus = "WITHDRAWN"`, `branchDeleted = true` |
+| 3 | Non-initiator attempts withdrawal | PromotionLog with `initiatedBy = "alice@company.com"`. Withdraw with `initiatorEmail = "bob@company.com"` | `success = false`, `errorCode = "NOT_PROMOTION_INITIATOR"`. PromotionLog unchanged |
+| 4 | Invalid status (COMPLETED) | PromotionLog with `status = "COMPLETED"`. Withdraw attempt | `success = false`, `errorCode = "INVALID_PROMOTION_STATUS"`. PromotionLog unchanged |
+| 5 | Non-existent promotion | Withdraw with `promotionId = "nonexistent-uuid"` | `success = false`, `errorCode = "PROMOTION_NOT_FOUND"` |
+| 6 | Withdraw with reason | Same as Test 1, add `reason = "Selected wrong package"` | `success = true`, `withdrawalReason = "Selected wrong package"` in PromotionLog |
+| 7 | Case-insensitive email match | PromotionLog with `initiatedBy = "alice@company.com"`. Withdraw with `initiatorEmail = "Alice@Company.com"` | `success = true` — case-insensitive match succeeds |
 
 ---
 

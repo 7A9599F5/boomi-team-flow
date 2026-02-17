@@ -28,7 +28,7 @@ Every process needs request and response JSON profiles. Import them once; all pr
 
 JSON profiles can be created programmatically via `POST /Component` with `type="profile.json"`. However, there is no API equivalent for the UI's "Import from JSON" feature — the profile element XML must be constructed manually.
 
-**Recommended workflow:** Create one profile in the UI using the import steps below, then export it via `GET /Component/{profileId}` to capture the internal XML structure. Use that XML as a template for the remaining 25 profiles by modifying field names and types.
+**Recommended workflow:** Create one profile in the UI using the import steps below, then export it via `GET /Component/{profileId}` to capture the internal XML structure. Use that XML as a template for the remaining 27 profiles by modifying field names and types.
 
 **Template** (after capturing XML from a UI-created profile):
 
@@ -72,7 +72,7 @@ See [Appendix D: API Automation Guide](22-api-automation-guide.md#api-first-disc
 3. Click **Import** and select the corresponding file from `/integration/profiles/` (e.g., `manageMappings-request.json`)
 4. Boomi parses the JSON and creates the profile element tree automatically
 5. Click **Save**
-6. Repeat for each of the 26 profiles listed in the master component table:
+6. Repeat for each of the 28 profiles listed in the master component table:
 
 | Profile Name | Source File |
 |-------------|-------------|
@@ -102,6 +102,8 @@ See [Appendix D: API Automation Guide](22-api-automation-guide.md#api-first-disc
 | `PROMO - Profile - QueryTestDeploymentsResponse` | `queryTestDeployments-response.json` |
 | `PROMO - Profile - CancelTestDeploymentRequest` | `cancelTestDeployment-request.json` |
 | `PROMO - Profile - CancelTestDeploymentResponse` | `cancelTestDeployment-response.json` |
+| `PROMO - Profile - WithdrawPromotionRequest` | `withdrawPromotion-request.json` |
+| `PROMO - Profile - WithdrawPromotionResponse` | `withdrawPromotion-response.json` |
 
 #### Adding Groovy Scripts to Data Process Shapes
 
@@ -150,7 +152,7 @@ The Start shape receives the request JSON document from the Flow Service and pla
 
 #### FSS Operation Creation Pattern
 
-Each process requires a corresponding FSS Operation component that links it to a message action in the Flow Service. Create all 13 before building the process canvases, or create each one just before its process.
+Each process requires a corresponding FSS Operation component that links it to a message action in the Flow Service. Create all 14 before building the process canvases, or create each one just before its process.
 
 ##### Via API
 
@@ -197,7 +199,7 @@ Replace `{requestProfileComponentId}` and `{responseProfileComponentId}` with th
 
 > **Note:** The exact XML structure for FSS operation configuration may vary — use the [API-First Discovery Workflow](22-api-automation-guide.md#api-first-discovery-workflow) to capture precise XML from a UI-created operation if the template above does not work directly.
 
-See [Appendix D: API Automation Guide](22-api-automation-guide.md) for a batch creation script covering all 13 operations.
+See [Appendix D: API Automation Guide](22-api-automation-guide.md) for a batch creation script covering all 14 operations.
 
 ##### Via UI (Manual Fallback)
 
@@ -223,6 +225,7 @@ See [Appendix D: API Automation Guide](22-api-automation-guide.md) for a batch c
 | `PROMO - FSS Op - ListIntegrationPacks` | `PROMO - Profile - ListIntegrationPacksRequest` | `PROMO - Profile - ListIntegrationPacksResponse` | `listIntegrationPacks` |
 | `PROMO - FSS Op - QueryTestDeployments` | `PROMO - Profile - QueryTestDeploymentsRequest` | `PROMO - Profile - QueryTestDeploymentsResponse` | `queryTestDeployments` |
 | `PROMO - FSS Op - CancelTestDeployment` | `PROMO - Profile - CancelTestDeploymentRequest` | `PROMO - Profile - CancelTestDeploymentResponse` | `cancelTestDeployment` |
+| `PROMO - FSS Op - WithdrawPromotion` | `PROMO - Profile - WithdrawPromotionRequest` | `PROMO - Profile - WithdrawPromotionResponse` | `withdrawPromotion` |
 
 #### Return Documents Shape
 
@@ -263,9 +266,9 @@ Invoke-RestMethod -Uri "https://api.boomi.com/partner/api/rest/v1/{accountId}/Co
 4. **Batch create** — loop through a list of component definitions, substituting unique values into the template
 
 This workflow is especially valuable for:
-- **26 JSON profiles** — create one, export, template the remaining 25
+- **28 JSON profiles** — create one, export, template the remaining 27
 - **19 HTTP Client operations** — create one, export, template the remaining 18
-- **13 FSS operations** — create one, export, template the remaining 12
+- **14 FSS operations** — create one, export, template the remaining 13
 - **Cross-account migration** — export all components from one account, recreate in another
 
 See [Appendix D: API Automation Guide](22-api-automation-guide.md) for complete batch creation scripts and the dependency-ordered workflow.

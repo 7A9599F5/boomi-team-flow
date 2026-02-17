@@ -13,14 +13,14 @@ This guide walks through building every component of the Promotion System step b
 | 04 | [Phase 3: Process Canvas Fundamentals](04-process-canvas-fundamentals.md) | Phase 3 intro: shapes, profile import, Groovy scripts, DPP pattern, general process skeleton |
 | 05 | [Process F: Mapping CRUD](05-process-f-mapping-crud.md) | Process F — template "hello world" process, fully detailed shape-by-shape |
 | 06 | [Process A0: Get Dev Accounts](06-process-a0-get-dev-accounts.md) | Process A0 — SSO group to dev account access lookup |
-| 07 | [Process E: Query Status](07-process-e-status-and-review.md) | Process E — status queries with optional filtering |
+| 07 | [Process E: Query Status](07-process-e-status-and-review.md) | Processes E, E2-E5 — status queries, peer review, test deployments, withdrawal |
 | 08 | [Process A: List Dev Packages](08-process-a-list-dev-packages.md) | Process A — query PackagedComponents with pagination + name enrichment |
 | 09 | [Process B: Resolve Dependencies](09-process-b-resolve-dependencies.md) | Process B — recursive dependency traversal, mapping lookup, Groovy scripts |
 | 10 | [Process C: Execute Promotion](10-process-c-execute-promotion.md) | Process C — core promotion engine (branch, strip, rewrite, Try/Catch, PromotionLog) |
 | 11 | [Process D: Package and Deploy](11-process-d-package-and-deploy.md) | Process D — merge branch, create PackagedComponent, Integration Pack, deploy |
 | 12 | [Process J: List Integration Packs](12-process-j-list-integration-packs.md) | Process J — query Integration Packs with smart suggestion |
 | 13 | [Process G: Component Diff & Build Order](13-process-g-component-diff.md) | Process G — branch vs main XML diff + normalize-xml.groovy + build order checklist |
-| 14 | [Phase 4: Flow Service Component](14-flow-service.md) | Create Flow Service (13 actions), deploy, configure, verify listeners |
+| 14 | [Phase 4: Flow Service Component](14-flow-service.md) | Create Flow Service (14 actions), deploy, configure, verify listeners |
 | 15 | [Phase 5a: Flow Dashboard — Developer Swimlane](15-flow-dashboard-developer.md) | Install connector + Pages 1-4 (Developer Swimlane) |
 | 16 | [Phase 5b: Flow Dashboard — Review & Admin](16-flow-dashboard-review-admin.md) | Pages 5-9, SSO config, wire navigation, XmlDiffViewer custom component |
 | 17 | [Phase 6: Testing](17-testing.md) | Smoke test + 7 test scenarios |

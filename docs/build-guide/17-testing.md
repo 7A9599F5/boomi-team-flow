@@ -654,7 +654,21 @@ Call `queryTestDeployments` when no promotions are in TEST_DEPLOYED status:
 
 ---
 
-### Test 15 -- Negative / Error Path Tests
+### Test 15 -- Withdrawal Test Scenarios
+
+Validate that Process E5 allows initiators to withdraw pending promotions and correctly rejects invalid withdrawal attempts.
+
+| # | Test Case | Steps | Expected Result |
+|---|-----------|-------|-----------------|
+| 1 | Withdraw pending peer review | Execute promotion → status PENDING_PEER_REVIEW → call withdrawPromotion with matching initiatorEmail | Status → WITHDRAWN, branch deleted, branchId cleared |
+| 2 | Withdraw pending admin review | Execute promotion → peer approve → status PENDING_ADMIN_REVIEW → call withdrawPromotion | Status → WITHDRAWN, branch deleted |
+| 3 | Non-initiator withdrawal rejected | Execute promotion → call withdrawPromotion with different email | Error: NOT_PROMOTION_INITIATOR |
+| 4 | Withdrawal from invalid status | Execute promotion → deploy to test → call withdrawPromotion | Error: INVALID_PROMOTION_STATUS |
+| 5 | Active Promotions panel shows correctly | Log in as user with pending promotions → navigate to Page 1 | Panel visible with correct entries, Withdraw button functional |
+
+---
+
+### Test 16 -- Negative / Error Path Tests
 
 Validate that the system returns correct error codes and messages for known failure scenarios.
 
@@ -732,11 +746,11 @@ Validate that the system returns correct error codes and messages for known fail
 
 ---
 
-### Test 16 -- Multi-Environment Deployment Paths
+### Test 17 -- Multi-Environment Deployment Paths
 
 Validate the 3 distinct deployment paths end-to-end.
 
-#### 16a. Test Deployment Path
+#### 17a. Test Deployment Path
 
 1. Execute a promotion via `executePromotion` — record `branchId` and `promotionId`.
 2. Call `packageAndDeploy` with `deploymentTarget = "TEST"`.
@@ -747,9 +761,9 @@ Validate the 3 distinct deployment paths end-to-end.
 - PromotionLog: `testIntegrationPackId` and `testIntegrationPackName` populated
 - Branch preserved: `GET /Branch/{branchId}` returns 200
 
-#### 16b. Promote from Test to Production
+#### 17b. Promote from Test to Production
 
-After Test 16a completes:
+After Test 17a completes:
 
 1. Call `queryTestDeployments` — verify the test deployment appears.
 2. Call `packageAndDeploy` with `deploymentTarget = "PRODUCTION"` and `testPromotionId` set to the test deployment's `promotionId`.
@@ -760,7 +774,7 @@ After Test 16a completes:
 - Branch deleted: `GET /Branch/{branchId}` returns 404
 - Test deployment excluded from `queryTestDeployments` results
 
-#### 16c. Emergency Hotfix Path
+#### 17c. Emergency Hotfix Path
 
 1. Execute a promotion via `executePromotion`.
 2. Call `packageAndDeploy` with `deploymentTarget = "PRODUCTION"`, `isHotfix = true`, `hotfixJustification = "Critical production bug fix"`.

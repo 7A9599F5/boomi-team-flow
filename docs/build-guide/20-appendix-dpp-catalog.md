@@ -1,6 +1,6 @@
 ## Appendix B: Dynamic Process Properties (DPP) Catalog
 
-This catalog documents every DPP used across all 12 integration processes. Use it for troubleshooting, debugging, and understanding data flow between shapes.
+This catalog documents every DPP used across all 13 integration processes. Use it for troubleshooting, debugging, and understanding data flow between shapes.
 
 ### Global DPPs
 
@@ -8,7 +8,7 @@ These properties are available to all processes via Flow Service component confi
 
 | DPP Name | Type | Set By | Used By | Persist | Description |
 |----------|------|--------|---------|---------|-------------|
-| `primaryAccountId` | String | Flow Service config | All processes (A0, A, B, C, D, E, E2, E3, E4, F, G, J) | N/A | Primary Boomi account ID; used in all Partner API URL parameters |
+| `primaryAccountId` | String | Flow Service config | All processes (A0, A, B, C, D, E, E2, E3, E4, E5, F, G, J) | N/A | Primary Boomi account ID; used in all Partner API URL parameters |
 
 ---
 
@@ -137,6 +137,24 @@ These properties are available to all processes via Flow Service component confi
 |----------|------|--------|---------|---------|-------------|
 | `filterDevAccountId` | String | Set Properties (step 2) | DataHub Query filter (step 3) | false | Optional filter: dev account ID |
 | `filterInitiatedBy` | String | Set Properties (step 2) | DataHub Query filter (step 3) | false | Optional filter: submitter email |
+
+---
+
+### Process E5: Withdraw Promotion
+
+| DPP Name | Type | Set By | Used By | Persist | Description |
+|----------|------|--------|---------|---------|-------------|
+| `promotionId` | String | Set Properties (step 2) | DataHub Query (step 3), DataHub Update (step 7), Map (step 8) | false | Target promotion to withdraw |
+| `initiatorEmail` | String | Set Properties (step 2) | Ownership Validation (step 5) | false | Requester's email |
+| `reason` | String | Set Properties (step 2) | DataHub Update (step 7) | false | Optional withdrawal reason |
+| `initiatedBy` | String | DataHub Query (step 3) | Ownership Validation (step 5) | false | Original submitter email |
+| `currentStatus` | String | DataHub Query (step 3) | Status Validation (step 4) | false | Current promotion status |
+| `branchId` | String | DataHub Query (step 3) | HTTP Client -- DELETE Branch (step 6) | false | Branch ID for deletion |
+| `previousStatus` | String | DataHub Query (step 3) | Map (step 8) | false | Status before withdrawal |
+| `isWithdrawable` | String | Status Validation (step 4) | Decision (step 4) | false | Whether status allows withdrawal |
+| `isOwner` | String | Ownership Validation (step 5) | Decision (step 5) | false | Whether requester is initiator |
+| `branchDeleted` | String | HTTP Client (step 6) | Map (step 8) | false | Whether branch was successfully deleted |
+| `responseMessage` | String | Map (step 8) | Return Documents (step 9) | false | Human-readable confirmation |
 
 ---
 

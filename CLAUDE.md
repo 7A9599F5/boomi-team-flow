@@ -13,13 +13,13 @@ This is **not a traditional software codebase** — there is no build system, pa
 ```
 Flow Dashboard (3 swimlanes: Dev + Peer Review + Admin, 9 pages)
   ↓ Message Actions (Flow Service)
-Integration Engine (12 processes A0–G + E2, E3, E4, J on Public Boomi Cloud Atom)
+Integration Engine (13 processes A0–G + E2, E3, E4, E5, J on Public Boomi Cloud Atom)
   ↓                    ↓
 Platform API        DataHub
 (Partner API)       (ComponentMapping, DevAccountAccess, PromotionLog)
 ```
 
-**12 Integration Processes:**
+**13 Integration Processes:**
 - **A0** getDevAccounts — SSO group → dev account access lookup
 - **A** listDevPackages — query dev account's PackagedComponents
 - **B** resolveDependencies — recursive dependency traversal + mapping lookup
@@ -29,6 +29,7 @@ Platform API        DataHub
 - **E2** queryPeerReviewQueue — query PENDING_PEER_REVIEW promotions, exclude own
 - **E3** submitPeerReview — record peer approve/reject with self-review prevention
 - **E4** queryTestDeployments — query test-deployed promotions ready for production
+- **E5** withdrawPromotion — initiator-driven withdrawal of pending promotions
 - **F** manageMappings — CRUD on ComponentMapping records
 - **G** generateComponentDiff — fetch branch vs main component XML for diff rendering
 - **J** listIntegrationPacks — query Integration Packs with smart suggestion from history
@@ -47,7 +48,7 @@ datahub/
   models/              3 DataHub model specs (JSON) — ComponentMapping, DevAccountAccess, PromotionLog
   api-requests/        Golden record test XML templates
 integration/
-  profiles/            26 JSON request/response profiles (13 message actions × 2)
+  profiles/            28 JSON request/response profiles (14 message actions × 2)
   scripts/             7 Groovy scripts (dependency traversal, sorting, stripping, validation, rewriting, XML normalization, test deployment filtering)
   api-requests/        20 XML/JSON Platform API templates (Component CRUD, PackagedComponent, DeployedPackage, IntegrationPack, Branch, MergeRequest)
   flow-service/        Flow Service specification (message actions, config, error codes)
@@ -64,7 +65,7 @@ docs/
 
 1. `docs/architecture.md` — system design and key decisions
 2. `docs/build-guide/index.md` — the implementation playbook (6 phases, 22 focused files)
-3. `integration/flow-service/flow-service-spec.md` — complete API contract for all 13 message actions
+3. `integration/flow-service/flow-service-spec.md` — complete API contract for all 14 message actions
 4. `flow/flow-structure.md` — dashboard navigation, Flow values, swimlanes
 
 ## Groovy Scripts
@@ -91,10 +92,11 @@ Located in `integration/scripts/`, these run as Data Process steps inside Integr
 
 - **Commit messages**: conventional commits — `feat(scope):`, `fix(scope):`, `docs:`, etc.
 - **Spec files**: Markdown for documentation, JSON for data models/profiles, XML for API request templates, Groovy for scripts
-- **Naming**: processes use letter codes (A0, A–G, J); message actions use camelCase (`getDevAccounts`, `executePromotion`)
+- **Naming**: processes use letter codes (A0, A–G, E5, J); message actions use camelCase (`getDevAccounts`, `executePromotion`, `withdrawPromotion`)
 - **Error codes**: uppercase snake_case (`MISSING_CONNECTION_MAPPINGS`, `COMPONENT_NOT_FOUND`, `BRANCH_LIMIT_REACHED`)
 - **SSO group names** — always use claim format `ABC_BOOMI_FLOW_CONTRIBUTOR`, `ABC_BOOMI_FLOW_ADMIN`, etc. Never use display format (`"Boomi Developers"`) as authorization values
 - **Branch limits** — operational threshold is 15, platform hard limit is 20. Grep for stale values (10, 18) when editing branch-related content
+- **Fail-fast promotion** — Process C deletes the promotion branch on any component failure. Only `COMPLETED` or `FAILED` are valid Process C outcomes; `PARTIALLY_COMPLETED` is not a valid status. Process D gates on `COMPLETED` or `TEST_DEPLOYED` before merging.
 
 ## Working with the Build Guide
 

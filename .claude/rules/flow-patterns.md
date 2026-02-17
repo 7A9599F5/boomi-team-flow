@@ -73,6 +73,7 @@ globs:
   - `queryPeerReviewQueue` (Process E2)
   - `submitPeerReview` (Process E3)
   - `queryTestDeployments` (Process E4)
+  - `withdrawPromotion` (Process E5)
   - `manageMappings` (Process F)
   - `generateComponentDiff` (Process G)
   - `listIntegrationPacks` (Process J)
