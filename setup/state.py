@@ -23,6 +23,7 @@ def _empty_component_ids() -> dict:
         "http_operations": {},
         "dh_operations": {},
         "profiles": {},
+        "scripts": {},
         "fss_operations": {},
         "processes": {},
         "flow_service": None,

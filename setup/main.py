@@ -17,7 +17,7 @@ def _build_registry(
     platform_api: PlatformApi | None,
     datahub_api: DataHubApi | None,
 ) -> StepRegistry:
-    """Build the step registry with all 30 steps across 6 phases."""
+    """Build the step registry with all 31 steps across 6 phases."""
     from setup.steps.phase1_datahub import (
         CreateModel, CreateRepo, CreateSources, SeedDevAccess, TestCrud,
     )
@@ -28,7 +28,7 @@ def _build_registry(
         CreateDhConn, CreateDhOps, DiscoverDhTemplate, GetDhToken, VerifyPhase2,
     )
     from setup.steps.phase3_integration import (
-        BuildProcesses, CreateFssOps, CreateProfiles,
+        BuildProcesses, CreateFssOps, CreateProfiles, CreateScripts,
         DiscoverFssTemplate, DiscoverProfileTemplate, VerifyPhase3,
     )
     from setup.steps.phase4_flow_service import (
@@ -67,6 +67,7 @@ def _build_registry(
     # Phase 3: Integration
     registry.register(_make(DiscoverProfileTemplate))
     registry.register(_make(CreateProfiles))
+    registry.register(_make(CreateScripts))
     registry.register(_make(DiscoverFssTemplate))
     registry.register(_make(CreateFssOps))
     registry.register(_make(BuildProcesses))
