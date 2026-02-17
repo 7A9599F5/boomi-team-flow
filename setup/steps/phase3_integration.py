@@ -3,10 +3,10 @@ from __future__ import annotations
 
 from setup.engine import StepStatus, StepType
 from setup.generators.profile_xml import generate_profile_xml
-from setup.generators.script_xml import SCRIPT_NAME_MAP, generate_script_xml
+from setup.generators.script_xml import SCRIPT_NAME_MAP, generate_script_xml, script_stem_to_component_name
 from setup.state import SetupState
 from setup.steps.base import BaseStep
-from setup.templates.loader import list_profiles, load_profile_schema, load_template
+from setup.templates.loader import list_profiles, load_template
 from setup.ui import console as ui
 from setup.ui.prompts import collect_component_id, guide_and_wait, guide_and_confirm
 
@@ -66,11 +66,11 @@ PROCESS_BUILD_ORDER = [
     ("C", "PROMO - Process C - ExecutePromotion", "10-process-c-execute-promotion.md"),
     ("D", "PROMO - Process D - PackageAndDeploy", "11-process-d-package-and-deploy.md"),
     # Phase 7: Extension Editor
-    ("K", "PROMO - Process K - ListClientAccounts", "16-process-k-list-client-accounts.md"),
-    ("L", "PROMO - Process L - GetExtensions", "16-process-l-get-extensions.md"),
-    ("M", "PROMO - Process M - UpdateExtensions", "16-process-m-update-extensions.md"),
-    ("N", "PROMO - Process N - CopyExtensionsTestToProd", "16-process-n-copy-extensions.md"),
-    ("O", "PROMO - Process O - UpdateMapExtension", "16-process-o-update-map-extension.md"),
+    ("K", "PROMO - Process K - ListClientAccounts", "20-process-k-list-client-accounts.md"),
+    ("L", "PROMO - Process L - GetExtensions", "20-process-l-get-extensions.md"),
+    ("M", "PROMO - Process M - UpdateExtensions", "20-process-m-update-extensions.md"),
+    ("N", "PROMO - Process N - CopyExtensionsTestToProd", "20-process-n-copy-extensions.md"),
+    ("O", "PROMO - Process O - UpdateMapExtension", "20-process-o-update-map-extension.md"),
 ]
 
 
@@ -133,7 +133,7 @@ class DiscoverProfileTemplate(BaseStep):
 # ---- Step 3.1: CreateProfiles ----------------------------------------------
 
 class CreateProfiles(BaseStep):
-    """Automatically create all 28 JSON profiles via Platform API."""
+    """Automatically create all 38 JSON profiles via Platform API using XML generator."""
 
     @property
     def step_id(self) -> str:
@@ -149,21 +149,17 @@ class CreateProfiles(BaseStep):
 
     @property
     def depends_on(self) -> list[str]:
-        return ["3.0"]
+        return ["2.8"]
 
     def execute(self, state: SetupState, dry_run: bool = False) -> StepStatus:
+        import json as json_mod
         ui.print_step(self.step_id, self.name, self.step_type.value)
-
-        template_xml = state.api_first_discovery.get("profile_template_xml")
-        if not template_xml:
-            ui.print_error("Profile template not found. Complete step 3.0 first.")
-            return StepStatus.FAILED
 
         all_profiles = list_profiles()
         remaining = state.get_remaining_items(self.step_id, all_profiles)
 
         if not remaining:
-            ui.print_success(f"All {len(all_profiles)} profiles already created.")
+            ui.print_success("All 38 profiles already created.")
             return StepStatus.COMPLETED
 
         ui.print_info(f"Creating {len(remaining)} of {len(all_profiles)} profiles...")
@@ -178,11 +174,12 @@ class CreateProfiles(BaseStep):
                 state.mark_step_item_complete(self.step_id, stem)
                 continue
 
-            # Generate proper Boomi Component XML from the JSON schema
-            schema = load_profile_schema(stem)
-            profile_xml = generate_profile_xml(schema, display_name)
+            # Load JSON schema and generate profile XML
+            schema_str = load_template(f"integration/profiles/{stem}.json")
+            schema = json_mod.loads(schema_str)
 
             try:
+                profile_xml = generate_profile_xml(schema, display_name, "PROMO/Profiles")
                 result = self.platform_api.create_component(profile_xml)
                 comp_id = (
                     result.get("componentId", result.get("@id", ""))
@@ -215,7 +212,7 @@ class CreateScripts(BaseStep):
 
     @property
     def name(self) -> str:
-        return "Create Groovy Scripts"
+        return "Create Scripts"
 
     @property
     def step_type(self) -> StepType:
@@ -223,24 +220,24 @@ class CreateScripts(BaseStep):
 
     @property
     def depends_on(self) -> list[str]:
-        return ["3.1"]
+        return ["2.8"]
 
     def execute(self, state: SetupState, dry_run: bool = False) -> StepStatus:
         ui.print_step(self.step_id, self.name, self.step_type.value)
 
-        all_stems = list(SCRIPT_NAME_MAP.keys())
-        remaining = state.get_remaining_items(self.step_id, all_stems)
+        all_scripts = sorted(SCRIPT_NAME_MAP.keys())
+        remaining = state.get_remaining_items(self.step_id, all_scripts)
 
         if not remaining:
-            ui.print_success(f"All {len(all_stems)} scripts already created.")
+            ui.print_success("All 10 scripts already created.")
             return StepStatus.COMPLETED
 
-        ui.print_info(f"Creating {len(remaining)} of {len(all_stems)} scripts...")
+        ui.print_info(f"Creating {len(remaining)} of {len(all_scripts)} scripts...")
 
         for i, stem in enumerate(remaining, 1):
-            display_name = SCRIPT_NAME_MAP[stem]
+            component_name = script_stem_to_component_name(stem)
             ui.print_progress(
-                len(all_stems) - len(remaining) + i, len(all_stems), display_name
+                len(all_scripts) - len(remaining) + i, len(all_scripts), component_name
             )
 
             if dry_run:
@@ -248,9 +245,11 @@ class CreateScripts(BaseStep):
                 continue
 
             groovy_content = load_template(f"integration/scripts/{stem}.groovy")
-            script_xml = generate_script_xml(groovy_content, display_name)
 
             try:
+                script_xml = generate_script_xml(
+                    groovy_content, component_name, "Promoted/Scripts"
+                )
                 result = self.platform_api.create_component(script_xml)
                 comp_id = (
                     result.get("componentId", result.get("@id", ""))
@@ -260,15 +259,15 @@ class CreateScripts(BaseStep):
                 if comp_id:
                     state.store_component_id("scripts", stem, comp_id)
                     state.mark_step_item_complete(self.step_id, stem)
-                    ui.print_success(f"Created {display_name} -> {comp_id}")
+                    ui.print_success(f"Created {component_name} -> {comp_id}")
                 else:
-                    ui.print_error(f"No component ID returned for {display_name}")
+                    ui.print_error(f"No component ID returned for {component_name}")
                     return StepStatus.FAILED
             except Exception as exc:
-                ui.print_error(f"Failed to create {display_name}: {exc}")
+                ui.print_error(f"Failed to create {component_name}: {exc}")
                 return StepStatus.FAILED
 
-        ui.print_success(f"All {len(all_stems)} scripts created.")
+        ui.print_success(f"All {len(all_scripts)} scripts created.")
         return StepStatus.COMPLETED
 
 
