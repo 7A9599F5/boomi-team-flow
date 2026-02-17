@@ -9,7 +9,7 @@ Reference: `/integration/flow-service/flow-service-spec.md`
 3. On the **General** tab, configure:
    - **Path to Service**: `/fs/PromotionService`
    - **External Name**: `PromotionService`
-4. Open the **Message Actions** tab. Add 11 actions, linking each to its FSS Operation, Request Profile, and Response Profile:
+4. Open the **Message Actions** tab. Add 12 actions, linking each to its FSS Operation, Request Profile, and Response Profile:
 
 | # | Action Name | FSS Operation | Request Profile | Response Profile |
 |---|-------------|---------------|-----------------|------------------|
@@ -24,6 +24,7 @@ Reference: `/integration/flow-service/flow-service-spec.md`
 | 9 | `submitPeerReview` | `PROMO - FSS Op - SubmitPeerReview` | `PROMO - Profile - SubmitPeerReviewRequest` | `PROMO - Profile - SubmitPeerReviewResponse` |
 | 10 | `listIntegrationPacks` | `PROMO - FSS Op - ListIntegrationPacks` | `PROMO - Profile - ListIntegrationPacksRequest` | `PROMO - Profile - ListIntegrationPacksResponse` |
 | 11 | `generateComponentDiff` | `PROMO - FSS Op - GenerateComponentDiff` | `PROMO - Profile - GenerateComponentDiffRequest` | `PROMO - Profile - GenerateComponentDiffResponse` |
+| 12 | `queryTestDeployments` | `PROMO - FSS Op - QueryTestDeployments` | `PROMO - Profile - QueryTestDeploymentsRequest` | `PROMO - Profile - QueryTestDeploymentsResponse` |
 
 5. Open the **Configuration Values** tab. Add a configuration value:
    - **Name**: `primaryAccountId`
@@ -46,7 +47,7 @@ Reference: `/integration/flow-service/flow-service-spec.md`
    - Open **Properties -> Configuration Values**.
    - Set `primaryAccountId` to your primary Boomi account ID.
    - Save.
-9. Navigate to **Runtime Management -> Listeners**. All 11 FSS Operations should appear and show a running status:
+9. Navigate to **Runtime Management -> Listeners**. All 12 FSS Operations should appear and show a running status:
    - `PROMO - FSS Op - GetDevAccounts`
    - `PROMO - FSS Op - ListDevPackages`
    - `PROMO - FSS Op - ResolveDependencies`
@@ -58,6 +59,7 @@ Reference: `/integration/flow-service/flow-service-spec.md`
    - `PROMO - FSS Op - SubmitPeerReview`
    - `PROMO - FSS Op - ListIntegrationPacks`
    - `PROMO - FSS Op - GenerateComponentDiff`
+   - `PROMO - FSS Op - QueryTestDeployments`
 10. Note the full service URL: `https://{cloud-base-url}/fs/PromotionService`
 
 ### Phase 4 Troubleshooting

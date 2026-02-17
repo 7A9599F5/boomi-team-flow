@@ -61,6 +61,7 @@ DataHub stores the three models that power the promotion engine: component mappi
 | `devAccountId` | String | Yes | No | Source dev sub-account ID |
 | `prodAccountId` | String | Yes | No | Target production account ID |
 | `devPackageId` | String | Yes | No | PackagedComponent packageId |
+| `prodPackageId` | String | No | No | PackagedComponent packageId created in production |
 | `initiatedBy` | String | Yes | No | SSO user email |
 | `initiatedAt` | Date | Yes | No | Format: `yyyy-MM-dd'T'HH:mm:ss.SSS'Z'` |
 | `status` | String | Yes | No | `IN_PROGRESS`, `COMPLETED`, or `FAILED` |
@@ -78,12 +79,25 @@ DataHub stores the three models that power the promotion engine: component mappi
 | `adminApprovedBy` | String | No | No | Email of admin reviewer |
 | `adminApprovedAt` | Date | No | No | Timestamp of admin review action |
 | `adminComments` | String | No | No | Admin reviewer comments (up to 500 chars) |
+| `branchId` | String | No | No | Promotion branch ID — cleared after branch cleanup |
+| `branchName` | String | No | No | Promotion branch name (e.g., `promo-{promotionId}`) |
+| `integrationPackId` | String | No | No | Integration Pack ID — populated after deploy |
+| `integrationPackName` | String | No | No | Human-readable Integration Pack name |
+| `processName` | String | No | No | Root process name — used for pack suggestions |
+| `targetEnvironment` | String | Yes | No | `"TEST"` or `"PRODUCTION"` |
+| `isHotfix` | String | No | No | `"true"` / `"false"` — flags emergency production bypass |
+| `hotfixJustification` | String | No | No | Required when isHotfix=`"true"` (up to 1000 chars) |
+| `testPromotionId` | String | No | No | Links PRODUCTION record to its TEST predecessor |
+| `testDeployedAt` | Date | No | No | When test deployment completed |
+| `testIntegrationPackId` | String | No | No | Test Integration Pack ID |
+| `testIntegrationPackName` | String | No | No | Test Integration Pack name |
+| `promotedFromTestBy` | String | No | No | Email of user who initiated test→production promotion |
 
 4. Match rule: **Exact** on `promotionId` (single field).
 5. Source: `PROMOTION_ENGINE` (Contribute Only).
 6. Skip Data Quality. **Save --> Publish --> Deploy**.
 
-**Verify:** Model shows 21 fields, 1 match rule, source `PROMOTION_ENGINE`.
+**Verify:** Model shows 34 fields, 1 match rule, source `PROMOTION_ENGINE`.
 
 ### Step 1.4 -- Seed DevAccountAccess Data
 
