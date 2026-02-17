@@ -27,15 +27,31 @@ The Flow Service exposes 11 message actions, each linked to a corresponding Inte
 **Description**: Retrieves the list of development sub-accounts available for package selection. Called when the Flow application first loads to populate the dev account dropdown.
 
 **Request Fields**:
-- None (empty request)
+- `userSsoGroups` (array of strings, required) — the authenticated user's Azure AD/Entra SSO group names. Used for both team group resolution (which dev accounts to return) and tier group resolution (CONTRIBUTOR vs ADMIN)
 
 **Response Fields**:
 - `success` (boolean)
+- `effectiveTier` (string: `"CONTRIBUTOR"` | `"ADMIN"`) — the user's resolved dashboard tier, derived from `userSsoGroups`
 - `devAccounts` (array)
   - `accountId` (string)
   - `accountName` (string)
 - `errorCode` (string, optional)
 - `errorMessage` (string, optional)
+
+#### Tier Resolution Algorithm
+
+Process A0 determines the user's effective tier from their SSO group names:
+
+```
+if userSsoGroups contains "ABC_BOOMI_FLOW_ADMIN" → effectiveTier = "ADMIN"
+else if userSsoGroups contains "ABC_BOOMI_FLOW_CONTRIBUTOR" → effectiveTier = "CONTRIBUTOR"
+else → effectiveTier = "READONLY" (no dashboard access — should not reach this in normal flow)
+```
+
+**Account resolution by tier:**
+- **ADMIN**: Bypasses team group check. Returns ALL active DevAccountAccess records.
+- **CONTRIBUTOR**: Extracts team groups matching `ABC_BOOMI_FLOW_DEVTEAM*` from `userSsoGroups`, queries DataHub for DevAccountAccess records where `ssoGroupId` matches and `isActive='true'`.
+- **READONLY / OPERATOR**: These tiers have no dashboard access. If reached (e.g., direct API call), Process A0 returns `success=false` with `errorCode=INSUFFICIENT_TIER`.
 
 ---
 
@@ -106,7 +122,7 @@ The Flow Service exposes 11 message actions, each linked to a corresponding Inte
 **Response Profile**: `PROMO - Profile - ExecutePromotionResponse`
 **Service Type**: Message Action
 
-**Description**: Creates a promotion branch in the primary account, then promotes all components from dev to the branch (not main) via tilde syntax. For each component: checks DataHub for existing prod mapping, strips credentials, rewrites references, creates/updates component on branch, and stores mapping. Returns branchId for downstream diff viewing and merge operations. On failure, cleans up the branch.
+**Description**: Creates a promotion branch in the primary account, then promotes all components from dev to the branch (not main) via tilde syntax. For each component: checks DataHub for existing prod mapping, strips credentials, rewrites references, creates/updates component on branch, and stores mapping. Returns branchId for downstream diff viewing and merge operations. On failure, cleans up the branch. Defense-in-depth: re-validates the user's tier from `userSsoGroups` before proceeding — rejects with `INSUFFICIENT_TIER` if below CONTRIBUTOR.
 
 **Request Fields**:
 - `devAccountId` (string, required)
@@ -119,6 +135,7 @@ The Flow Service exposes 11 message actions, each linked to a corresponding Inte
   - `processName` (string)
   - `requestedBy` (string)
   - `requestDate` (datetime)
+- `userSsoGroups` (array of strings, required) — the authenticated user's SSO group names, passed through from the Flow authorization context. Process C re-runs the tier resolution algorithm as defense-in-depth to ensure the caller is at least CONTRIBUTOR tier before executing promotion
 
 **Response Fields**:
 - `success` (boolean)
@@ -573,6 +590,7 @@ Decision: Check Success
 | `SELF_REVIEW_NOT_ALLOWED` | Reviewer attempted to review their own promotion submission | A different team member must perform the peer review |
 | `ALREADY_REVIEWED` | Promotion has already been peer-reviewed | No action needed; check current status |
 | `INVALID_REVIEW_STATE` | Promotion is not in the expected state for this review action | Verify the promotion status before retrying |
+| `INSUFFICIENT_TIER` | User's SSO groups do not include a dashboard-access tier (CONTRIBUTOR or ADMIN) | User must be assigned ABC_BOOMI_FLOW_CONTRIBUTOR or ABC_BOOMI_FLOW_ADMIN group |
 
 **Error Handling Best Practices**:
 
