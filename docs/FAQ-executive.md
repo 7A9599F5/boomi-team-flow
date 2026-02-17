@@ -12,20 +12,22 @@ Boomi is a cloud-based integration platform (iPaaS — Integration Platform as a
 
 ### What problem does this project solve?
 
-Today, when a developer finishes building an integration in their development account and it needs to go to production, Boomi's built-in copy tool creates a brand-new duplicate. Every copy starts over at Version 1 with no history, no link back to the original, and no way to push updates to the same component later. If a developer makes a fix, they have to copy the whole thing again — creating yet another duplicate.
+Today, all integration development is performed directly in the primary (production) Boomi account by a small team of Boomi Admins. There is no separation between development and production environments, no structured handoff process, and no self-service path for other teams — integration, technical, and tools teams within Operations — to build and promote their own work. This creates a resource bottleneck: the admin team handles every build and deployment request, which limits throughput and leaves the broader Boomi platform underutilized relative to what the organization is paying for.
 
-This means production fills up with orphaned copies, there is no version trail, and no structured approval process before code reaches production.
+Granting additional users direct access to the primary account is also impractical. The primary account has a fixed limit on deployed connections, and that limit cannot be easily increased. Developer accounts, by contrast, can have their connection limits raised freely and on demand — making them the natural place for teams to build and test without competing for constrained production resources.
+
+Provisioning a new dev account is trivial — it takes minutes and requires no additional infrastructure or licensing. The barrier is not setup cost; it is the lack of a structured promotion path from dev to production. Boomi's built-in copy tool creates a brand-new duplicate every time. Each copy starts at Version 1 with no history, no link back to the original, and no way to push updates to the same component later. If a developer makes a fix, they must copy the entire component again, creating yet another duplicate. Over time, production fills up with orphaned copies, there is no version trail, and there is no structured approval process before changes reach production.
 
 ### What does this system do instead?
 
-It gives developers a self-service web dashboard where they:
+It removes the admin bottleneck by giving each development team a self-service web dashboard where they own their integration lifecycle end-to-end. Teams work freely in their own dev accounts and promote to production through the dashboard:
 
 1. **Pick** a packaged process from their dev account
 2. **Review** all its dependencies (sub-processes, data maps, connection references, etc.)
 3. **Promote** it to production — the system creates the component if it's new, or updates the existing one in place with a new version number
 4. **Submit** the promoted component for packaging and deployment, which routes to an admin for approval
 
-The result is a single master copy of every component in production with a clean version history, full audit trail, and an admin approval gate before anything goes live.
+The result is a single master copy of every component in production with a clean version history, full audit trail, and an admin approval gate before anything goes live — while freeing the admin team to focus on higher-value work instead of routine build-and-deploy requests.
 
 ### Who uses this system?
 
