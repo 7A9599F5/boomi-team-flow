@@ -2,7 +2,40 @@
 
 ## Overview
 
-The Deployment Submission page is where the developer fills out deployment details and submits the promotion for peer review. This page represents the transition point between the Developer and Peer Review swimlanes — the first step in the 2-layer approval workflow. After submission, the flow pauses at the swimlane boundary until a peer reviewer (any developer or admin except the submitter) authenticates and takes action.
+The Deployment Submission page handles three deployment modes based on the `targetEnvironment` and `isHotfix` Flow values set on Page 3 (or Page 9 for test→production promotions). The page adapts its header, form fields, submit button, and post-submission behavior based on the deployment mode.
+
+## Deployment Modes
+
+### Mode 1: Test Deployment (`targetEnvironment = "TEST"`)
+- **Header:** "Deploy to Test Environment"
+- **Info banner:** Blue/info — "Components will be deployed to your Test Integration Pack. No reviews required."
+- **Integration Pack selector:** Filtered to test packs (`listIntegrationPacks` with `packPurpose="TEST"`)
+- **Submit button label:** "Deploy to Test"
+- **On submit:** Directly call `packageAndDeploy` with `deploymentTarget="TEST"`
+- **Post-submit:** Show deployment results inline (no swimlane transition)
+- **Branch behavior:** Branch preserved — show message: "Your promotion branch has been preserved. When you're ready to deploy to production, return to the Production Readiness page."
+- **Email:** Simplified "Deployed to Test" notification to submitter only
+- **Navigation after:** "Return to Dashboard" button → Page 1
+
+### Mode 2: Production from Test (`targetEnvironment = "PRODUCTION"`, `testPromotionId` populated)
+- **Header:** "Submit for Production Deployment"
+- **Info banner:** Green/success — "This deployment was previously validated in the test environment."
+- **Test deployment summary:** Read-only panel showing test deployment date, test pack name, components
+- **Integration Pack selector:** Filtered to production packs (`listIntegrationPacks` with `packPurpose="PRODUCTION"`)
+- **Submit button label:** "Submit for Peer Review"
+- **On submit:** Standard peer review workflow (same as current production flow)
+- **Post-submit:** Swimlane transition → Peer Review → Admin Approval
+- **Email:** "Peer Review Needed" notification (same as current, but includes test deployment reference)
+
+### Mode 3: Emergency Hotfix (`targetEnvironment = "PRODUCTION"`, `isHotfix = "true"`)
+- **Header:** "Submit Emergency Hotfix for Peer Review"
+- **Warning banner:** Red — "⚠ EMERGENCY HOTFIX: This deployment bypasses the test environment. Both peer review and admin review are required."
+- **Hotfix justification:** Read-only display of justification from Page 3
+- **Integration Pack selector:** Filtered to production packs (`listIntegrationPacks` with `packPurpose="PRODUCTION"`)
+- **Submit button label:** "Submit Emergency Hotfix for Peer Review"
+- **On submit:** Standard peer review workflow with hotfix flag
+- **Post-submit:** Swimlane transition → Peer Review → Admin Approval
+- **Email:** "EMERGENCY HOTFIX — Peer Review Needed" notification with justification included
 
 ## Page Load Behavior
 
@@ -14,9 +47,15 @@ The Deployment Submission page is where the developer fills out deployment detai
    - `componentsTotal`: From `totalComponents` Flow value
    - `promotionId`: From previous step
 
-3. **Load integration pack options:**
+3. **Determine deployment mode:**
+   - Check `targetEnvironment` Flow value (set by Page 3 or Page 9)
+   - Check `isHotfix` Flow value
+   - Check `testPromotionId` Flow value (set by Page 9 for test→production)
+   - Apply appropriate mode (see Deployment Modes above)
+
+4. **Load integration pack options:**
    - Message step → `listIntegrationPacks` (Process J)
-   - Input: `suggestForProcess` = `{processName}` (from promotion results)
+   - Input: `suggestForProcess` = `{processName}`, `packPurpose` = `{targetEnvironment == "TEST" ? "TEST" : "PRODUCTION"}`
    - Output:
      - `availableIntegrationPacks` — array of existing MULTI-type Integration Packs
      - `suggestedPackId` — most recently used pack ID for this process (optional)
@@ -25,7 +64,7 @@ The Deployment Submission page is where the developer fills out deployment detai
    - If `suggestedPackId` is returned: Pre-select the suggested pack in the combobox
    - Store results in Flow values: `availableIntegrationPacks`, `suggestedPackId`
 
-4. **Load account group options (optional):**
+5. **Load account group options (optional):**
    - Message step → API to get list of account groups (if available)
    - Populate Combobox with group names
    - Store in `availableAccountGroups` Flow value
@@ -198,16 +237,71 @@ The Deployment Submission page is where the developer fills out deployment detai
 
 ---
 
+### Test Deployment Summary Panel (Mode 2: Production from Test)
+
+**Component Type:** Read-only info panel
+
+**Visibility:** Only shown when `testPromotionId` is populated (arriving from Page 9)
+
+**Content:**
+- **Header:** "Previously Tested Deployment"
+- **Test Deployed Date:** `{testDeployedAt}` (formatted)
+- **Test Integration Pack:** `{testIntegrationPackName}`
+- **Promotion ID (Test):** `{testPromotionId}` (with copy button)
+- **Components:** `{componentsTotal}` total — `{componentsCreated}` created, `{componentsUpdated}` updated
+
+**Styling:**
+- Light green background (#e8f5e9)
+- Green left border
+- Provides confidence that this deployment was validated
+
+---
+
+### Hotfix Justification Display (Mode 3: Emergency Hotfix)
+
+**Component Type:** Read-only text display
+
+**Visibility:** Only shown when `isHotfix = "true"`
+
+**Content:**
+- **Header:** "Emergency Hotfix Justification"
+- **Warning icon** and red left border
+- **Justification text:** `{hotfixJustification}` (read-only, from Page 3)
+- **Submitted by:** `{userEmail}`
+
+**Styling:**
+- Light red background (#ffebee)
+- Red left border
+- Red warning icon
+
+---
+
 ### Submit Button
 
 **Component Type:** Button (Primary)
 
 **Configuration:**
-- **Label:** "Submit for Peer Review"
+- **Label:** (varies by mode — see below)
 - **Style:** Primary button (prominent, large)
 - **Color:** Accent/success color
 - **Icon (optional):** Send/paper plane icon
 - **Size:** Large
+
+**Conditional Button Behavior:**
+
+| Mode | Label | Color | On Click |
+|------|-------|-------|----------|
+| Test | "Deploy to Test" | Blue/primary | Directly call `packageAndDeploy` with `deploymentTarget="TEST"` — no swimlane transition |
+| Production from Test | "Submit for Peer Review" | Green/success | Transition to Peer Review swimlane (standard flow) |
+| Emergency Hotfix | "Submit Emergency Hotfix for Peer Review" | Red/danger | Transition to Peer Review swimlane with hotfix flags |
+
+**Test Deployment Post-Submit Results:**
+When `targetEnvironment = "TEST"`, the `packageAndDeploy` response is displayed inline:
+- Success: Green banner — "Successfully deployed to Test Integration Pack: {testIntegrationPackName}"
+- Branch preserved message: "Your promotion branch has been preserved for future production review."
+- "Return to Dashboard" button
+- "View in Production Readiness" button → Page 9
+- Failure: Red banner with error message, "Retry" button
 
 **Validation:**
 - Check all required fields filled:

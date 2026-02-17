@@ -39,14 +39,16 @@ The Admin Approval Queue is the final approval gate in the 2-layer approval work
 
 | Column | Field | Width | Sortable | Formatting |
 |--------|-------|-------|----------|------------|
-| Submitter | `initiatedBy` | 14% | Yes | Email or name |
+| Submitter | `initiatedBy` | 12% | Yes | Email or name |
 | Process Name | `processName` | 17% | Yes | Bold text |
 | Components | `componentsTotal` | 7% | Yes | Numeric |
 | Created/Updated | `componentsCreated` / `componentsUpdated` | 10% | Yes | "X new, Y updated" |
 | Peer Reviewed By | `peerReviewedBy` | 12% | Yes | Email or name |
 | Submitted | `initiatedAt` | 12% | Yes | Date/time format |
 | Status | `status` | 8% | Yes | Badge |
-| Notes | `notes` | 20% | No | Truncated, tooltip |
+| Environment | `targetEnvironment` | 8% | Yes | Badge: "PRODUCTION" blue |
+| Hotfix | `isHotfix` | 7% | Yes | Badge: "EMERGENCY HOTFIX" red if true; hidden if false |
+| Notes | `notes` | 12% | No | Truncated, tooltip |
 
 **Column Details:**
 
@@ -149,6 +151,23 @@ The Admin Approval Queue is the final approval gate in the 2-layer approval work
 - **Reviewed at:** `{peerReviewedAt}` (full timestamp)
 - **Decision:** `{peerReviewStatus}` (PEER_APPROVED badge — green)
 - **Comments:** `{peerReviewComments}` or "No comments provided"
+
+---
+
+#### Section 2b: Environment & Hotfix Information
+
+**Hotfix Alert (conditional — shown when `isHotfix = "true"`):**
+- **Large Banner:** Red background with warning icon
+- **Title:** "⚠ EMERGENCY HOTFIX"
+- **Justification:** `{selectedPromotion.hotfixJustification}` — displayed prominently
+- **Warning text:** "This deployment bypassed the test environment. Please review carefully."
+
+**Test Deployment History (conditional — shown when `testPromotionId` is populated):**
+- **Header:** "Test Environment Validation"
+- **Test Promotion ID:** `{selectedPromotion.testPromotionId}`
+- **Test Deployed Date:** `{selectedPromotion.testDeployedAt}`
+- **Test Integration Pack:** `{selectedPromotion.testIntegrationPackName}`
+- **Styling:** Light green info panel
 
 ---
 
@@ -271,6 +290,11 @@ The Admin Approval Queue is the final approval gate in the 2-layer approval work
 - **Buttons:**
   - "Cancel" (secondary, left)
   - "Confirm Approval" (primary green, right)
+
+**Hotfix Confirmation (conditional — shown when `isHotfix = "true"`):**
+- Additional warning text in modal: "⚠ This is an emergency hotfix that bypassed the test environment."
+- Extra checkbox (required): "I acknowledge this is an emergency hotfix that bypassed testing"
+- Checkbox must be checked before "Confirm Approval" button is enabled
 
 **Behavior on Confirm:**
 

@@ -38,12 +38,14 @@ The Peer Review Queue is the entry point for the peer review layer of the 2-laye
 | Column | Field | Width | Sortable | Formatting |
 |--------|-------|-------|----------|------------|
 | Submitter | `initiatedBy` | 15% | Yes | Email or name |
-| Process Name | `processName` | 20% | Yes | Bold text |
+| Process Name | `processName` | 17% | Yes | Bold text |
 | Components | `componentsTotal` | 8% | Yes | Numeric |
 | Created/Updated | `componentsCreated` / `componentsUpdated` | 12% | Yes | "X new, Y updated" |
 | Submitted | `initiatedAt` | 15% | Yes | Date/time format |
 | Status | `peerReviewStatus` | 10% | Yes | Badge |
-| Notes | `notes` | 20% | No | Truncated, tooltip |
+| Environment | `targetEnvironment` | 10% | Yes | Badge: "PRODUCTION" blue badge (always — test deployments never reach peer review) |
+| Hotfix | `isHotfix` | 8% | Yes | Badge: "EMERGENCY HOTFIX" red badge if true; hidden if false |
+| Notes | `notes` | 12% | No | Truncated, tooltip |
 
 **Column Details:**
 

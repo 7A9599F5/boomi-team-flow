@@ -45,6 +45,27 @@ The Peer Review Detail page shows the full details of a promotion submission and
 
 ---
 
+#### Section 1b: Environment & Hotfix Information
+
+**Deployment Target:**
+- **Target Environment:** `{selectedPeerReview.targetEnvironment}` — Badge: "PRODUCTION" (blue)
+- Note: Only production deployments reach peer review. Test deployments skip this step.
+
+**Hotfix Information (conditional — shown when `isHotfix = "true"`):**
+- **Badge:** "⚠ EMERGENCY HOTFIX" — large red badge
+- **Justification:** `{selectedPeerReview.hotfixJustification}` (read-only, prominent display)
+- **Warning text:** "This deployment bypasses the test environment. Please review carefully."
+- **Styling:** Red background panel (#ffebee), red left border, warning icon
+
+**Test Deployment History (conditional — shown when `testPromotionId` is populated):**
+- **Header:** "Previously Tested"
+- **Test Promotion ID:** `{selectedPeerReview.testPromotionId}` (with copy button)
+- **Test Deployed Date:** `{selectedPeerReview.testDeployedAt}` (formatted)
+- **Test Integration Pack:** `{selectedPeerReview.testIntegrationPackName}`
+- **Styling:** Light green background (#e8f5e9), green left border, checkmark icon
+
+---
+
 #### Section 2: Promotion Results
 
 **Summary:**

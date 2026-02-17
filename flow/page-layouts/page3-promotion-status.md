@@ -287,16 +287,65 @@ To reconfigure:
 
 ---
 
+### Deployment Target Selection
+
+**Component Type:** Radio Button Group with conditional content
+
+**Location:** Between the Component Diff Panel and the Submit button — this is the key decision point.
+
+**Configuration:**
+
+**Section Header:** "Deployment Target"
+
+**Option 1 (Default):**
+- **Radio label:** "Deploy to Test"
+- **Badge:** "(Recommended)" green badge
+- **Description text:** "Components will be deployed to your Test Integration Pack. No peer or admin review required. You can promote to production after validating in test."
+- **On select:** Set `targetEnvironment = "TEST"`, `isHotfix = "false"`
+
+**Option 2:**
+- **Radio label:** "Deploy to Production (Emergency Hotfix)"
+- **Badge:** "⚠ Emergency" red badge
+- **Description text:** "WARNING: This will skip the test environment. Both peer review and admin review are still required. This exception will be logged for leadership review."
+- **On select:** Set `targetEnvironment = "PRODUCTION"`, `isHotfix = "true"`
+- **Conditional content (shown when selected):**
+  - **Warning Banner:**
+    - Background: Red/amber (#fff3e0 or #ffebee)
+    - Icon: Warning triangle
+    - Text: "Emergency hotfixes bypass the test environment. This action will be logged and flagged for leadership review. Both peer review and admin review are still required before deployment."
+  - **Hotfix Justification Textarea:**
+    - Label: "Hotfix Justification (Required)"
+    - Placeholder: "Explain why this deployment must bypass the test environment..."
+    - Required: Yes (when Emergency Hotfix is selected)
+    - Max length: 1000 characters
+    - Character counter: "X / 1000 characters"
+    - On change: Store in `hotfixJustification` Flow value
+
+**Default Selection:** "Deploy to Test" is pre-selected on page load.
+
+**Styling:**
+- Radio group with card-style options (each option in a bordered card)
+- Default option has subtle green left border
+- Emergency option has subtle red left border
+- Conditional warning + textarea slides open with animation when emergency option selected
+
+**Validation:**
+- If "Emergency Hotfix" selected and `hotfixJustification` is empty → block submission with error "Hotfix justification is required"
+
+---
+
 ### Submit for Deployment Button
 
 **Component Type:** Button (Primary)
 
 **Configuration:**
-- **Label:** "Submit for Integration Pack Deployment"
+- **Label:** "Continue to Deployment"
 - **Style:** Primary button (prominent)
 - **Color:** Accent/success color
 - **Icon (optional):** Right arrow or package icon
 - **Size:** Large
+
+**Note:** Button label is the same regardless of target environment selection. The deployment path diverges on Page 4.
 
 **Enabled Condition:**
 - **Enabled when:** `componentsFailed == 0` (all components succeeded)

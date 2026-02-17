@@ -7,7 +7,7 @@ The Promotion Dashboard is a single Flow application with three swimlanes design
 **Key Facts:**
 - 1 Flow application
 - 3 Swimlanes (Developer, Peer Review, Admin)
-- 8 pages total (4 developer pages, 2 peer review pages, 2 admin pages)
+- 9 pages total (4 developer pages + 1 production readiness page, 2 peer review pages, 2 admin pages)
 - All backend calls via Boomi Integration Service connector
 - SSO-based authorization via Azure AD groups
 - 2-layer approval: peer review gate (any dev or admin except submitter) → admin review gate (admin only)
@@ -21,7 +21,8 @@ The Promotion Dashboard is a single Flow application with three swimlanes design
   2. Promotion Review
   3. Promotion Status
   4. Deployment Submission
-- **Purpose:** Browse packages, review dependencies, execute promotion, submit for peer review
+  9. Production Readiness
+- **Purpose:** Browse packages, review dependencies, execute promotion, submit for review or test deployment, promote tested packages to production
 - **Note:** READONLY/OPERATOR tier users cannot access any Developer pages
 
 ### Peer Review Swimlane
@@ -74,6 +75,14 @@ Flow values are used to maintain state across pages and message steps.
 | `selectedDiffComponent` | Object | Currently selected component for diff viewing (prodComponentId, componentName, componentAction) |
 | `availableIntegrationPacks` | List | Integration Packs from listIntegrationPacks (Process J) for Page 4 combobox |
 | `suggestedPackId` | String | Suggested Integration Pack ID for current process (from listIntegrationPacks) |
+| `targetEnvironment` | String | Deployment target: "TEST" or "PRODUCTION" — set on Page 3 deployment target selection |
+| `isHotfix` | String | "true" or "false" — flags emergency production bypass |
+| `hotfixJustification` | String | Required text justification when isHotfix="true" (up to 1000 chars) |
+| `testPromotionId` | String | Links a production deployment back to its preceding test deployment |
+| `testIntegrationPackId` | String | Test Integration Pack ID — populated after test deployment |
+| `testIntegrationPackName` | String | Test Integration Pack name — populated after test deployment |
+| `testDeployments` | List | Test deployments ready for production promotion (from queryTestDeployments) |
+| `selectedTestDeployment` | Object | Currently selected test deployment in Production Readiness queue |
 
 ## Flow Navigation (Step-by-Step)
 
@@ -99,11 +108,28 @@ Flow values are used to maintain state across pages and message steps.
    - Only enabled if all components succeeded
    - Carries forward `branchId` and `branchName` Flow values
 
+5b. **Page 3** → Deployment Target = "Test" → "Continue to Deployment" → **Page 4 (Test Mode)**
+   - Page 4 directly calls `packageAndDeploy` with `deploymentTarget="TEST"`
+   - Shows deployment results inline
+   - No swimlane transition — stays in Developer swimlane
+   - Branch preserved for future production promotion
+
+5c. **Page 3** → Deployment Target = "Emergency Hotfix" → "Continue to Deployment" → **Page 4 (Hotfix Mode)**
+   - Page 4 submits for peer review with hotfix flags
+   - Flow transitions to Peer Review swimlane → Pages 5-6 → Page 7
+
 6. **Page 3** → "Done" → **End flow**
 
 7. **Page 4** → "Submit for Peer Review" → Email notification → **Peer Review Swimlane** → **Page 5**
    - Flow pauses at swimlane boundary
    - Requires peer reviewer authentication (ABC_BOOMI_FLOW_CONTRIBUTOR OR ABC_BOOMI_FLOW_ADMIN) to continue
+
+14. **Page 9 (Production Readiness)** → Select tested deployment → "Promote to Production" → **Page 4 (Production from Test Mode)**
+    - On load: Message step → `queryTestDeployments`
+    - User selects a TEST_DEPLOYED promotion
+    - Sets `testPromotionId`, `targetEnvironment="PRODUCTION"`, carries forward branch info
+    - Page 4 submits for peer review
+    - Flow transitions to Peer Review swimlane → Pages 5-6 → Page 7
 
 ### Peer Review Flow Path
 
@@ -293,6 +319,18 @@ All Message steps use the Boomi Integration Service connector. Each generates Re
   - `suggestedPackId` (most recently used pack for this process, if any)
   - `suggestedPackName` (name of the suggested pack)
 
+### 12. Query Test Deployments
+- **Step name:** `Query Test Deployments`
+- **Message Action:** `queryTestDeployments`
+- **Used in:** Page 9 load (Production Readiness queue)
+- **Request Type:** `QueryTestDeploymentsRequest` (auto-generated)
+- **Response Type:** `QueryTestDeploymentsResponse` (auto-generated)
+- **Input values:**
+  - `devAccountId` (optional filter)
+  - `initiatedBy` (optional filter)
+- **Output values:**
+  - `testDeployments` (array of TEST_DEPLOYED promotions ready for production)
+
 ## Decision Steps
 
 After each Message step that can fail, add a Decision step to handle errors gracefully.
@@ -314,6 +352,7 @@ After each Message step that can fail, add a Decision step to handle errors grac
 - Manage Mappings → Decision → (Success: Update grid | Failure: Error Page)
 - Generate Component Diff → Decision → (Success: Render XmlDiffViewer | Failure: Show error in panel)
 - List Integration Packs → Decision → (Success: Populate combobox | Failure: Show error, allow manual entry)
+- Query Test Deployments → Decision → (Success: Page 9 | Failure: Error Page)
 
 ## Email Notifications
 
@@ -431,6 +470,53 @@ The 2-layer approval workflow generates 5 email notifications at different stage
   Comments: {adminComments or "No additional comments."}
 
   Please address the issues mentioned and resubmit if needed.
+  ```
+
+### 6. Test Deployment Complete
+- **Trigger:** Page 4 → test deployment completes successfully
+- **To:** Submitter email only
+- **Subject:** `"Test Deployed: {processName} v{packageVersion}"`
+- **Body:**
+  ```
+  Your components have been deployed to the test environment.
+
+  DEPLOYMENT DETAILS:
+  Promotion ID: {promotionId}
+  Process: {processName}
+  Package Version: {packageVersion}
+  Test Integration Pack: {testIntegrationPackName}
+  Deployed At: {testDeployedAt}
+  Branch: {branchName} (preserved for production review)
+
+  When you're ready, return to the Production Readiness page to promote to production.
+  ```
+
+### 7. Emergency Hotfix Submitted
+- **Trigger:** Page 4 → emergency hotfix submitted for peer review
+- **To:** Dev + Admin distribution lists
+- **CC:** Submitter
+- **Subject:** `"⚠ EMERGENCY HOTFIX — Peer Review Needed: {processName} v{packageVersion}"`
+- **Body:**
+  ```
+  An EMERGENCY HOTFIX has been submitted for peer review.
+  This deployment bypasses the test environment.
+
+  PROMOTION DETAILS:
+  Promotion ID: {promotionId}
+  Process: {processName}
+  Package Version: {packageVersion}
+  Total Components: {componentsTotal}
+
+  HOTFIX JUSTIFICATION:
+  {hotfixJustification}
+
+  SUBMITTED BY:
+  Name: {submitterName}
+  Email: {submitterEmail}
+  Date: {submittedAt}
+
+  ⚠ This hotfix requires both peer review AND admin review.
+  Please review in the Promotion Dashboard.
   ```
 
 ## Error Page (Shared)
