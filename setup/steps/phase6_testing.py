@@ -31,16 +31,16 @@ TEST_SCENARIOS = [
 
 # Expected component counts by category
 EXPECTED_COUNTS = {
-    "models": 3,
+    "models": 5,
     "connections": 2,
-    "http_operations": 19,
-    "dh_operations": 6,
-    "profiles": 26,
-    "fss_operations": 14,
-    "processes": 12,
+    "http_operations": 27,
+    "dh_operations": 10,
+    "profiles": 38,
+    "fss_operations": 19,
+    "processes": 18,
 }
 
-EXPECTED_TOTAL = 85
+EXPECTED_TOTAL = 124
 
 
 # ---- Step 6.0: SmokeTest --------------------------------------------------

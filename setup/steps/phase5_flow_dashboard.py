@@ -1,4 +1,4 @@
-"""Phase 5 build step: Flow Dashboard construction (9 pages, 3 swimlanes)."""
+"""Phase 5 build step: Flow Dashboard construction (11 pages, 3 swimlanes)."""
 from __future__ import annotations
 
 from setup.engine import StepStatus, StepType
@@ -19,11 +19,13 @@ FLOW_PAGES = [
     (7, "Admin Approval Queue", "Admin", "16-flow-dashboard-review-admin.md"),
     (8, "Mapping Viewer", "Admin", "16-flow-dashboard-review-admin.md"),
     (9, "Production Readiness Queue", "Developer", "16-flow-dashboard-review-admin.md"),
+    (10, "Extension Manager", "Developer", "17-flow-dashboard-extensions.md"),
+    (11, "Extension Copy Confirmation", "Developer", "17-flow-dashboard-extensions.md"),
 ]
 
 
 class FlowDashboard(BaseStep):
-    """Guide user through building all 9 Flow pages across 3 swimlanes."""
+    """Guide user through building all 11 Flow pages across 3 swimlanes."""
 
     @property
     def step_id(self) -> str:
@@ -56,7 +58,7 @@ class FlowDashboard(BaseStep):
         ui.print_info(f"Building {len(remaining)} of {total} dashboard items...")
 
         if dry_run:
-            ui.print_info("Would guide user through 9 pages + SSO + custom component + nav.")
+            ui.print_info("Would guide user through 11 pages + SSO + custom component + nav.")
             return StepStatus.COMPLETED
 
         # Build each page
