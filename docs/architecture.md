@@ -20,6 +20,7 @@ A Boomi Flow dashboard where devs promote packaged processes from a dev sub-acco
 │  │ Review      │ │ Review Queue  │ │ Mapping Viewer   │  │
 │  │ Status      │ │ Review Detail │ │                  │  │
 │  │ Deployment  │ │               │ │                  │  │
+│  │ Prod Ready  │ │               │ │                  │  │
 │  └──────┬──────┘ └──────┬────────┘ └────────┬─────────┘  │
 │         │               │                   │             │
 └─────────┼───────────────┼───────────────────┼─────────────┘
@@ -39,6 +40,7 @@ A Boomi Flow dashboard where devs promote packaged processes from a dev sub-acco
 │  Process E: Query Promotion Status                        │
 │  Process E2: Query Peer Review Queue                      │
 │  Process E3: Submit Peer Review                           │
+│  Process E4: Query Test Deployments                       │
 │  Process F: Mapping CRUD                                  │
 │  Process G: Generate Component Diff                       │
 │  Process J: List Integration Packs                        │
@@ -71,7 +73,7 @@ No firewall issues. Flow → Integration → DataHub all within Boomi's cloud in
 External databases have 30+ second latency due to firewall/domain limitations. DataHub is accessible without latency when Integration atom is on public Boomi cloud. Match rules provide built-in UPSERT behavior.
 
 ### Why Flow Services Server
-Single Flow Service component defines the contract. Exposes all 9 processes as Message Actions. Handles connection management, timeout callbacks, and authentication automatically.
+Single Flow Service component defines the contract. Exposes all 12 processes as Message Actions. Handles connection management, timeout callbacks, and authentication automatically.
 
 ### Why Swimlanes for Approval
 Built-in Flow authorization containers. Three swimlanes implement a 2-layer approval workflow: Dev swimlane for submission, Peer Review swimlane for first approval gate (any dev or admin except submitter), Admin swimlane for final approval and deployment. SSO group restrictions on each swimlane. Flow pauses at each boundary waiting for the next authenticated user.
@@ -99,8 +101,10 @@ The `OVERRIDE` strategy with `priorityBranch` set to the promotion branch ensure
 ### 20-Branch Limit Management
 
 Boomi enforces a hard limit of 20 branches per account. The system manages this by:
-- Checking branch count before creation (Process C fails with `BRANCH_LIMIT_REACHED` if >= 18)
-- Keeping branches short-lived (hours to days)
+- Checking branch count before creation (Process C fails with `BRANCH_LIMIT_REACHED` if >= 15)
+- Keeping branches short-lived for hotfixes (hours to days); longer-lived for test deployments (potentially days to weeks)
+- For test deployments, branches persist through the test→production lifecycle (potentially days or weeks), increasing branch slot pressure
+- Stale test deployment warning: branches older than 30 days trigger UI warnings on Page 9
 - Deleting branches on ALL terminal paths (approve, reject, deny)
 - Tracking `branchId` in PromotionLog (set to null after cleanup)
 
@@ -175,13 +179,14 @@ else → READONLY (no dashboard access)
 | E | Query Status | queryStatus | Read PromotionLog from DataHub (supports reviewStage filter) |
 | E2 | Query Peer Review Queue | queryPeerReviewQueue | Query PENDING_PEER_REVIEW promotions, exclude own |
 | E3 | Submit Peer Review | submitPeerReview | Record peer approve/reject with self-review prevention |
+| E4 | Query Test Deployments | queryTestDeployments | Query TEST_DEPLOYED promotions ready for production |
 | F | Mapping CRUD | manageMappings | Read/write ComponentMapping records |
 | G | Generate Component Diff | generateComponentDiff | Fetch branch vs main XML for side-by-side diff |
 | J | List Integration Packs | listIntegrationPacks | Query MULTI-type packs + suggest based on history |
 
 ## Promotion Engine Logic (Process C)
 
-1. **Check branch limit:** Query `POST /Branch/query` count; if >= 18, fail with `BRANCH_LIMIT_REACHED`
+1. **Check branch limit:** Query `POST /Branch/query` count; if >= 15, fail with `BRANCH_LIMIT_REACHED`
 2. **Create promotion branch:** `POST /Branch` with name `promo-{promotionId}`; poll `GET /Branch/{branchId}` until `ready=true`
 3. Create PromotionLog (IN_PROGRESS) — store `branchId` and `branchName`
 4. Sort components bottom-up by type hierarchy (profiles → connections → operations → maps → processes)
@@ -210,6 +215,84 @@ else → READONLY (no dashboard access)
 - Retry on 429/503: up to 3 retries with exponential backoff
 - Concurrency lock via PromotionLog IN_PROGRESS check
 - No automated rollback — Boomi maintains version history
+
+## Multi-Environment Deployment Model
+
+The system supports three deployment paths to balance velocity with safety:
+
+### Path 1: Dev → Test → Production (Standard)
+
+The recommended path for all non-emergency changes:
+
+1. **Dev → Test (no reviews):** Developer promotes components (Process C), then deploys directly to a Test Integration Pack (Process D, TEST mode). Branch merges to main for test packaging but is preserved for future production diffing.
+2. **Test validation:** Developer validates components in the test environment.
+3. **Test → Production (with reviews):** Developer initiates production promotion from Page 9. Since content is already on main, Process D skips the merge step. Peer review (Pages 5-6) and admin review (Page 7) gate the production deployment.
+4. **Branch cleanup:** Branch deleted after successful production deployment.
+
+### Path 2: Dev → Production Emergency Hotfix
+
+For critical fixes that cannot wait for test validation:
+
+1. **Dev → Production (with reviews):** Developer promotes components (Process C), selects "Emergency Hotfix" on Page 3, provides mandatory justification.
+2. **Peer review:** Peers see the EMERGENCY HOTFIX badge and justification (Pages 5-6).
+3. **Admin review:** Admins see prominent hotfix warning and must acknowledge the bypass (Page 7).
+4. **Deploy:** Process D merges, packages, deploys to production, deletes branch.
+5. **Audit:** `isHotfix="true"` and `hotfixJustification` logged in PromotionLog for leadership review.
+
+### Path 3: Rejection at Any Stage
+
+- **Test deployment failure:** Branch preserved, developer can retry or cancel.
+- **Peer rejection:** Branch deleted, submitter notified with feedback.
+- **Admin denial:** Branch deleted, submitter + peer reviewer notified.
+
+### Branch Lifecycle (Multi-Environment)
+
+```
+CREATE → POLL → PROMOTE → ENVIRONMENT DECISION
+  │                              │
+  │                    ┌─────────┴──────────┐
+  │                    │                    │
+  │               TEST PATH           HOTFIX PATH
+  │                    │                    │
+  │            Merge to main         Merge to main
+  │            Package (test)        Package (prod)
+  │            Deploy to test        Deploy to prod
+  │            PRESERVE branch       DELETE branch
+  │                    │
+  │            PRODUCTION PATH
+  │            (from test)
+  │                    │
+  │            Skip merge (already on main)
+  │            Package (prod)
+  │            Deploy to prod
+  │            DELETE branch
+  │
+  └─ On Process C failure: DELETE immediately
+```
+
+### Integration Pack Strategy
+
+Separate Integration Packs for test and production environments:
+- **Test packs:** Named with "- TEST" suffix (e.g., "Orders - TEST")
+- **Production packs:** Standard names (e.g., "Orders - PROD")
+- **Pack purpose filter:** `listIntegrationPacks` supports `packPurpose` parameter to filter by TEST/PRODUCTION/ALL
+- **Suggestion logic:** Updated to suggest the right pack for the target environment based on PromotionLog history
+
+### Branch Limit Considerations
+
+With branches persisting through the test→production lifecycle (potentially days or weeks), the 20-branch Boomi limit becomes more critical:
+- Process C branch count threshold lowered from 18 to 15 for early warning
+- Page 9 surfaces branch age as a column to encourage timely production promotions
+- Branches older than 30 days trigger amber/red warnings in the UI
+- Future consideration: "Cancel Test Deployment" action to delete stale branches and roll back test Integration Pack
+
+### Hotfix Audit Trail
+
+Emergency hotfixes are tracked for leadership review:
+- `isHotfix` field on PromotionLog (String: "true" / "false")
+- `hotfixJustification` field (up to 1000 characters, required for hotfixes)
+- Admins must explicitly acknowledge the bypass during approval
+- Reporting queries can filter PromotionLog by `isHotfix="true"` to surface all bypass events
 
 ## Branch Lifecycle
 

@@ -24,6 +24,7 @@ This guide walks through building every component of the Promotion System step b
 | 15 | [Phase 5a: Flow Dashboard — Developer Swimlane](15-flow-dashboard-developer.md) | Install connector + Pages 1-4 (Developer Swimlane) |
 | 16 | [Phase 5b: Flow Dashboard — Review & Admin](16-flow-dashboard-review-admin.md) | Pages 5-8, SSO config, wire navigation, XmlDiffViewer custom component |
 | 17 | [Phase 6: Testing](17-testing.md) | Smoke test + 7 test scenarios |
+| 22 | [Phase 7: Multi-Environment Deployment](22-phase7-multi-environment.md) | Dev→Test→Prod paths, Process E4, refactor Process D, emergency hotfix, Page 9 |
 | 18 | [Troubleshooting](18-troubleshooting.md) | Per-phase troubleshooting + diagnostic commands |
 | 19 | [Appendix A: Naming & Inventory](19-appendix-naming-and-inventory.md) | Naming patterns + component inventory checklist |
 | 20 | [Appendix B: DPP Catalog](20-appendix-dpp-catalog.md) | DPP catalog, Groovy cross-reference, type priority |
@@ -37,4 +38,5 @@ This guide walks through building every component of the Promotion System step b
 - **Phase 4** (Flow Service): [14](14-flow-service.md)
 - **Phase 5** (Flow Dashboard): [15](15-flow-dashboard-developer.md), [16](16-flow-dashboard-review-admin.md)
 - **Phase 6** (Testing): [17](17-testing.md)
+- **Phase 7** (Multi-Environment): [22](22-phase7-multi-environment.md)
 - **Reference**: [18](18-troubleshooting.md), [19](19-appendix-naming-and-inventory.md), [20](20-appendix-dpp-catalog.md), [21](21-appendix-platform-api-reference.md)
