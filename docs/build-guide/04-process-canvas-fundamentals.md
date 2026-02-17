@@ -29,7 +29,7 @@ Every process needs request and response JSON profiles. Import them once; all pr
 3. Click **Import** and select the corresponding file from `/integration/profiles/` (e.g., `manageMappings-request.json`)
 4. Boomi parses the JSON and creates the profile element tree automatically
 5. Click **Save**
-6. Repeat for each of the 24 profiles listed in the master component table:
+6. Repeat for each of the 26 profiles listed in the master component table:
 
 | Profile Name | Source File |
 |-------------|-------------|
@@ -57,6 +57,8 @@ Every process needs request and response JSON profiles. Import them once; all pr
 | `PROMO - Profile - ListIntegrationPacksResponse` | `listIntegrationPacks-response.json` |
 | `PROMO - Profile - QueryTestDeploymentsRequest` | `queryTestDeployments-request.json` |
 | `PROMO - Profile - QueryTestDeploymentsResponse` | `queryTestDeployments-response.json` |
+| `PROMO - Profile - CancelTestDeploymentRequest` | `cancelTestDeployment-request.json` |
+| `PROMO - Profile - CancelTestDeploymentResponse` | `cancelTestDeployment-response.json` |
 
 #### Adding Groovy Scripts to Data Process Shapes
 
@@ -105,7 +107,7 @@ The Start shape receives the request JSON document from the Flow Service and pla
 
 #### FSS Operation Creation Pattern
 
-Each process requires a corresponding FSS Operation component that links it to a message action in the Flow Service. Create all 12 before building the process canvases, or create each one just before its process.
+Each process requires a corresponding FSS Operation component that links it to a message action in the Flow Service. Create all 13 before building the process canvases, or create each one just before its process.
 
 1. **Build --> New Component --> Operation --> Flow Services Server**
 2. Name: use the exact FSS Operation name from the master component list (see table below)
@@ -128,6 +130,7 @@ Each process requires a corresponding FSS Operation component that links it to a
 | `PROMO - FSS Op - GenerateComponentDiff` | `PROMO - Profile - GenerateComponentDiffRequest` | `PROMO - Profile - GenerateComponentDiffResponse` | `generateComponentDiff` |
 | `PROMO - FSS Op - ListIntegrationPacks` | `PROMO - Profile - ListIntegrationPacksRequest` | `PROMO - Profile - ListIntegrationPacksResponse` | `listIntegrationPacks` |
 | `PROMO - FSS Op - QueryTestDeployments` | `PROMO - Profile - QueryTestDeploymentsRequest` | `PROMO - Profile - QueryTestDeploymentsResponse` | `queryTestDeployments` |
+| `PROMO - FSS Op - CancelTestDeployment` | `PROMO - Profile - CancelTestDeploymentRequest` | `PROMO - Profile - CancelTestDeploymentResponse` | `cancelTestDeployment` |
 
 #### Return Documents Shape
 

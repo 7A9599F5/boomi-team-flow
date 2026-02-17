@@ -13,7 +13,7 @@
 
 ## Message Actions
 
-The Flow Service exposes 12 message actions, each linked to a corresponding Integration process.
+The Flow Service exposes 13 message actions, each linked to a corresponding Integration process.
 
 ### 1. getDevAccounts
 
@@ -491,6 +491,48 @@ Process E3 MUST compare `reviewerEmail.toLowerCase()` with `initiatedBy.toLowerC
 
 ---
 
+### 13. cancelTestDeployment
+
+**Action Name**: `cancelTestDeployment`
+**Linked Process**: Process E4 - Cancel Test Deployment (reuses E4 process with cancellation path)
+**Flow Service Operation**: `PROMO - FSS Op - CancelTestDeployment`
+**Request Profile**: `PROMO - Profile - CancelTestDeploymentRequest`
+**Response Profile**: `PROMO - Profile - CancelTestDeploymentResponse`
+**Service Type**: Message Action
+
+**Description**: Cancels a test deployment by cleaning up the preserved test branch and updating the PromotionLog status to `TEST_CANCELLED`. This prevents stale test branches from accumulating against the per-account branch limit. The branch DELETE is idempotent (both 200 and 404 responses are treated as success).
+
+**Request Fields**:
+- `promotionId` (string, required) — the promotion ID of the test deployment to cancel
+
+**Response Fields**:
+- `success` (boolean)
+- `promotionId` (string) — echoed back for confirmation
+- `previousStatus` (string) — the status before cancellation (should be `TEST_DEPLOYED`)
+- `newStatus` (string) — always `TEST_CANCELLED` on success
+- `branchDeleted` (boolean) — true if the branch was successfully deleted (or already absent)
+- `message` (string) — human-readable confirmation message
+- `errorCode` (string, optional)
+- `errorMessage` (string, optional)
+
+**Validation**:
+1. Query PromotionLog for the given `promotionId`
+2. If not found: return `success=false`, `errorCode=PROMOTION_NOT_FOUND`
+3. If status is not `TEST_DEPLOYED`: return `success=false`, `errorCode=INVALID_PROMOTION_STATUS`, `errorMessage="Cannot cancel promotion with status {currentStatus}; expected TEST_DEPLOYED"`
+
+**Logic**:
+1. Query PromotionLog for the `promotionId` and extract `branchId` and current `status`
+2. Verify status is `TEST_DEPLOYED` (validation above)
+3. DELETE the test branch using `DELETE /Branch/{branchId}` — idempotent: HTTP 200 (deleted) and HTTP 404 (already absent) are both treated as success
+4. Update PromotionLog: set `status=TEST_CANCELLED`, clear `branchId` (set to empty string)
+5. Return success response with `previousStatus`, `newStatus=TEST_CANCELLED`, `branchDeleted=true`
+
+**Error Codes (specific to this action)**:
+- `PROMOTION_NOT_FOUND` — `promotionId` references a non-existent PromotionLog record
+- `INVALID_PROMOTION_STATUS` — promotion is not in `TEST_DEPLOYED` status (may be `DEPLOYED`, `TEST_CANCELLED`, `FAILED`, etc.)
+
+---
+
 ## Configuration Values
 
 The Flow Service requires one configuration value to be set at deployment:
@@ -528,7 +570,7 @@ The Flow Service requires one configuration value to be set at deployment:
 ### Step 3: Verify Deployment
 
 1. Navigate to "Runtime Management" → "Listeners"
-2. Verify all 12 processes are visible and running:
+2. Verify all 13 processes are visible and running:
    - `PROMO - FSS Op - GetDevAccounts`
    - `PROMO - FSS Op - ListDevPackages`
    - `PROMO - FSS Op - ResolveDependencies`
@@ -541,6 +583,7 @@ The Flow Service requires one configuration value to be set at deployment:
    - `PROMO - FSS Op - GenerateComponentDiff`
    - `PROMO - FSS Op - ListIntegrationPacks`
    - `PROMO - FSS Op - QueryTestDeployments`
+   - `PROMO - FSS Op - CancelTestDeployment`
 3. Note the full service URL: `https://{cloud-base-url}/fs/PromotionService`
 
 ---
@@ -563,7 +606,7 @@ After deploying the Flow Service, configure the Flow application to connect to i
 ### Step 2: Retrieve Connector Configuration
 
 1. Click "Retrieve Connector Configuration Data"
-2. Flow will automatically discover all 12 message actions
+2. Flow will automatically discover all 13 message actions
 3. Auto-generated Flow Types will be created (see below)
 
 ### Step 3: Set Configuration Value
@@ -606,6 +649,8 @@ When you retrieve the connector configuration, Flow automatically generates requ
 22. `listIntegrationPacks RESPONSE - listIntegrationPacksResponse`
 23. `queryTestDeployments REQUEST - queryTestDeploymentsRequest`
 24. `queryTestDeployments RESPONSE - queryTestDeploymentsResponse`
+25. `cancelTestDeployment REQUEST - cancelTestDeploymentRequest`
+26. `cancelTestDeployment RESPONSE - cancelTestDeploymentResponse`
 
 These types are used throughout the Flow application to ensure type safety when calling the Flow Service operations.
 
@@ -689,6 +734,8 @@ Decision: Check Success
 | `SELF_APPROVAL_NOT_ALLOWED` | Admin attempted to approve/deploy their own promotion (`adminEmail` matches `initiatedBy`) | A different admin must approve the deployment |
 | `MERGE_FAILED` | Branch merge request failed (MergeRequest status returned MERGE_FAILED) | Review merge error details; may indicate conflicting changes on main |
 | `MERGE_TIMEOUT` | Branch merge request did not complete within 60 seconds (12 polling attempts) | Retry the deployment; if persistent, check branch status manually |
+| `PROMOTION_NOT_FOUND` | promotionId references a non-existent PromotionLog record | Verify the promotion ID is correct |
+| `INVALID_PROMOTION_STATUS` | Promotion is not in the expected status for the requested operation | Check current promotion status before retrying |
 
 **Error Handling Best Practices**:
 
@@ -815,6 +862,7 @@ The `devAccountId` parameter in several actions (listDevPackages, executePromoti
 |---------|------|---------|
 | 1.0.0 | 2026-02-16 | Initial Flow Service specification |
 | 1.1.0 | 2026-02-16 | Multi-environment deployment: 3 deployment modes (TEST, PRODUCTION from test, PRODUCTION hotfix), new queryTestDeployments action, packPurpose filter on listIntegrationPacks |
+| 1.2.0 | 2026-02-16 | Added cancelTestDeployment action for test branch cleanup; added PROMOTION_NOT_FOUND and INVALID_PROMOTION_STATUS error codes |
 
 ---
 

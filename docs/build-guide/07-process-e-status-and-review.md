@@ -323,51 +323,9 @@ Create `PROMO - FSS Op - QueryTestDeployments` per Section 3.B, using `PROMO - P
    - Combine filters with `AND` operator
 
 4. **Data Process — Exclude Already-Promoted Records**
-   - Groovy script that filters out test deployments where a matching PRODUCTION record already exists. Excludes test deployments where a production PromotionLog record exists with a matching `testPromotionId`, indicating the test deployment has already been promoted to production.
-   ```groovy
-   import java.util.logging.Logger
-   import groovy.xml.XmlSlurper
-   import com.boomi.execution.ExecutionUtil
-
-   Logger logger = Logger.getLogger("PROMO.E4.FilterAlreadyPromoted")
-
-   try {
-       // Collect all test deployment promotionIds from incoming documents
-       // Then check DataHub for any PRODUCTION records with matching testPromotionId
-       // Drop documents where a matching production record exists (status != FAILED)
-
-       for (int i = 0; i < dataContext.getDataCount(); i++) {
-           InputStream is = dataContext.getStream(i)
-           Properties props = dataContext.getProperties(i)
-
-           String docText = is.text
-           def xml = new XmlSlurper().parseText(docText)
-           String promotionId = xml.promotionId?.text() ?: ""
-
-           // Store the promotionId for the subsequent DataHub query
-           // The actual exclusion logic requires a second DataHub query
-           // to check for PRODUCTION records with testPromotionId = this promotionId.
-           //
-           // Implementation approach: Use a sub-process or inline query
-           // to check each test deployment against production records.
-           // For simplicity, pass all documents through and let the
-           // Map shape handle the filtering with a DataHub lookup per record.
-           //
-           // Alternative (recommended for performance): Query ALL production
-           // PromotionLog records where testPromotionId IS NOT NULL in a single
-           // batch query before the loop, build a Set of already-promoted
-           // testPromotionIds, then filter the documents against that Set.
-
-           dataContext.storeStream(
-               new ByteArrayInputStream(docText.getBytes("UTF-8")), props)
-       }
-   } catch (Exception e) {
-       logger.severe("Failed to filter already-promoted records: " + e.getMessage())
-       throw new Exception("Already-promoted filter failed: " + e.getMessage())
-   }
-   ```
-
-   > **Implementation note**: The inline Groovy script above passes all documents through. The recommended production approach is to add a **second DataHub query** before this Data Process step that queries `PromotionLog WHERE targetEnvironment = "PRODUCTION" AND testPromotionId IS NOT NULL AND status != "FAILED"`. Collect the `testPromotionId` values into a Set, then in this Groovy script, drop any document whose `promotionId` is in that Set. This single batch query is more efficient than per-record lookups. See `integration/scripts/` for the pattern — a dedicated `filter-already-promoted.groovy` script may be created in Phase 3 to encapsulate this logic.
+   - Groovy script that filters out test deployments where a matching PRODUCTION record already exists. See `integration/scripts/filter-already-promoted.groovy` for the complete implementation.
+   - **Pre-requisite**: Add a **second DataHub query** between steps 3 and 4 that queries `PromotionLog WHERE targetEnvironment = "PRODUCTION" AND testPromotionId IS NOT NULL AND status != "FAILED"`. Use a Data Process shape to extract the `testPromotionId` values and store them as a comma-separated string in DPP `productionPromotionIds`. This single batch query avoids per-record lookups.
+   - The script reads DPP `productionPromotionIds`, builds a Set for O(1) lookups, then filters out any test deployment document whose `promotionId` appears in that Set. Documents that pass through represent test deployments not yet promoted to production.
 
 5. **Map — Build Response JSON**
    - Source: filtered DataHub PromotionLog query response (XML)
