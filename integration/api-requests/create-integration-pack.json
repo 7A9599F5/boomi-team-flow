@@ -3,7 +3,7 @@
   "_notes": [
     "Creates a new Integration Pack when createNewPack=true",
     "After creation, add the PackagedComponent to the pack",
-    "Then release via POST /ReleaseIntegrationPack"
+    "Then release via PROMO - HTTP Op - POST ReleaseIntegrationPack (POST /partner/api/rest/v1/{accountId}/ReleaseIntegrationPack)"
   ],
   "name": "{newPackName}",
   "description": "{newPackDescription}",

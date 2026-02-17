@@ -113,8 +113,8 @@ Create `PROMO - FSS Op - PackageAndDeploy` per Section 3.B, using `PROMO - Profi
    - Operation: `PROMO - HTTP Op - POST MergeRequest Execute`
    - URL parameter `{1}` = DPP `primaryAccountId`, `{2}` = DPP `mergeRequestId`
    - Request body: `action` = `"MERGE"`. See `/integration/api-requests/execute-merge-request.json`
-   - After execution, poll `GET /MergeRequest/{mergeRequestId}` until `stage = MERGED`
-   - On merge failure: error with `errorCode = "MERGE_FAILED"`, attempt `DELETE /Branch/{branchId}`, return error
+   - After execution, poll using `PROMO - HTTP Op - GET MergeRequest` (operation 19) with URL parameter `{2}` = DPP `mergeRequestId` until `stage = MERGED`. See `/integration/api-requests/get-merge-request.json` for merge stages.
+   - On merge failure (`stage = FAILED_TO_MERGE`): error with `errorCode = "MERGE_FAILED"`, attempt `DELETE /Branch/{branchId}`, return error
 
 2.7. **Note**: After a successful merge, the promoted components now exist on main. Packaging (step 3) reads from main, so the merge must complete before proceeding.
 
@@ -141,20 +141,20 @@ Create `PROMO - FSS Op - PackageAndDeploy` per Section 3.B, using `PROMO - Profi
    - Request body: JSON with `name` = DPP `newPackName`, `description` = DPP `newPackDescription`
    - Response returns the new `integrationPackId`
    - Set DPP `integrationPackId` from the response
-   - After creating the pack, add the PackagedComponent to it (Platform API call to add component to pack)
+   - After creating the pack, add the PackagedComponent to it using `PROMO - HTTP Op - POST Add To IntegrationPack` (operation 17) with URL parameters `{2}` = DPP `integrationPackId`, `{3}` = DPP `packagedComponentId`. See `/integration/api-requests/add-to-integration-pack.json`.
    - Continue to step 7
 
 6. **NO Branch — Add to Existing Pack**
    - The `integrationPackId` DPP already holds the existing pack ID
-   - Add the PackagedComponent (from step 3) to the existing Integration Pack via the Platform API
+   - Add the PackagedComponent (from step 3) to the existing Integration Pack using `PROMO - HTTP Op - POST Add To IntegrationPack` (operation 17) with URL parameters `{2}` = DPP `integrationPackId`, `{3}` = DPP `packagedComponentId`. See `/integration/api-requests/add-to-integration-pack.json`.
    - Continue to step 7
 
 7. **HTTP Client Send — Release Integration Pack**
-   - POST to release the Integration Pack (makes it deployable)
-   - This may use an existing HTTP operation or a generic HTTP Client Send with the release endpoint
-   - URL: `/partner/api/rest/v1/{primaryAccountId}/IntegrationPackRelease`
-   - Request body includes `integrationPackId` and release notes
-   - Response returns the `releaseVersion`
+   - Connector: `PROMO - Partner API Connection`
+   - Operation: `PROMO - HTTP Op - POST ReleaseIntegrationPack` (operation 18)
+   - URL parameter `{1}` = DPP `primaryAccountId`
+   - Request body: JSON with `integrationPackId` = DPP `integrationPackId`, `version` = DPP `packageVersion`, `notes` = promotion metadata. See `/integration/api-requests/release-integration-pack.json`.
+   - Response returns the released `packageId` used for deployment in step 8
 
 8. **For Each Target Environment — Deploy**
    - If `targetAccountGroupId` is provided, deploy the released pack:

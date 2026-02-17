@@ -2,12 +2,13 @@
   "_comment": "POST https://api.boomi.com/partner/api/rest/v1/{primaryAccountId}/DeployedPackage",
   "_notes": [
     "Deploys a released Integration Pack component to a target environment",
-    "Called after IntegrationPack release for each target environment",
+    "Called after PROMO - HTTP Op - POST ReleaseIntegrationPack for each target environment",
     "environmentId: from the target account group",
-    "packageId: the released package ID from ReleaseIntegrationPack response"
+    "packageId: the released package ID from ReleaseIntegrationPack response",
+    "listenerStatus: optional, RUNNING (default) or PAUSED — controls listener state after deployment",
+    "componentType is NOT required — the API infers it from the packageId"
   ],
   "environmentId": "{targetEnvironmentId}",
   "packageId": "{releasedPackageId}",
-  "componentType": "process",
   "notes": "{deploymentNotes}"
 }
