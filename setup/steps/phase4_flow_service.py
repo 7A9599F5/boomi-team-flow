@@ -11,7 +11,7 @@ from setup.ui.prompts import collect_component_id, guide_and_confirm, guide_and_
 # ---- Step 4.0: CreateFlowService -------------------------------------------
 
 class CreateFlowService(BaseStep):
-    """Guide user through creating the Flow Service component with all 14 message actions."""
+    """Guide user through creating the Flow Service component with all 19 message actions."""
 
     @property
     def step_id(self) -> str:
@@ -33,7 +33,7 @@ class CreateFlowService(BaseStep):
         ui.print_step(self.step_id, self.name, self.step_type.value)
 
         if dry_run:
-            ui.print_info("Would guide user to create Flow Service with 14 message actions.")
+            ui.print_info("Would guide user to create Flow Service with 19 message actions.")
             return StepStatus.COMPLETED
 
         # Show all FSS operation component IDs for reference
@@ -50,7 +50,7 @@ class CreateFlowService(BaseStep):
             "Create the Flow Service component in Boomi AtomSphere:\n\n"
             "1. Go to Build > New Component > Flow Service\n"
             "2. Name it: PROMO - Flow Service\n"
-            "3. Add all 14 message actions listed above\n"
+            "3. Add all 19 message actions listed above\n"
             "4. For each action, link the corresponding FSS operation\n"
             "5. Configure the listener (connector + operation for each action)\n"
             "6. Save and copy the component ID",

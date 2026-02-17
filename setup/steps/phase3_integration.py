@@ -329,7 +329,7 @@ class DiscoverFssTemplate(BaseStep):
 # ---- Step 3.3: CreateFssOps -----------------------------------------------
 
 class CreateFssOps(BaseStep):
-    """Automatically create all 14 FSS operations via Platform API."""
+    """Automatically create all 19 FSS operations via Platform API."""
 
     @property
     def step_id(self) -> str:
@@ -416,7 +416,7 @@ class CreateFssOps(BaseStep):
 # ---- Step 3.4: BuildProcesses ----------------------------------------------
 
 class BuildProcesses(BaseStep):
-    """Guide user through manually building all 12 integration processes."""
+    """Guide user through manually building all 18 integration processes."""
 
     @property
     def step_id(self) -> str:
