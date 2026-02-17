@@ -94,7 +94,7 @@ Creates component `abc-123` on branch `branch-456`.
 
 **Management Strategy:**
 1. Check branch count before creation (query branches, count results)
-2. Fail promotion with `BRANCH_LIMIT_REACHED` error if count >= 18 (leave buffer)
+2. Fail promotion with `BRANCH_LIMIT_REACHED` error if count >= 15 (leave buffer)
 3. Delete branch on ALL terminal paths:
    - Peer approval → (continue to admin review)
    - Peer rejection → delete immediately

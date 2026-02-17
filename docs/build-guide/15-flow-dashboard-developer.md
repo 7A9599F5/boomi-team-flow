@@ -46,14 +46,14 @@
 1. Navigate to **Flow -> Build -> New Flow**.
 2. Name: `Promotion Dashboard`.
 3. Add **Developer Swimlane**:
-   - Authorization: SSO group `Boomi Developers`
+   - Authorization: SSO group `ABC_BOOMI_FLOW_CONTRIBUTOR`
    - This swimlane is the entry point for the application
 4. Add **Peer Review Swimlane**:
-   - Authorization: SSO groups `Boomi Developers` OR `Boomi Admins` (any listed group grants access)
+   - Authorization: SSO groups `ABC_BOOMI_FLOW_CONTRIBUTOR` OR `ABC_BOOMI_FLOW_ADMIN` (any listed group grants access)
    - This swimlane receives control after the developer submits for peer review
    - Note: Boomi Flow supports multiple SSO groups per swimlane with OR logic
 5. Add **Admin Swimlane**:
-   - Authorization: SSO group `Boomi Admins`
+   - Authorization: SSO group `ABC_BOOMI_FLOW_ADMIN`
    - This swimlane receives control after peer review passes
 
 Build the 9 pages in order. Each page uses Message steps to call Flow Service actions and Decision steps to handle the `success` field in responses.

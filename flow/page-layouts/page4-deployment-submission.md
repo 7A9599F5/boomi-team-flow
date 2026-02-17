@@ -394,7 +394,7 @@ When `targetEnvironment = "TEST"`, the `packageAndDeploy` response is displayed 
 
 5. **End developer flow:**
    - Show "Close" button to exit
-   - Peer reviewer must authenticate with SSO (Boomi Developers or Boomi Admins group) to continue flow
+   - Peer reviewer must authenticate with SSO (`ABC_BOOMI_FLOW_CONTRIBUTOR` or `ABC_BOOMI_FLOW_ADMIN` group) to continue flow
 
 ---
 
@@ -567,7 +567,7 @@ On "Submit for Peer Review" click:
 **Swimlane boundary pause:**
 - Flow PAUSES at the transition from Developer to Peer Review swimlane
 - Flow state stored with `deploymentRequest` data
-- Peer reviewer must authenticate with SSO ("Boomi Developers" or "Boomi Admins" group) to access Page 5
+- Peer reviewer must authenticate with SSO (`ABC_BOOMI_FLOW_CONTRIBUTOR` or `ABC_BOOMI_FLOW_ADMIN` group) to access Page 5
 - Fresh Flow session for reviewer (separate from developer session)
 
 ## Accessibility
@@ -607,6 +607,6 @@ On "Submit for Peer Review" click:
 
 6. **Peer reviewer clicks link in email**
    - Opens Flow application
-   - Prompted to authenticate via SSO ("Boomi Developers" or "Boomi Admins" group)
+   - Prompted to authenticate via SSO (`ABC_BOOMI_FLOW_CONTRIBUTOR` or `ABC_BOOMI_FLOW_ADMIN` group)
    - After auth: Arrives at Page 5 (Peer Review Queue)
    - Sees pending review request (submitter's own submissions excluded)

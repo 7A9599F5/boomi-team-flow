@@ -124,7 +124,7 @@ After a successful "Retrieve Connector Configuration Data," Flow should auto-gen
 Check the Flow value bindings on the Message step. Both input values (request type) and output values (response type) must be bound. The connector action name must match the message action name exactly (e.g., `executePromotion`, not `ExecutePromotion`). Verify the Flow Value type matches the auto-generated type name (e.g., `executePromotion REQUEST - executePromotionRequest`).
 
 **"Swimlane transition fails (unauthorized)"**
-Verify SSO groups are configured correctly in Azure AD/Entra. The Developer swimlane requires membership in "Boomi Developers." The Admin swimlane requires membership in "Boomi Admins." If the user does not belong to the correct group, the swimlane transition is blocked. Check the Identity connector configuration in Flow.
+Verify SSO groups are configured correctly in Azure AD/Entra. The Developer swimlane requires membership in `ABC_BOOMI_FLOW_CONTRIBUTOR`. The Admin swimlane requires membership in `ABC_BOOMI_FLOW_ADMIN`. If the user does not belong to the correct group, the swimlane transition is blocked. Check the Identity connector configuration in Flow.
 
 **"Email notification not sent at deployment submission"**
 Check the email step configuration on the transition from Page 4 to Page 5. Verify the distribution list or recipient address is correct. Verify the Flow environment has email sending enabled. Test with a direct email address before using a distribution list.
@@ -204,6 +204,47 @@ Complete mapping of all error codes to their source processes, causes, and resol
 | `TEST_PROMOTION_NOT_FOUND` | D | `testPromotionId` references a non-existent or non-`TEST_DEPLOYED` promotion | Verify the test promotion exists and is in `TEST_DEPLOYED` status before promoting to production |
 
 ---
+
+---
+
+## Operational Monitoring
+
+### Key Metrics to Track
+
+| Metric | Description | Collection Method |
+|--------|-------------|-------------------|
+| **Promotion throughput** | Promotions completed per day/week, average duration | Process Reporting — filter by `PROMO - FSS Op - ExecutePromotion` |
+| **API error rates** | 4xx and 5xx responses per process, with 429 rate limit hits highlighted | Process Reporting error logs; custom Groovy logger.info counters |
+| **Branch utilization** | Active branches vs 15-branch threshold (alert at 12+) | Scheduled process: `POST /Branch/query` daily, count results |
+| **DataHub query latency** | Average and P95 query times for PromotionLog, ComponentMapping | Process Reporting execution step timings |
+| **Process execution times** | Per-process average duration, with anomaly detection for >2x normal | Process Reporting — compare against baseline durations |
+| **DPP cache sizes** | `componentMappingCache` character count (warn at >500KB, Boomi DPP limit is ~1MB) | Groovy logger.info of cache size before/after population |
+
+### Alerting Thresholds
+
+| Metric | Warning | Critical |
+|--------|---------|----------|
+| Active branches | 12 | 15 |
+| API 5xx rate | >5% per hour | >15% per hour |
+| 429 rate limit hits | >10 per hour | >50 per hour |
+| Process C duration | >5 minutes | >15 minutes |
+| Failed promotions | >2 per day | >5 per day |
+
+### Suggested SLAs
+
+| Operation | Target |
+|-----------|--------|
+| Promotion completion (<50 components) | <10 minutes |
+| Peer review queue refresh | <30 seconds |
+| Status query response | <5 seconds |
+| System availability (business hours) | 99.5% |
+
+### Implementation Guidance
+
+- **Process Reporting**: Use Boomi's built-in Process Reporting for execution tracking. Filter by process name prefix `PROMO - FSS Op -` to isolate promotion system executions.
+- **Custom alerts**: Set up alerts via the Process Reporting API or AtomSphere scheduled reports. Configure email notifications for critical threshold breaches.
+- **Branch utilization monitoring**: Create a scheduled Integration Process that runs daily, queries `POST /Branch/query` to count active branches, and sends an alert email when the count exceeds the warning threshold (12).
+- **DPP cache monitoring**: Add `logger.info("componentMappingCache size: " + cache.length())` to the `rewrite-references.groovy` script to track cache size growth over time in Process Reporting logs.
 
 ---
 Prev: [Phase 6: Testing](17-testing.md) | Next: [Appendix A: Naming & Inventory](19-appendix-naming-and-inventory.md) | [Back to Index](index.md)

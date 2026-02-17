@@ -2,7 +2,7 @@
 
 Reference: `/flow/page-layouts/page5-peer-review-queue.md` for full UI specification.
 
-Peer reviewer authenticates via SSO ("Boomi Developers" or "Boomi Admins" group) and sees promotions submitted by other users. Own submissions are excluded by the backend.
+Peer reviewer authenticates via SSO (`ABC_BOOMI_FLOW_CONTRIBUTOR` or `ABC_BOOMI_FLOW_ADMIN` group) and sees promotions submitted by other users. Own submissions are excluded by the backend.
 
 **Page load:**
 
@@ -42,7 +42,7 @@ Displays full promotion details and allows the peer reviewer to approve or rejec
 
 Reference: `/flow/page-layouts/page7-admin-approval-queue.md` for full UI specification.
 
-Admin authenticates via SSO ("Boomi Admins" group) and reviews promotions that have passed peer review.
+Admin authenticates via SSO (`ABC_BOOMI_FLOW_ADMIN` group) and reviews promotions that have passed peer review.
 
 **Page load:**
 
@@ -99,12 +99,12 @@ Admin views and manages dev-to-prod component ID mappings stored in the DataHub.
 ### Step 5.3 -- Configure SSO
 
 1. In Azure AD (Entra), create or verify two security groups:
-   - `Boomi Developers` -- contains all developer users who will browse packages and submit promotions
-   - `Boomi Admins` -- contains administrators who approve or deny deployment requests
+   - `ABC_BOOMI_FLOW_CONTRIBUTOR` -- contains all developer users who will browse packages and submit promotions
+   - `ABC_BOOMI_FLOW_ADMIN` -- contains administrators who approve or deny deployment requests
 2. In Boomi Flow, open the Identity connector (Azure AD / Entra).
 3. Map each group to the corresponding swimlane(s):
-   - `Boomi Developers` -> Developer Swimlane, Peer Review Swimlane
-   - `Boomi Admins` -> Peer Review Swimlane, Admin Swimlane
+   - `ABC_BOOMI_FLOW_CONTRIBUTOR` -> Developer Swimlane, Peer Review Swimlane
+   - `ABC_BOOMI_FLOW_ADMIN` -> Peer Review Swimlane, Admin Swimlane
    - **Note**: The Peer Review Swimlane accepts both groups (OR logic). Any developer or admin can peer-review, but self-review is prevented at the backend level.
 4. Save the Identity connector configuration.
 
@@ -113,9 +113,9 @@ Admin views and manages dev-to-prod component ID mappings stored in the DataHub.
 **Verify:**
 
 1. Open the published Flow application URL in a browser.
-2. **Peer review flow**: Authenticate as a user in the `Boomi Developers` or `Boomi Admins` SSO group (different from the submitter). Verify the pending review appears in the Peer Review Queue (Page 5). Confirm the submitter's own submissions do NOT appear. Select the review, examine the detail page (Page 6), add comments, and click "Approve — Send to Admin Review". Confirm the success message and that both the admin group and submitter receive emails. Also test rejection: select a different review, reject with a reason, and verify the submitter receives the rejection email.
+2. **Peer review flow**: Authenticate as a user in the `ABC_BOOMI_FLOW_CONTRIBUTOR` or `ABC_BOOMI_FLOW_ADMIN` SSO group (different from the submitter). Verify the pending review appears in the Peer Review Queue (Page 5). Confirm the submitter's own submissions do NOT appear. Select the review, examine the detail page (Page 6), add comments, and click "Approve — Send to Admin Review". Confirm the success message and that both the admin group and submitter receive emails. Also test rejection: select a different review, reject with a reason, and verify the submitter receives the rejection email.
 3. **Self-review prevention**: Authenticate as the **same user who submitted**. Verify their own promotion does NOT appear in the Peer Review Queue.
-4. **Admin flow**: Authenticate as a user in the `Boomi Admins` SSO group (or follow the link from the peer approval email). Verify the peer-approved request appears in the Admin Approval Queue (Page 7) with the "Peer Reviewed By" column populated. Select it, review the detail panel including peer review information, add admin comments, and click "Approve and Deploy". Confirm the deployment succeeds and both the submitter and peer reviewer receive approval emails. Repeat with a denial to verify the denial flow and email.
+4. **Admin flow**: Authenticate as a user in the `ABC_BOOMI_FLOW_ADMIN` SSO group (or follow the link from the peer approval email). Verify the peer-approved request appears in the Admin Approval Queue (Page 7) with the "Peer Reviewed By" column populated. Select it, review the detail panel including peer review information, add admin comments, and click "Approve and Deploy". Confirm the deployment succeeds and both the submitter and peer reviewer receive approval emails. Repeat with a denial to verify the denial flow and email.
 5. **Self-approval prevention**: Authenticate as the **same admin who submitted the original promotion**. Click "Approve and Deploy" and verify the backend returns `SELF_APPROVAL_NOT_ALLOWED` error. A different admin must approve.
 6. **Mapping Viewer**: From the Admin Approval Queue, click "View Component Mappings". Verify mappings load in the grid, filters work, CSV export downloads, and manual mapping create/update/delete operations succeed.
 7. **Production Readiness**: From Page 7, click "View Production Readiness" to navigate to Page 9. Verify test deployments are listed and the "Promote to Production" button navigates to Page 4 in production-from-test mode.

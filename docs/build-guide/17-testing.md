@@ -266,9 +266,9 @@ After a successful promotion (Test 2 or Test 4), submit for deployment.
 
 1. On Page 4 (Deployment Submission), fill in the package version and deployment notes.
 2. Click Submit -- the flow transitions to the Peer Review swimlane and sends an email notification.
-3. Log in as a different developer or admin (peer reviewer, member of "Boomi Developers" or "Boomi Admins" SSO group).
+3. Log in as a different developer or admin (peer reviewer, member of `ABC_BOOMI_FLOW_CONTRIBUTOR` or `ABC_BOOMI_FLOW_ADMIN` SSO group).
 4. Open Page 5 (Peer Review Queue), locate the pending review, and click Approve on Page 6 (Peer Review Detail).
-5. Log in as an admin user (member of "Boomi Admins" SSO group).
+5. Log in as an admin user (member of `ABC_BOOMI_FLOW_ADMIN` SSO group).
 6. Open Page 7 (Admin Approval Queue), locate the peer-approved request, and click Approve.
 7. Verify the deployment completes.
 

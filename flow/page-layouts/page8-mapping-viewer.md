@@ -7,7 +7,7 @@ The Mapping Viewer page allows admins to view, search, filter, and manually mana
 ## Page Load Behavior
 
 1. **Admin authentication:**
-   - User must be authenticated via SSO with "Boomi Admins" group membership
+   - User must be authenticated via SSO with `ABC_BOOMI_FLOW_ADMIN` group membership
    - If not authorized: Show error "Access denied. This page requires admin privileges."
 
 2. **Message step execution:** `manageMappings`

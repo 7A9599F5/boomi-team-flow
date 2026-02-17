@@ -315,6 +315,42 @@ CREATE → POLL → PROMOTE → REVIEW → TERMINAL
 - Allows audit of branch lifecycle
 - Null `branchId` on a completed promotion = branch successfully cleaned up
 
+## Security Considerations
+
+### Token Rotation
+
+The Platform API token (`PROMO - HTTP Client - Platform API` connection) should be rotated every 90 days. Set a calendar reminder at 75 days to allow a 15-day rotation window.
+
+**Step-by-step rotation procedure:**
+
+1. **Create new token**: In AtomSphere, navigate to Settings > Account Information > Platform API Tokens. Generate a new API token.
+2. **Update HTTP Client connection**: Edit the `PROMO - HTTP Client - Platform API` connection with the new token credentials (username remains unchanged).
+3. **Test with read-only call**: Execute a GET Component call to verify authentication — run Process A (`listDevPackages`) or a similar read-only process.
+4. **Verify all processes**: Run a low-risk process end-to-end (e.g., `queryStatus` via Process E) to confirm the full pipeline works with the new token.
+5. **Revoke old token**: Delete the old token only after confirming the new token works across all processes.
+
+**Graceful 401 failure behavior:**
+
+When a token expires or is revoked, all Platform API calls return HTTP 401. The retry logic MUST NOT retry 401 errors — they are not transient. The system should:
+- Log the 401 with process name and timestamp
+- Return a clear error: `AUTHENTICATION_FAILED — API token may be expired. Contact admin for token rotation.`
+- NOT retry (401 is permanent until the token is refreshed)
+
+No data corruption can occur on 401 — the API rejects all requests before any write occurs.
+
+### Authorization Validation (IDOR Protection)
+
+The `devAccountId` parameter in several message actions (particularly Process C `executePromotion`) is accepted from the client without server-side validation against DevAccountAccess records. A malicious or misconfigured client could submit a `devAccountId` they do not have access to.
+
+**Recommended mitigation for Process C:**
+- Before executing promotion, query DevAccountAccess for records matching the user's SSO groups AND the submitted `devAccountId`
+- If no matching DevAccountAccess record is found, fail with `UNAUTHORIZED_ACCOUNT_ACCESS`
+- This is especially critical for Process C (`executePromotion`) as it creates branches and modifies components
+
+**Scope:** This validation is most critical in Process C. Other processes (A, B, E) are read-only and lower risk.
+
+**Note:** This is defense-in-depth. The primary security boundary is the Platform API token, which is scoped to the primary account and its sub-accounts. DevAccountAccess validation adds an additional layer for multi-team environments where not all teams should access all dev accounts.
+
 ## Repository Structure
 
 ```

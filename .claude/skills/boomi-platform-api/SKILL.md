@@ -256,7 +256,7 @@ Body: {"queryToken": "EXAMPLE_QUERY_TOKEN"}
 POST /Branch/query
 Body: <QueryFilter xmlns='http://api.platform.boomi.com/'/>
 ```
-**Soft Limit:** If count >= 18, abort with `BRANCH_LIMIT_REACHED` error.
+**Soft Limit:** If count >= 15, abort with `BRANCH_LIMIT_REACHED` error.
 
 ### 2. Create Branch
 ```http

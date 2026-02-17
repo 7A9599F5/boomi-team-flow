@@ -67,7 +67,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **Branch API templates**: `create-branch.json`, `create-merge-request.json`, `execute-merge-request.json` for Boomi Branching lifecycle management
 - **Integration Pack query template**: `query-integration-packs.xml` for `POST /IntegrationPack/query`
 - **XML normalization script**: `normalize-xml.groovy` pretty-prints component XML for consistent line-by-line diff comparison
-- **Branch lifecycle management**: 20-branch hard limit enforced (fail at >= 18 with `BRANCH_LIMIT_REACHED`); all terminal paths (approve, reject, deny) delete branch and clear `branchId` in PromotionLog
+- **Branch lifecycle management**: 20-branch hard limit enforced (fail at >= 15 with `BRANCH_LIMIT_REACHED`); all terminal paths (approve, reject, deny) delete branch and clear `branchId` in PromotionLog
 
 ### Changed
 
@@ -107,7 +107,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **Page 7 (Admin Approval Queue)**: Renamed from "Approval Queue"; now only shows promotions that have passed peer review (`PENDING_ADMIN_REVIEW`)
 - **queryStatus (Process E)**: Added `reviewStage` filter parameter to query by approval stage
 - **Flow Service spec**: Added actions #8 (`queryPeerReviewQueue`) and #9 (`submitPeerReview`); updated status lifecycle documentation
-- **Flow structure**: Expanded from 2 swimlanes to 3; added peer review Flow values (`pendingPeerReviews`, `selectedPeerReview`, `peerReviewerEmail`, `peerReviewerName`); updated navigation map for 8 pages
+- **Flow structure**: Expanded from 2 swimlanes to 3; added peer review Flow values (`pendingPeerReviews`, `selectedPeerReview`, `peerReviewerEmail`, `peerReviewerName`); updated navigation map for 9 pages
 - **Architecture docs**: Added 2-layer approval workflow section, peer review process descriptions, self-review prevention strategy
 - **BUILD-GUIDE.md**: Added peer review build steps, Process E2/E3 configuration, Page 5/6 layout instructions
 
@@ -152,7 +152,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **Groovy scripts** (`/integration/scripts/`): build-visited-set, sort-by-dependency, strip-env-config, rewrite-references
 - **API request templates** (`/integration/api-requests/`): 9 templates for Platform API operations (Component CRUD, PackagedComponent, DeployedPackage, IntegrationPack, ComponentReference, ComponentMetadata)
 - **Flow Service specification** (`/integration/flow-service/`): Complete spec for 9 message actions, configuration values, auto-generated Flow Types, deployment steps, error handling contract
-- **Flow dashboard structure** (`/flow/`): Application structure with 3 swimlanes, 8 pages, Flow values, navigation map, email notifications
+- **Flow dashboard structure** (`/flow/`): Application structure with 3 swimlanes, 9 pages, Flow values, navigation map, email notifications
 - **Page layout specs** (`/flow/page-layouts/`): Detailed UI specs for Package Browser, Promotion Review, Promotion Status, Deployment Submission, Approval Queue, Mapping Viewer
 - **Architecture reference** (`/docs/architecture.md`): System overview, key design decisions, DataHub models, integration process descriptions, error handling strategy
 - **Build guide** (`/docs/BUILD-GUIDE.md`): 6-phase build guide covering DataHub, connections, processes, Flow Service, Flow dashboard, and testing

@@ -154,7 +154,7 @@ curl -X POST \
   -d '<QueryFilter xmlns="http://api.platform.boomi.com/"/>'
 ```
 
-**Check:** If `numberOfResults >= 18`, abort with `BRANCH_LIMIT_REACHED`.
+**Check:** If `numberOfResults >= 15`, abort with `BRANCH_LIMIT_REACHED`.
 
 ### Step 2: Create Branch
 

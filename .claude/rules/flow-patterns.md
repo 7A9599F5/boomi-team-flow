@@ -17,6 +17,9 @@ globs:
 - **Page 5**: Peer Review Queue
 - **Page 6**: Peer Review Detail
 
+### Developer Swimlane Pages (continued)
+- **Page 9**: Production Readiness Queue
+
 ### Admin Swimlane Pages
 - **Page 7**: Admin Approval Queue
 - **Page 8**: Mapping Viewer
@@ -69,6 +72,7 @@ globs:
   - `queryStatus` (Process E)
   - `queryPeerReviewQueue` (Process E2)
   - `submitPeerReview` (Process E3)
+  - `queryTestDeployments` (Process E4)
   - `manageMappings` (Process F)
   - `generateComponentDiff` (Process G)
   - `listIntegrationPacks` (Process J)

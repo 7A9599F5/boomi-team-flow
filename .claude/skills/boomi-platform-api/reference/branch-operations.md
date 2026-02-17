@@ -42,7 +42,7 @@ POST /partner/api/rest/v1/{accountId}/Branch/query
 
 **Soft Limit Enforcement:**
 ```javascript
-if (response.numberOfResults >= 18) {
+if (response.numberOfResults >= 15) {
   throw new Error({
     errorCode: "BRANCH_LIMIT_REACHED",
     errorMessage: "Too many active promotions. Please wait for pending reviews to complete."
@@ -389,13 +389,13 @@ Boomi enforces a **hard limit of 20 branches** per account.
 }
 ```
 
-### Soft Limit Enforcement (18 Branches)
+### Soft Limit Enforcement (15 Branches)
 
 **Check Before Creating:**
 ```javascript
 const branchCount = await queryBranches();
 
-if (branchCount >= 18) {
+if (branchCount >= 15) {
   return {
     errorCode: "BRANCH_LIMIT_REACHED",
     errorMessage: "Too many active promotions. Please wait for pending reviews to complete."
@@ -403,8 +403,8 @@ if (branchCount >= 18) {
 }
 ```
 
-**Why 18:**
-- Reserve 2 slots for buffer
+**Why 15:**
+- Reserve 5 slots for buffer (hard limit is 20)
 - Avoid race conditions (multiple promotions starting simultaneously)
 - Graceful degradation (user sees friendly error, not hard failure)
 
@@ -511,7 +511,7 @@ if (branchCount >= 18) {
 ```javascript
 // 1. Pre-check branch count
 const branchCount = await queryBranches();
-if (branchCount >= 18) {
+if (branchCount >= 15) {
   throw new Error("BRANCH_LIMIT_REACHED");
 }
 

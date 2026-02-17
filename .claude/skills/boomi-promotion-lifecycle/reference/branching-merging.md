@@ -12,7 +12,7 @@ POST /partner/api/rest/v1/{primaryAccountId}/Branch/query
 Body: <QueryFilter xmlns='http://api.platform.boomi.com/'/>
 ```
 
-**If count >= 18, abort:**
+**If count >= 15, abort:**
 ```json
 {
   "errorCode": "BRANCH_LIMIT_REACHED",
@@ -311,7 +311,7 @@ GET /Component/{componentId}~{branchId}
 ```javascript
 // Step 1: Check branch count
 const branches = await queryBranches();
-if (branches.length >= 18) {
+if (branches.length >= 15) {
     throw new Error("BRANCH_LIMIT_REACHED");
 }
 

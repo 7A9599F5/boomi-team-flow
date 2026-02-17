@@ -493,4 +493,4 @@ If multiple outcomes have business rules that match, Flow follows the outcome wi
 | `reference/values-state.md` | Flow values, types, state persistence, IndexedDB caching |
 | `reference/custom-components.md` | React custom components, custom player, objectData binding |
 | `reference/business-rules.md` | Conditional logic, validation, visibility rules |
-| `examples/promotion-dashboard.md` | Project-specific: 8 pages, 3 swimlanes, Message Actions |
+| `examples/promotion-dashboard.md` | Project-specific: 9 pages, 3 swimlanes, Message Actions |

@@ -83,7 +83,7 @@ This document provides a complete walkthrough of a promotion from start to finis
 ```http
 POST /Branch/query
 ```
-**Result:** 12 branches exist (< 18 soft limit) — proceed
+**Result:** 12 branches exist (< 15 soft limit) — proceed
 
 ---
 

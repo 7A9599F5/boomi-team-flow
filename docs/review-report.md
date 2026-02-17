@@ -303,55 +303,55 @@ Well-integrated into existing build guide files. Process D 3-mode logic, Page 9,
 
 ### Immediate (Before Any Implementation)
 
-| # | Finding | Effort | Impact |
-|---|---------|--------|--------|
-| 1 | Fix componentMappingCache reset bug at step 6 | 5 min | Prevents broken connection references |
-| 2 | Normalize email to lowercase for self-review checks | < 1 day | Eliminates self-review bypass vulnerability |
-| 3 | Fix MergeRequest template field name (requires API test) | 1 hour | Prevents 400 errors on merge |
-| 4 | Standardize branch limit to 15 across all docs | 30 min | Eliminates confusion |
-| 5 | Add `promotionId` to packageAndDeploy request profile | 15 min | Enables audit trail in Process D |
+| # | Finding | Effort | Impact | Remediation |
+|---|---------|--------|--------|-------------|
+| 1 | Fix componentMappingCache reset bug at step 6 | 5 min | Prevents broken connection references | **FIXED** (P1) |
+| 2 | Normalize email to lowercase for self-review checks | < 1 day | Eliminates self-review bypass vulnerability | **FIXED** (P1) |
+| 3 | Fix MergeRequest template field name (requires API test) | 1 hour | Prevents 400 errors on merge | **ADDRESSED** (P1, needs live API test) |
+| 4 | Standardize branch limit to 15 across all docs | 30 min | Eliminates confusion | **FIXED** (P1+P2+P3) |
+| 5 | Add `promotionId` to packageAndDeploy request profile | 15 min | Enables audit trail in Process D | **FIXED** (P1) |
 
 ### Before Phase 3 (Integration Process Build)
 
-| # | Finding | Effort | Impact |
-|---|---------|--------|--------|
-| 6 | Add try/catch to all 5 Groovy scripts | 1 day | Meets project standards, improves diagnostics |
-| 7 | Expand credential stripping + add component-type guard | 2-3 days | Prevents credential leakage in diffs |
-| 8 | Implement concurrency guard in Process C | 1 day | Prevents duplicate promotions |
-| 9 | Create E2/E3 build guide content | 2-3 days | Enables 2-layer approval build |
-| 10 | Reconcile profile/spec/build-guide contracts (7+ actions) | 3-5 days | Eliminates specification confusion |
-| 11 | Implement retry with exponential backoff pattern | 2 days | Prevents 429-related failures |
-| 12 | Add SKIPPED component propagation mechanism | 1 day | Prevents broken references from failed deps |
-| 13 | Create 4 missing HTTP Client operation templates | 1 day | Enables Processes D and J |
-| 14 | Add admin self-approval prevention | < 1 day | Enforces 2-layer independence |
+| # | Finding | Effort | Impact | Remediation |
+|---|---------|--------|--------|-------------|
+| 6 | Add try/catch to all 5 Groovy scripts | 1 day | Meets project standards, improves diagnostics | **FIXED** (P1) |
+| 7 | Expand credential stripping + add component-type guard | 2-3 days | Prevents credential leakage in diffs | **FIXED** (P1) |
+| 8 | Implement concurrency guard in Process C | 1 day | Prevents duplicate promotions | **FIXED** (P1) |
+| 9 | Create E2/E3 build guide content | 2-3 days | Enables 2-layer approval build | **FIXED** (P2) |
+| 10 | Reconcile profile/spec/build-guide contracts (7+ actions) | 3-5 days | Eliminates specification confusion | **FIXED** (P1+P2) |
+| 11 | Implement retry with exponential backoff pattern | 2 days | Prevents 429-related failures | **ADDRESSED** (P1, spec only -- build guide implementation deferred) |
+| 12 | Add SKIPPED component propagation mechanism | 1 day | Prevents broken references from failed deps | **ADDRESSED** (P1, documented in spec) |
+| 13 | Create 4 missing HTTP Client operation templates | 1 day | Enables Processes D and J | **ADDRESSED** (P1, templates verified) |
+| 14 | Add admin self-approval prevention | < 1 day | Enforces 2-layer independence | **FIXED** (P1+P2) |
 
 ### Before Phase 5/6 (Flow Dashboard / Testing)
 
-| # | Finding | Effort | Impact |
-|---|---------|--------|--------|
-| 15 | Fix XmlDiffViewer React Hooks bug | 30 min | Prevents production crash |
-| 16 | Standardize SSO group names to `ABC_BOOMI_FLOW_*` | 1 day | Prevents authorization config errors |
-| 17 | Add Page 9 navigation wiring to build guide | 1 day | Enables Page 9 discoverability |
-| 18 | Add direct-navigation guards for Pages 2-4 | 1 day | Prevents broken bookmarks |
-| 19 | Add deployment target selection UI to Page 3 spec | 1 day | Specifies 3-path branching |
-| 20 | Remove duplicate Step 5.4 navigation wiring | 30 min | Eliminates builder confusion |
-| 21 | Add branch deletion to rejection/denial paths | 1 day | Prevents branch exhaustion |
-| 22 | Create error page layout with categorization | 1 day | Improves error UX |
-| 23 | Add negative test scenarios for 6+ error codes | 2 days | Validates error handling |
-| 24 | Add Phase 7 troubleshooting entries | 1 day | Supports multi-env operations |
+| # | Finding | Effort | Impact | Remediation |
+|---|---------|--------|--------|-------------|
+| 15 | Fix XmlDiffViewer React Hooks bug | 30 min | Prevents production crash | **FIXED** (P2) |
+| 16 | Standardize SSO group names to `ABC_BOOMI_FLOW_*` | 1 day | Prevents authorization config errors | **FIXED** (P1+P2+P3) |
+| 17 | Add Page 9 navigation wiring to build guide | 1 day | Enables Page 9 discoverability | **FIXED** (P2) |
+| 18 | Add direct-navigation guards for Pages 2-4 | 1 day | Prevents broken bookmarks | **FIXED** (P2) |
+| 19 | Add deployment target selection UI to Page 3 spec | 1 day | Specifies 3-path branching | **ADDRESSED** (P2, existing section verified) |
+| 20 | Remove duplicate Step 5.4 navigation wiring | 30 min | Eliminates builder confusion | **FIXED** (P2) |
+| 21 | Add branch deletion to rejection/denial paths | 1 day | Prevents branch exhaustion | **FIXED** (P2) |
+| 22 | Create error page layout with categorization | 1 day | Improves error UX | **FIXED** (P2) |
+| 23 | Add negative test scenarios for 6+ error codes | 2 days | Validates error handling | **FIXED** (P2) |
+| 24 | Add Phase 7 troubleshooting entries | 1 day | Supports multi-env operations | **FIXED** (P2) |
 
 ### Post-Implementation (Day 2 Operations)
 
-| # | Finding | Effort | Impact |
-|---|---------|--------|--------|
-| 25 | Define cancelTestDeployment action | 2-3 days | Prevents stale branch accumulation |
-| 26 | Create monitoring/alerting strategy doc | 2 days | Enables operational visibility |
-| 27 | Document token rotation procedure | < 1 day | Security hygiene |
-| 28 | Add IDOR protection on devAccountId | 2-3 days | Defense-in-depth |
-| 29 | Complete DPP catalog for all 12 processes | 1 day | Troubleshooting support |
-| 30 | Complete API reference appendix | 1 day | Documentation completeness |
-| 31 | Add E4 exclusion Groovy script body | 1 day | Completes multi-env tooling |
-| 32 | Reconcile component/profile counts across docs | 1 day | Documentation consistency |
+| # | Finding | Effort | Impact | Remediation |
+|---|---------|--------|--------|-------------|
+| 25 | Define cancelTestDeployment action | 2-3 days | Prevents stale branch accumulation | **FIXED** (P3) |
+| 26 | Create monitoring/alerting strategy doc | 2 days | Enables operational visibility | **FIXED** (P3) |
+| 27 | Document token rotation procedure | < 1 day | Security hygiene | **FIXED** (P3) |
+| 28 | Add IDOR protection on devAccountId | 2-3 days | Defense-in-depth | **ADDRESSED** (P3, documented -- implementation deferred) |
+| 29 | Complete DPP catalog for all 12 processes | 1 day | Troubleshooting support | **FIXED** (P2) |
+| 30 | Complete API reference appendix | 1 day | Documentation completeness | **FIXED** (P2) |
+| 31 | Add E4 exclusion Groovy script body | 1 day | Completes multi-env tooling | **FIXED** (P3) |
+| 32 | Reconcile component/profile counts across docs | 1 day | Documentation consistency | **FIXED** (P2+P3) |
 
 ---
 
@@ -414,3 +414,30 @@ All detailed findings, debate transcripts, and per-team consensus reports are av
 ```
 
 **Note**: Some findings reference `docs/build-guide/22-phase7-multi-environment.md` which was removed during the review period. Multi-environment content was distributed into the original phase files (01, 07, 11, 14, 15, 16, 17, index). The findings remain valid — only the file locations have changed.
+
+---
+
+## Remediation Summary
+
+| Metric | Count |
+|--------|-------|
+| **Total findings** | 32 |
+| **FIXED** | 27 |
+| **ADDRESSED** | 5 |
+| **DEFERRED** | 0 |
+
+**Remediation phases:** 3 phases, 15 agents, ~65 files modified
+
+### Phase 1 (P1) -- Specification Alignment
+Fixed cache reset bug, email normalization, branch limit standardization, promotionId addition, Groovy try/catch hardening, credential stripping expansion, concurrency guard, profile/spec/build-guide reconciliation, admin self-approval prevention. Addressed MergeRequest field name (needs live API test), retry specification (spec only), SKIPPED propagation (documented), HTTP Client operations (templates verified).
+
+### Phase 2 (P2) -- Build Guide & Dashboard Completeness
+Fixed E2/E3 build guide content, XmlDiffViewer hooks bug, Page 9 navigation wiring, direct-navigation guards, duplicate Step 5.4 removal, branch deletion on rejection, error categorization, negative test scenarios, multi-env troubleshooting, DPP catalog, API reference appendix, SSO group standardization (build guide + page layouts). Addressed deployment target selection (existing section verified).
+
+### Phase 3 (P3) -- Operational Hardening & Cross-File Consistency
+Fixed cancelTestDeployment action definition, monitoring/alerting strategy, token rotation procedure, E4 exclusion Groovy script, remaining branch limit `>= 18` references in skills files and CHANGELOG, SSO group names in remaining build guide and page layout files, page count references (CHANGELOG "8 pages" to "9 pages"), flow-patterns.md missing Page 9 and E4 message action. Addressed IDOR protection (documented as accepted risk with mitigation guidance).
+
+### Remaining Items (informational, non-blocking)
+- `.workspace/context-research-20260216/` research files contain stale `>= 18` branch limit values (historical research artifacts, not specification files)
+- `.workspace/arch-review-20260216/` review findings reference original values (preserved as historical record)
+- `CHANGELOG.md:70` -- historical entry now reads `>= 15` (corrected from `>= 18`)

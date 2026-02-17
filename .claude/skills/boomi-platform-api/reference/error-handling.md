@@ -360,7 +360,7 @@ Authorization: Basic base64(${property.BOOMI_USERNAME}:${property.BOOMI_API_TOKE
 try {
   // Pre-check branch count
   const branchCount = await queryBranches();
-  if (branchCount >= 18) {
+  if (branchCount >= 15) {
     return {
       errorCode: "BRANCH_LIMIT_REACHED",
       errorMessage: "Too many active promotions. Please wait for pending reviews to complete."
@@ -443,7 +443,7 @@ try {
 
 | Error Code | Meaning | User Action |
 |------------|---------|-------------|
-| **BRANCH_LIMIT_REACHED** | Too many active promotions (>= 18 branches) | Wait for pending reviews to complete |
+| **BRANCH_LIMIT_REACHED** | Too many active promotions (>= 15 branches) | Wait for pending reviews to complete |
 | **MISSING_CONNECTION_MAPPINGS** | One or more connection mappings not found | Contact admin to seed connection mappings |
 | **COMPONENT_NOT_FOUND** | Component does not exist in dev account | Verify component ID |
 | **PROMOTION_FAILED** | Generic promotion failure | Check logs for details |
