@@ -14,5 +14,8 @@
       "environmentName": "string",
       "status": "string"
     }
-  ]
+  ],
+  "deploymentTarget": "string",
+  "branchPreserved": false,
+  "isHotfix": false
 }

@@ -11,5 +11,11 @@
   "devPackageId": "string",
   "devPackageCreator": "string",
   "devPackageVersion": "string",
-  "branchId": "string"
+  "branchId": "string",
+  "deploymentTarget": "string",
+  "isHotfix": false,
+  "hotfixJustification": "string",
+  "testPromotionId": "string",
+  "testIntegrationPackId": "string",
+  "testIntegrationPackName": "string"
 }

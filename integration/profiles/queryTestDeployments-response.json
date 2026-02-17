@@ -1,0 +1,23 @@
+{
+  "success": true,
+  "errorCode": "",
+  "errorMessage": "",
+  "testDeployments": [
+    {
+      "promotionId": "string",
+      "processName": "string",
+      "devAccountId": "string",
+      "initiatedBy": "string",
+      "initiatedAt": "2026-01-01T00:00:00.000Z",
+      "packageVersion": "string",
+      "componentsTotal": 0,
+      "componentsCreated": 0,
+      "componentsUpdated": 0,
+      "testDeployedAt": "2026-01-01T00:00:00.000Z",
+      "testIntegrationPackId": "string",
+      "testIntegrationPackName": "string",
+      "branchId": "string",
+      "branchName": "string"
+    }
+  ]
+}

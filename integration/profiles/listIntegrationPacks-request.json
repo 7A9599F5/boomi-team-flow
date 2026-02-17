@@ -1,3 +1,4 @@
 {
-  "suggestForProcess": "string"
+  "suggestForProcess": "string",
+  "packPurpose": "string"
 }
