@@ -1,6 +1,6 @@
 ## Phase 2: Integration Connections & Operations
 
-This phase creates the connection and operation components that all integration processes depend on. There are 2 connections and 25 operations total (19 HTTP Client + 6 DataHub).
+This phase creates the connection and operation components that all integration processes depend on. There are 2 connections and 26 operations total (20 HTTP Client + 6 DataHub).
 
 ### Step 2.1 -- Create HTTP Client Connection (Partner API)
 
@@ -78,7 +78,7 @@ Invoke-RestMethod -Uri "https://api.boomi.com/partner/api/rest/v1/{accountId}/Co
 
 ### Step 2.2 -- Create HTTP Client Operations
 
-Create 19 HTTP Client operations. Each uses the `PROMO - Partner API Connection` from Step 2.1.
+Create 20 HTTP Client operations. Each uses the `PROMO - Partner API Connection` from Step 2.1.
 
 #### Quick Reference Table
 
@@ -103,8 +103,9 @@ Create 19 HTTP Client operations. Each uses the `PROMO - Partner API Connection`
 | 17 | PROMO - HTTP Op - POST Add To IntegrationPack | POST | `/partner/api/rest/v1/{1}/IntegrationPack/{2}/PackagedComponent/{3}` | `application/json` | `add-to-integration-pack.json` |
 | 18 | PROMO - HTTP Op - POST ReleaseIntegrationPack | POST | `/partner/api/rest/v1/{1}/ReleaseIntegrationPack` | `application/json` | `release-integration-pack.json` |
 | 19 | PROMO - HTTP Op - GET MergeRequest | GET | `/partner/api/rest/v1/{1}/MergeRequest/{2}` | `application/json` | `get-merge-request.json` |
+| 20 | PROMO - HTTP Op - GET ReleaseIntegrationPackStatus | GET | `/partner/api/rest/v1/{1}/ReleaseIntegrationPackStatus/{2}` | `application/json` | `get-release-integration-pack-status.json` |
 
-> Operations 1-6 use `application/xml` for both Content-Type and Accept headers (Platform API XML endpoints). Operations 7-9 use `application/json` for both headers (JSON-based endpoints). Operation 16 uses `application/xml` (query endpoint). Operations 17-19 use `application/json`.
+> Operations 1-6 use `application/xml` for both Content-Type and Accept headers (Platform API XML endpoints). Operations 7-9 use `application/json` for both headers (JSON-based endpoints). Operation 16 uses `application/xml` (query endpoint). Operations 17-20 use `application/json`.
 
 #### Step 2.2.1 -- PROMO - HTTP Op - GET Component
 
@@ -180,9 +181,9 @@ Invoke-RestMethod -Uri "https://api.boomi.com/partner/api/rest/v1/{accountId}/Co
 
 > The `overrideAccount` query parameter allows reading from dev sub-accounts using the primary account's API credentials. This is required for operations 1, 4, 5, and 6 -- any operation that reads data from a dev account.
 
-#### Batch API Creation for Operations 2.2.2--2.2.19
+#### Batch API Creation for Operations 2.2.2--2.2.20
 
-The remaining 18 operations follow the same structure as Step 2.2.1 with different names, HTTP methods, and URLs. Use the template below with values from the lookup table.
+The remaining 19 operations follow the same structure as Step 2.2.1 with different names, HTTP methods, and URLs. Use the template below with values from the lookup table.
 
 **Template:**
 
@@ -248,6 +249,7 @@ Invoke-RestMethod -Uri "https://api.boomi.com/partner/api/rest/v1/{accountId}/Co
 | 2.2.17 | PROMO - HTTP Op - POST Add To IntegrationPack | POST | `/partner/api/rest/v1/{1}/IntegrationPack/{2}/PackagedComponent/{3}` | `application/json` |
 | 2.2.18 | PROMO - HTTP Op - POST ReleaseIntegrationPack | POST | `/partner/api/rest/v1/{1}/ReleaseIntegrationPack` | `application/json` |
 | 2.2.19 | PROMO - HTTP Op - GET MergeRequest | GET | `/partner/api/rest/v1/{1}/MergeRequest/{2}` | `application/json` |
+| 2.2.20 | PROMO - HTTP Op - GET ReleaseIntegrationPackStatus | GET | `/partner/api/rest/v1/{1}/ReleaseIntegrationPackStatus/{2}` | `application/json` |
 
 > **Recommended:** Create one operation manually in the UI, then export its configuration via `GET /Component/{operationComponentId}` to capture the exact internal XML. Use that as the template for all remaining operations. See [Appendix C: Platform API Quick Reference](21-appendix-platform-api-reference.md) for reusable curl templates.
 

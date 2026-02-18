@@ -340,7 +340,7 @@ Invoke-RestMethod -Uri "https://api.boomi.com/partner/api/rest/v1/$env:BOOMI_ACC
 | 41 | `PROMO - Profile - ValidateScriptRequest` | `validateScript-request.json` |
 | 42 | `PROMO - Profile - ValidateScriptResponse` | `validateScript-response.json` |
 
-> **Recommended workflow:** Create one profile manually in the UI by importing the JSON schema, then export it via `GET /Component/{id}` to capture the internal XML representation. Use that exported XML as a template for the remaining 39 profiles. See [API-First Discovery Workflow](#api-first-discovery-workflow) below.
+> **Recommended workflow:** Create one profile manually in the UI by importing the JSON schema, then export it via `GET /Component/{id}` to capture the internal XML representation. Use that exported XML as a template for the remaining 41 profiles. See [API-First Discovery Workflow](#api-first-discovery-workflow) below.
 
 ---
 

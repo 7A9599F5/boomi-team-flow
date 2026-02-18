@@ -28,7 +28,7 @@ Every process needs request and response JSON profiles. Import them once; all pr
 
 JSON profiles can be created programmatically via `POST /Component` with `type="profile.json"`. However, there is no API equivalent for the UI's "Import from JSON" feature — the profile element XML must be constructed manually.
 
-**Recommended workflow:** Create one profile in the UI using the import steps below, then export it via `GET /Component/{profileId}` to capture the internal XML structure. Use that XML as a template for the remaining 27 profiles by modifying field names and types.
+**Recommended workflow:** Create one profile in the UI using the import steps below, then export it via `GET /Component/{profileId}` to capture the internal XML structure. Use that XML as a template for the remaining 29 profiles by modifying field names and types.
 
 **Template** (after capturing XML from a UI-created profile):
 
