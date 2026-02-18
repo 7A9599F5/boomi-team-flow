@@ -91,6 +91,12 @@ These properties are available to all processes via Flow Service component confi
 | `testPromotionId` | String | Set Properties (step 2) | Decision (step 2.1), DataHub Update (PromotionLog) | false | Links production deployment to preceding test deployment |
 | `testIntegrationPackId` | String | Set Properties (step 2) | DataHub Update (PromotionLog) | false | Test Integration Pack ID from test deployment |
 | `testIntegrationPackName` | String | Set Properties (step 2) | DataHub Update (PromotionLog) | false | Test Integration Pack name from test deployment |
+| `hotfixTestPackId` | String | Set Properties (step 2) or HTTP response (step 7.5.1) | HTTP Client Send (steps 7.5.2, 7.5.3) | false | Test Integration Pack ID for hotfix sync |
+| `hotfixCreateNewTestPack` | String | Set Properties (step 2) | Decision (step 7.5.1) | false | Whether to create new test pack for hotfix |
+| `hotfixNewTestPackName` | String | Set Properties (step 2) | HTTP Client Send (step 7.5.1) | false | Name for new test pack |
+| `hotfixNewTestPackDescription` | String | Set Properties (step 2) | HTTP Client Send (step 7.5.1) | false | Description for new test pack |
+| `testReleaseId` | String | HTTP Client response (step 7.5.3) | Map (step 9) | false | Test release ID for status polling |
+| `testReleaseFailed` | String | Error handler (step 7.5) | Map (step 9) | false | "true" if test release failed (non-blocking) |
 | `mergeRequestId` | String | HTTP Client response (step 2.5) | HTTP Client Send (steps 2.6, polling) | false | Merge request ID for execute and status polling |
 | `packagedComponentId` | String | HTTP Client response (step 3) | HTTP Client Send (steps 5, 6), Map (step 9) | false | Created PackagedComponent ID |
 

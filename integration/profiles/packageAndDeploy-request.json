@@ -17,5 +17,9 @@
   "hotfixJustification": "string",
   "testPromotionId": "string",
   "testIntegrationPackId": "string",
-  "testIntegrationPackName": "string"
+  "testIntegrationPackName": "string",
+  "hotfixTestPackId": "string",
+  "hotfixCreateNewTestPack": false,
+  "hotfixNewTestPackName": "string",
+  "hotfixNewTestPackDescription": "string"
 }

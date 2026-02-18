@@ -190,6 +190,10 @@ else → effectiveTier = "READONLY" (no dashboard access — should not reach th
 - `testPromotionId` (string, optional) — populated when deploying from a completed test deployment; links back to the TEST PromotionLog record
 - `testIntegrationPackId` (string, optional) — for test deployments, the target test Integration Pack ID
 - `testIntegrationPackName` (string, optional) — for test deployments, the target test Integration Pack name
+- `hotfixTestPackId` (string, optional) — Test Integration Pack ID for hotfix test release
+- `hotfixCreateNewTestPack` (boolean, optional) — create new test pack for hotfix
+- `hotfixNewTestPackName` (string, conditional) — name for new test pack
+- `hotfixNewTestPackDescription` (string, conditional) — description for new test pack
 
 **Response Fields**:
 - `success` (boolean)
@@ -198,6 +202,10 @@ else → effectiveTier = "READONLY" (no dashboard access — should not reach th
 - `integrationPackId` (string)
 - `releaseId` (string) — ReleaseIntegrationPack response ID for status polling
 - `releaseVersion` (string) — released pack version
+- `testIntegrationPackId` (string, optional) — Test Integration Pack ID (hotfix mode)
+- `testIntegrationPackName` (string, optional) — Test Integration Pack name (hotfix mode)
+- `testReleaseId` (string, optional) — Test release ID (hotfix mode)
+- `testReleaseVersion` (string, optional) — Test release version (hotfix mode)
 - `deploymentTarget` (string) — echoed from request
 - `branchPreserved` (boolean) — true when branch is kept alive (test deployments only)
 - `isHotfix` (boolean) — echoed from request
@@ -233,9 +241,12 @@ Process D MUST validate that the admin submitting the deployment is not the same
 2. Create PackagedComponent
 3. Create/use Production Integration Pack
 4. Release Production Integration Pack
-5. Delete branch
-6. Update PromotionLog: `status=DEPLOYED`, `isHotfix="true"`, `hotfixJustification`
-7. Response: `branchPreserved=false`, `isHotfix=true`
+5. Create/use Test Integration Pack (from `hotfixTestPackId` or new)
+6. Add PackagedComponent to Test Integration Pack
+7. Release Test Integration Pack (non-blocking — failure logged but does not fail the operation)
+8. Delete branch
+9. Update PromotionLog: `status=DEPLOYED`, `isHotfix="true"`, `hotfixJustification`, `testIntegrationPackId/Name`, `testReleaseId`
+10. Response: `branchPreserved=false`, `isHotfix=true`, `testIntegrationPackId`, `testReleaseId`
 
 ---
 

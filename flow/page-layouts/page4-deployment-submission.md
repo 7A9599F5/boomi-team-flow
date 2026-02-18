@@ -29,7 +29,7 @@ The Deployment Submission page handles three deployment modes based on the `targ
 
 ### Mode 3: Emergency Hotfix (`targetEnvironment = "PRODUCTION"`, `isHotfix = "true"`)
 - **Header:** "Submit Emergency Hotfix for Peer Review"
-- **Warning banner:** Red — "⚠ EMERGENCY HOTFIX: This deployment bypasses the test environment. Both peer review and admin review are required."
+- **Warning banner:** Red — "⚠ EMERGENCY HOTFIX: This deployment releases to production first, then syncs to test. Both peer review and admin review are required."
 - **Hotfix justification:** Read-only display of justification from Page 3
 - **Integration Pack selector:** Filtered to production packs (`listIntegrationPacks` with `packPurpose="PRODUCTION"`)
 - **Submit button label:** "Submit Emergency Hotfix for Peer Review"
@@ -150,6 +150,37 @@ This prevents users from bookmarking or manually navigating to this page without
 
 **Validation:**
 - "Integration Pack selection is required" (if empty on submit)
+
+---
+
+### Hotfix Test Integration Pack Selector (Mode 3 Only)
+
+**Component Type:** Combobox (Dropdown)
+
+**Visibility:** Only shown when `isHotfix = "true"`
+
+**Configuration:**
+- **Label:** "Test Integration Pack (Hotfix Sync)"
+- **Info text:** "The hotfix will also be released to the test Integration Pack to keep environments in sync."
+- **Placeholder:** "Select a test integration pack or create new..."
+- **Required:** Yes (when visible)
+
+**Options:**
+1. **Special option:** "Create New Test Integration Pack"
+   - Value: `"__CREATE_NEW_TEST__"` (special identifier)
+   - Icon: Plus icon (+)
+2. **Existing test packs:**
+   - Populated from `listIntegrationPacks` with `packPurpose="TEST"`
+   - Display field: `packName`
+   - Value field: `packId`
+
+**Behavior:**
+- **On select "Create New":** Show hotfix test pack name/description fields, set `hotfixCreateNewTestPack = true`
+- **On select existing:** Store `packId` → `hotfixTestPackId`, set `hotfixCreateNewTestPack = false`
+
+**Conditional fields (when creating new):**
+- **Hotfix Test Pack Name** (Text Input, required): stored in `hotfixNewTestPackName`
+- **Hotfix Test Pack Description** (Textarea, optional): stored in `hotfixNewTestPackDescription`
 
 ---
 
@@ -312,7 +343,11 @@ When `targetEnvironment = "TEST"`, the `packageAndDeploy` response is displayed 
      "devAccountId": "{selectedDevAccountId}",
      "devPackageId": "{selectedPackage.packageId}",
      "devPackageCreator": "{selectedPackage.createdBy}",
-     "devPackageVersion": "{selectedPackage.packageVersion}"
+     "devPackageVersion": "{selectedPackage.packageVersion}",
+     "hotfixTestPackId": "{hotfixTestPackId}" or null,
+     "hotfixCreateNewTestPack": true/false,
+     "hotfixNewTestPackName": "{hotfixNewTestPackName}" or null,
+     "hotfixNewTestPackDescription": "{hotfixNewTestPackDescription}" or null
    }
    ```
 

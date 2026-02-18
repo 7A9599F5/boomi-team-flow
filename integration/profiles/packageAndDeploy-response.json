@@ -7,6 +7,10 @@
   "integrationPackId": "string",
   "releaseId": "string",
   "releaseVersion": "string",
+  "testIntegrationPackId": "string",
+  "testIntegrationPackName": "string",
+  "testReleaseId": "string",
+  "testReleaseVersion": "string",
   "deploymentTarget": "string",
   "branchPreserved": false,
   "isHotfix": false

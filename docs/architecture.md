@@ -299,8 +299,9 @@ For critical fixes that cannot wait for test validation:
 1. **Dev → Production (with reviews):** Developer promotes components (Process C), selects "Emergency Hotfix" on Page 3, provides mandatory justification.
 2. **Peer review:** Peers see the EMERGENCY HOTFIX badge and justification (Pages 5-6).
 3. **Admin review:** Admins see prominent hotfix warning and must acknowledge the bypass (Page 7).
-4. **Deploy:** Process D merges, packages, deploys to production, deletes branch.
-5. **Audit:** `isHotfix="true"` and `hotfixJustification` logged in PromotionLog for leadership review.
+4. **Deploy:** Process D merges, packages, releases to Production Integration Pack, then releases to Test Integration Pack, deletes branch.
+5. **Test sync:** Test release ensures hotfix is reflected in test environments for regression testing. Test release failure is non-blocking — production release has already succeeded.
+6. **Audit:** `isHotfix="true"` and `hotfixJustification` logged in PromotionLog for leadership review.
 
 ### Path 3: Rejection at Any Stage
 
@@ -349,10 +350,11 @@ stateDiagram-v2
     PackagedProd --> DeployedProd : deploy to Prod env
     DeployedProd --> BranchDeleted : DELETE /Branch
 
-    HotfixPath --> MergedToMainHotfix : merge to main
-    MergedToMainHotfix --> PackagedHotfix : package\nProd Integration Pack
-    PackagedHotfix --> DeployedHotfix : deploy to Prod env
-    DeployedHotfix --> BranchDeleted
+    HotfixPath --> MergedToMainHotfix : merge to main\nOVERRIDE strategy
+    MergedToMainHotfix --> PackagedHotfix : package
+    PackagedHotfix --> ReleasedHotfixProd : release to\nProd Integration Pack
+    ReleasedHotfixProd --> ReleasedHotfixTest : release to\nTest Integration Pack
+    ReleasedHotfixTest --> BranchDeleted : DELETE /Branch
 
     FailedDelete --> BranchDeleted : DELETE immediately\nno merge
 
@@ -379,7 +381,7 @@ With branches persisting through the test→production lifecycle (potentially da
 ### Hotfix Audit Trail
 
 Emergency hotfixes are tracked for leadership review:
-- `isHotfix` field on PromotionLog (String: "true" / "false")
+- `isHotfix` field on PromotionLog (String: "true" / "false") — flags emergency production bypass — deploys to production first, then to test
 - `hotfixJustification` field (up to 1000 characters, required for hotfixes)
 - Admins must explicitly acknowledge the bypass during approval
 - Reporting queries can filter PromotionLog by `isHotfix="true"` to surface all bypass events
