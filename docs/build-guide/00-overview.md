@@ -35,7 +35,7 @@ For components with complex internal XML (Integration Processes, Maps), the guid
 
 ## Bill of Materials
 
-The system comprises **129 components** across 7 phases:
+The system comprises **132 components** across 7 phases:
 
 | Phase | Category | Count | Components |
 |-------|----------|-------|------------|
@@ -53,11 +53,11 @@ The system comprises **129 components** across 7 phases:
 | 7 | DataHub Models | 2 | ExtensionAccessMapping, ClientAccountConfig |
 | 7 | HTTP Client Operations | 8 | Account, Environment, Extensions CRUD, MapExtension, ComponentReference |
 | 7 | DataHub Operations | 4 | Query + Upsert for ExtensionAccessMapping and ClientAccountConfig |
-| 7 | JSON Profiles | 10 | Request + Response for 5 new message actions (K-O) |
-| 7 | Integration Processes | 5 | K (listClientAccounts), L (getExtensions), M (updateExtensions), N (copyExtensionsTestToProd), O (updateMapExtension) |
-| 7 | FSS Operations | 5 | One per new message action |
+| 7 | JSON Profiles | 12 | Request + Response for 6 new message actions (K-O, Q; incl. ValidateScript pair) |
+| 7 | Integration Processes | 6 | K (listClientAccounts), L (getExtensions), M (updateExtensions), N (copyExtensionsTestToProd), O (updateMapExtension), Q (validateScript) |
+| 7 | FSS Operations | 6 | One per new message action |
 | 7 | Custom Component | 1 | ExtensionEditor (React custom component for env extension editing) |
-| | **Total** | **129** | |
+| | **Total** | **132** | |
 
 ---
 
@@ -158,8 +158,8 @@ graph LR
 |-----------|----------|---------|
 | `/datahub/models/` | DataHub model specifications (5 JSON files) | Phase 1, 7 |
 | `/datahub/api-requests/` | Test XML for DataHub CRUD validation (5 files) | Phase 1, 6, 7 |
-| `/integration/profiles/` | JSON request/response profiles (40 files, 20 message actions × 2) | Phase 3, 7 |
-| `/integration/scripts/` | Groovy scripts for XML manipulation (10 files) | Phase 3, 7 |
+| `/integration/profiles/` | JSON request/response profiles (42 files, 21 message actions × 2) | Phase 3, 7 |
+| `/integration/scripts/` | Groovy scripts for XML manipulation (11 files) | Phase 3, 7 |
 | `/integration/api-requests/` | API request templates (28 files) | Phase 2, 3, 7 |
 | `/integration/flow-service/` | Flow Service component specification | Phase 4 |
 | `/flow/` | Flow app structure and page layouts (11 files) | Phase 5, 7 |

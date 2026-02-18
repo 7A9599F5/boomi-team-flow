@@ -15,7 +15,7 @@
 
 ## Message Actions
 
-The Flow Service exposes 20 message actions, each linked to a corresponding Integration process.
+The Flow Service exposes 21 message actions, each linked to a corresponding Integration process.
 
 ### 1. getDevAccounts
 
@@ -803,6 +803,63 @@ For each component in the `extensionPayload`:
 
 ---
 
+### 21. validateScript
+
+**Action Name**: `validateScript`
+**Linked Process**: Process Q - Validate Script
+**Flow Service Operation**: `PROMO - FSS Op - ValidateScript`
+**Request Profile**: `PROMO - Profile - ValidateScriptRequest`
+**Response Profile**: `PROMO - Profile - ValidateScriptResponse`
+**Service Type**: Message Action
+
+**Description**: Validates the syntax and security of Groovy or JavaScript scripts used in map extension functions. Performs compile-time checking without executing the script. For Groovy, applies AST-level security validation blocking dangerous imports (Runtime, ProcessBuilder, File, Socket, reflection, GroovyShell/ClassLoader) and receivers. For JavaScript, uses Nashorn's compile-only mode. Entirely stateless — no HTTP API calls, no DataHub operations. Scoped to the extension management system (Phase 7); not integrated into the promotion workflow.
+
+**Request Fields**:
+- `clientAccountId` (string, required) — target client sub-account ID (context only, not used for API calls)
+- `environmentId` (string, required) — target environment ID (context only)
+- `mapExtensionId` (string, required) — map extension ID from summary query
+- `functionName` (string, required) — name of the script function being validated
+- `scriptContent` (string, required) — the full script source to validate
+- `language` (string, required: "GROOVY" | "JAVASCRIPT") — script language (case-insensitive, normalized to uppercase)
+- `userSsoGroups` (array of strings, required) — for audit trail
+- `userEmail` (string, required) — for audit trail
+
+**Response Fields**:
+- `success` (boolean) — `true` if the validation engine ran (even if the script is invalid); `false` only on internal engine failure
+- `errorCode` (string, optional) — set for input validation failures or internal errors
+- `errorMessage` (string, optional) — human-readable error description
+- `language` (string) — echoed (normalized to uppercase)
+- `functionName` (string) — echoed
+- `isValid` (boolean) — `true` if the script passed all validation checks; `false` if syntax or security errors were found
+- `errors` (array) — detailed error list (empty when `isValid=true`)
+  - `line` (integer) — source line number (0 if unavailable)
+  - `column` (integer) — source column number (0 if unavailable)
+  - `message` (string) — error description
+  - `type` (string: "SYNTAX" | "SECURITY" | "SIZE") — error category
+- `warningCount` (integer) — reserved for future rules (always 0)
+- `validatedAt` (string) — ISO 8601 UTC timestamp of validation
+
+**Process Logic**:
+1. Parse request fields from FSS listener
+2. Validate `language` is GROOVY or JAVASCRIPT → `INVALID_LANGUAGE` if not
+3. Validate `scriptContent` is non-empty → `SCRIPT_EMPTY` if blank
+4. Validate script size ≤ 10 KB → `SCRIPT_TOO_LARGE` if exceeded
+5. **Groovy path**: Configure `SecureASTCustomizer` with blocked imports/receivers → `CompilerConfiguration` → `GroovyShell.parse()` (compile without execute). Catch `MultipleCompilationErrorsException` for syntax/security errors.
+6. **JavaScript path**: `ScriptEngineManager.getEngineByName("nashorn")` → `Compilable.compile()` (parse without execute). Catch `ScriptException` for syntax errors.
+
+**Error Codes (specific to this action)**:
+- `INVALID_LANGUAGE` — `language` is not GROOVY or JAVASCRIPT
+- `SCRIPT_EMPTY` — `scriptContent` is blank or whitespace only
+- `SCRIPT_TOO_LARGE` — script exceeds 10 KB size limit
+- `GROOVY_SYNTAX_ERROR` — Groovy compilation failed (details in `errors[]` with `type="SYNTAX"`)
+- `GROOVY_SECURITY_VIOLATION` — blocked import or receiver detected (details in `errors[]` with `type="SECURITY"`)
+- `JAVASCRIPT_SYNTAX_ERROR` — JavaScript parse failed (details in `errors[]` with `type="SYNTAX"`)
+- `VALIDATION_INTERNAL_ERROR` — engine crash (top-level `success=false`)
+
+**Security Model**: This action performs local validation only — no external API calls, no DataHub writes. The `clientAccountId`, `environmentId`, and `userSsoGroups` fields are accepted for context/audit but are not used for authorization checks. The script content never executes; only compile/parse operations are performed.
+
+---
+
 ## Configuration Values
 
 The Flow Service requires one configuration value to be set at deployment:
@@ -840,7 +897,7 @@ The Flow Service requires one configuration value to be set at deployment:
 ### Step 3: Verify Deployment
 
 1. Navigate to "Runtime Management" → "Listeners"
-2. Verify all 20 processes are visible and running:
+2. Verify all 21 processes are visible and running:
    - `PROMO - FSS Op - GetDevAccounts`
    - `PROMO - FSS Op - ListDevPackages`
    - `PROMO - FSS Op - ResolveDependencies`
@@ -861,6 +918,7 @@ The Flow Service requires one configuration value to be set at deployment:
    - `PROMO - FSS Op - CopyExtensionsTestToProd`
    - `PROMO - FSS Op - UpdateMapExtension`
    - `PROMO - FSS Op - CheckReleaseStatus`
+   - `PROMO - FSS Op - ValidateScript`
 3. Note the full service URL: `https://{cloud-base-url}/fs/PromotionService`
 
 ---
@@ -883,7 +941,7 @@ After deploying the Flow Service, configure the Flow application to connect to i
 ### Step 2: Retrieve Connector Configuration
 
 1. Click "Retrieve Connector Configuration Data"
-2. Flow will automatically discover all 20 message actions
+2. Flow will automatically discover all 21 message actions
 3. Auto-generated Flow Types will be created (see below)
 
 ### Step 3: Set Configuration Value
@@ -942,6 +1000,8 @@ When you retrieve the connector configuration, Flow automatically generates requ
 38. `updateMapExtension RESPONSE - updateMapExtensionResponse`
 39. `checkReleaseStatus REQUEST - checkReleaseStatusRequest`
 40. `checkReleaseStatus RESPONSE - checkReleaseStatusResponse`
+41. `validateScript REQUEST - validateScriptRequest`
+42. `validateScript RESPONSE - validateScriptResponse`
 
 These types are used throughout the Flow application to ensure type safety when calling the Flow Service operations.
 
@@ -1037,6 +1097,13 @@ Decision: Check Success
 | `CLIENT_ACCOUNT_NOT_FOUND` | Client account ID not found in ClientAccountConfig | Verify the client account is registered in DataHub |
 | `RELEASE_NOT_FOUND` | The requested release type has no release ID recorded in the PromotionLog | Verify the promotion was deployed and the correct releaseType is specified |
 | `PACK_ASSIGNMENT_REQUIRED` | Mode 1 test deployment succeeded but no Integration Pack history was found for this process — admin must assign an IP via Mode 4 (PACK_ASSIGNMENT) | Admin selects an Integration Pack on Page 7 and submits via the pack assignment flow |
+| `INVALID_LANGUAGE` | Q | Unsupported `language` value (must be GROOVY or JAVASCRIPT) | Correct the `language` field in the request |
+| `SCRIPT_EMPTY` | Q | Script content is blank or whitespace only | Provide non-empty `scriptContent` |
+| `SCRIPT_TOO_LARGE` | Q | Script exceeds 10 KB size limit | Reduce script size below 10,240 bytes |
+| `GROOVY_SYNTAX_ERROR` | Q | Groovy compilation failed — syntax error in script | Review the `errors` array for line/column details and fix the script |
+| `GROOVY_SECURITY_VIOLATION` | Q | Blocked import or receiver detected by security policy | Remove references to blocked classes (Runtime, ProcessBuilder, File, Socket, reflection, GroovyShell) |
+| `JAVASCRIPT_SYNTAX_ERROR` | Q | JavaScript parse failed — syntax error in script | Review the `errors` array for line/column details and fix the script |
+| `VALIDATION_INTERNAL_ERROR` | Q | Validation engine internal failure | Retry; if persistent, contact administrator |
 
 **Error Handling Best Practices**:
 
@@ -1168,6 +1235,7 @@ The `devAccountId` parameter in several actions (listDevPackages, executePromoti
 | 2.0.0 | 2026-02-17 | Extension Editor: 5 new message actions (listClientAccounts, getExtensions, updateExtensions, copyExtensionsTestToProd, updateMapExtension), 6 new error codes, total actions 14→19 |
 | 2.1.0 | 2026-02-18 | Added checkReleaseStatus action (Process P) for Integration Pack release propagation polling; added RELEASE_NOT_FOUND error code, total actions 19→20 |
 | 2.2.0 | 2026-02-18 | Redesigned packageAndDeploy: 4 modes (added Mode 4 PACK_ASSIGNMENT), main branch protection (Mode 1 packages from branch), admin IP ownership (IP fields moved to admin/Page 7), new response fields needsPackAssignment and autoDetectedPackId, branchPreserved always false; listIntegrationPacks now called from Page 7 |
+| 2.3.0 | 2026-02-18 | Added validateScript action (Process Q) for Groovy/JavaScript syntax and security validation; total actions 20→21 |
 
 ---
 

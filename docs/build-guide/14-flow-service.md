@@ -20,7 +20,7 @@ curl -s -u "BOOMI_TOKEN.user@company.com:your-api-token" \
     <bns:pathToService>/fs/PromotionService</bns:pathToService>
     <bns:externalName>PromotionService</bns:externalName>
     <bns:messageActions>
-      <!-- 20 message actions, each referencing FSS operation + profiles by component ID -->
+      <!-- 21 message actions, each referencing FSS operation + profiles by component ID -->
       <!-- Use GET /Component on a UI-created Flow Service to capture exact XML structure -->
     </bns:messageActions>
     <bns:configurationValues>
@@ -44,7 +44,7 @@ $body = @'
     <bns:pathToService>/fs/PromotionService</bns:pathToService>
     <bns:externalName>PromotionService</bns:externalName>
     <bns:messageActions>
-      <!-- 20 message actions — use API-First Discovery Workflow to capture exact XML -->
+      <!-- 21 message actions — use API-First Discovery Workflow to capture exact XML -->
     </bns:messageActions>
     <bns:configurationValues>
       <bns:configValue name="primaryAccountId" type="String" required="true" />
@@ -56,7 +56,7 @@ Invoke-RestMethod -Uri "https://api.boomi.com/partner/api/rest/v1/{accountId}/Co
   -Method POST -Headers $headers -Body $body
 ```
 
-> **Recommended:** Flow Service XML is complex (20 message actions with cross-references). Use the [API-First Discovery Workflow](22-api-automation-guide.md#api-first-discovery-workflow): create the Flow Service in the UI, export via `GET /Component/{flowServiceId}`, and store the XML as a template for future recreation.
+> **Recommended:** Flow Service XML is complex (21 message actions with cross-references). Use the [API-First Discovery Workflow](22-api-automation-guide.md#api-first-discovery-workflow): create the Flow Service in the UI, export via `GET /Component/{flowServiceId}`, and store the XML as a template for future recreation.
 
 #### Via UI (Manual Fallback)
 
@@ -65,7 +65,7 @@ Invoke-RestMethod -Uri "https://api.boomi.com/partner/api/rest/v1/{accountId}/Co
 3. On the **General** tab, configure:
    - **Path to Service**: `/fs/PromotionService`
    - **External Name**: `PromotionService`
-4. Open the **Message Actions** tab. Add 20 actions, linking each to its FSS Operation, Request Profile, and Response Profile:
+4. Open the **Message Actions** tab. Add 21 actions, linking each to its FSS Operation, Request Profile, and Response Profile:
 
 | # | Action Name | FSS Operation | Request Profile | Response Profile |
 |---|-------------|---------------|-----------------|------------------|
@@ -89,6 +89,7 @@ Invoke-RestMethod -Uri "https://api.boomi.com/partner/api/rest/v1/{accountId}/Co
 | 18 | `copyExtensionsTestToProd` | `PROMO - FSS Op - CopyExtensionsTestToProd` | `PROMO - Profile - CopyExtensionsTestToProdRequest` | `PROMO - Profile - CopyExtensionsTestToProdResponse` |
 | 19 | `updateMapExtension` | `PROMO - FSS Op - UpdateMapExtension` | `PROMO - Profile - UpdateMapExtensionRequest` | `PROMO - Profile - UpdateMapExtensionResponse` |
 | 20 | `checkReleaseStatus` | `PROMO - FSS Op - CheckReleaseStatus` | `PROMO - Profile - CheckReleaseStatusRequest` | `PROMO - Profile - CheckReleaseStatusResponse` |
+| 21 | `validateScript` | `PROMO - FSS Op - ValidateScript` | `PROMO - Profile - ValidateScriptRequest` | `PROMO - Profile - ValidateScriptResponse` |
 
 5. Open the **Configuration Values** tab. Add a configuration value:
    - **Name**: `primaryAccountId`
@@ -183,7 +184,7 @@ Invoke-RestMethod -Uri "https://api.boomi.com/partner/api/rest/v1/{accountId}/De
    - Open **Properties -> Configuration Values**.
    - Set `primaryAccountId` to your primary Boomi account ID.
    - Save.
-9. Navigate to **Runtime Management -> Listeners**. All 20 FSS Operations should appear and show a running status:
+9. Navigate to **Runtime Management -> Listeners**. All 21 FSS Operations should appear and show a running status:
    - `PROMO - FSS Op - GetDevAccounts`
    - `PROMO - FSS Op - ListDevPackages`
    - `PROMO - FSS Op - ResolveDependencies`
@@ -204,6 +205,7 @@ Invoke-RestMethod -Uri "https://api.boomi.com/partner/api/rest/v1/{accountId}/De
    - `PROMO - FSS Op - CopyExtensionsTestToProd`
    - `PROMO - FSS Op - UpdateMapExtension`
    - `PROMO - FSS Op - CheckReleaseStatus`
+   - `PROMO - FSS Op - ValidateScript`
 10. Note the full service URL: `https://{cloud-base-url}/fs/PromotionService`
 
 ### Phase 4 Troubleshooting

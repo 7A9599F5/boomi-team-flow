@@ -72,7 +72,7 @@ See [Appendix D: API Automation Guide](22-api-automation-guide.md#api-first-disc
 3. Click **Import** and select the corresponding file from `/integration/profiles/` (e.g., `manageMappings-request.json`)
 4. Boomi parses the JSON and creates the profile element tree automatically
 5. Click **Save**
-6. Repeat for each of the 40 profiles listed in the master component table:
+6. Repeat for each of the 42 profiles listed in the master component table:
 
 | Profile Name | Source File |
 |-------------|-------------|
@@ -104,6 +104,20 @@ See [Appendix D: API Automation Guide](22-api-automation-guide.md#api-first-disc
 | `PROMO - Profile - CancelTestDeploymentResponse` | `cancelTestDeployment-response.json` |
 | `PROMO - Profile - WithdrawPromotionRequest` | `withdrawPromotion-request.json` |
 | `PROMO - Profile - WithdrawPromotionResponse` | `withdrawPromotion-response.json` |
+| `PROMO - Profile - CheckReleaseStatusRequest` | `checkReleaseStatus-request.json` |
+| `PROMO - Profile - CheckReleaseStatusResponse` | `checkReleaseStatus-response.json` |
+| `PROMO - Profile - ListClientAccountsRequest` | `listClientAccounts-request.json` |
+| `PROMO - Profile - ListClientAccountsResponse` | `listClientAccounts-response.json` |
+| `PROMO - Profile - GetExtensionsRequest` | `getExtensions-request.json` |
+| `PROMO - Profile - GetExtensionsResponse` | `getExtensions-response.json` |
+| `PROMO - Profile - UpdateExtensionsRequest` | `updateExtensions-request.json` |
+| `PROMO - Profile - UpdateExtensionsResponse` | `updateExtensions-response.json` |
+| `PROMO - Profile - CopyExtensionsTestToProdRequest` | `copyExtensionsTestToProd-request.json` |
+| `PROMO - Profile - CopyExtensionsTestToProdResponse` | `copyExtensionsTestToProd-response.json` |
+| `PROMO - Profile - UpdateMapExtensionRequest` | `updateMapExtension-request.json` |
+| `PROMO - Profile - UpdateMapExtensionResponse` | `updateMapExtension-response.json` |
+| `PROMO - Profile - ValidateScriptRequest` | `validateScript-request.json` |
+| `PROMO - Profile - ValidateScriptResponse` | `validateScript-response.json` |
 
 #### Adding Groovy Scripts to Data Process Shapes
 
@@ -199,7 +213,7 @@ Replace `{requestProfileComponentId}` and `{responseProfileComponentId}` with th
 
 > **Note:** The exact XML structure for FSS operation configuration may vary — use the [API-First Discovery Workflow](22-api-automation-guide.md#api-first-discovery-workflow) to capture precise XML from a UI-created operation if the template above does not work directly.
 
-See [Appendix D: API Automation Guide](22-api-automation-guide.md) for a batch creation script covering all 20 operations.
+See [Appendix D: API Automation Guide](22-api-automation-guide.md) for a batch creation script covering all 21 operations.
 
 ##### Via UI (Manual Fallback)
 
@@ -226,6 +240,13 @@ See [Appendix D: API Automation Guide](22-api-automation-guide.md) for a batch c
 | `PROMO - FSS Op - QueryTestDeployments` | `PROMO - Profile - QueryTestDeploymentsRequest` | `PROMO - Profile - QueryTestDeploymentsResponse` | `queryTestDeployments` |
 | `PROMO - FSS Op - CancelTestDeployment` | `PROMO - Profile - CancelTestDeploymentRequest` | `PROMO - Profile - CancelTestDeploymentResponse` | `cancelTestDeployment` |
 | `PROMO - FSS Op - WithdrawPromotion` | `PROMO - Profile - WithdrawPromotionRequest` | `PROMO - Profile - WithdrawPromotionResponse` | `withdrawPromotion` |
+| `PROMO - FSS Op - ListClientAccounts` | `PROMO - Profile - ListClientAccountsRequest` | `PROMO - Profile - ListClientAccountsResponse` | `listClientAccounts` |
+| `PROMO - FSS Op - GetExtensions` | `PROMO - Profile - GetExtensionsRequest` | `PROMO - Profile - GetExtensionsResponse` | `getExtensions` |
+| `PROMO - FSS Op - UpdateExtensions` | `PROMO - Profile - UpdateExtensionsRequest` | `PROMO - Profile - UpdateExtensionsResponse` | `updateExtensions` |
+| `PROMO - FSS Op - CopyExtensionsTestToProd` | `PROMO - Profile - CopyExtensionsTestToProdRequest` | `PROMO - Profile - CopyExtensionsTestToProdResponse` | `copyExtensionsTestToProd` |
+| `PROMO - FSS Op - UpdateMapExtension` | `PROMO - Profile - UpdateMapExtensionRequest` | `PROMO - Profile - UpdateMapExtensionResponse` | `updateMapExtension` |
+| `PROMO - FSS Op - CheckReleaseStatus` | `PROMO - Profile - CheckReleaseStatusRequest` | `PROMO - Profile - CheckReleaseStatusResponse` | `checkReleaseStatus` |
+| `PROMO - FSS Op - ValidateScript` | `PROMO - Profile - ValidateScriptRequest` | `PROMO - Profile - ValidateScriptResponse` | `validateScript` |
 
 #### Return Documents Shape
 
@@ -266,9 +287,9 @@ Invoke-RestMethod -Uri "https://api.boomi.com/partner/api/rest/v1/{accountId}/Co
 4. **Batch create** — loop through a list of component definitions, substituting unique values into the template
 
 This workflow is especially valuable for:
-- **40 JSON profiles** — create one, export, template the remaining 39
+- **42 JSON profiles** — create one, export, template the remaining 41
 - **28 HTTP Client operations** — create one, export, template the remaining 27
-- **20 FSS operations** — create one, export, template the remaining 19
+- **21 FSS operations** — create one, export, template the remaining 20
 - **Cross-account migration** — export all components from one account, recreate in another
 
 See [Appendix D: API Automation Guide](22-api-automation-guide.md) for complete batch creation scripts and the dependency-ordered workflow.
