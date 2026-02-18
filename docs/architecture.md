@@ -47,6 +47,27 @@ External databases have 30+ second latency due to firewall/domain limitations. D
 ### Why Flow Services Server
 Single Flow Service component defines the contract. Exposes all 13 processes as Message Actions. Handles connection management, timeout callbacks, and authentication automatically.
 
+### Why HTTP Client (Not AtomSphere API Connector)
+
+The official AtomSphere API and Partner API connectors are SOAP-based connectors that abstract URL construction, handle `queryMore` pagination automatically, and auto-retry on HTTP 503. Despite these advantages, the HTTP Client connector is required for this system:
+
+**The deal-breaker — tilde syntax:** Branch-scoped component operations use URL paths like `Component/{id}~{branchId}`. The SOAP connectors construct URLs from their WSDL definition and provide no mechanism to inject tilde-delimited path segments. Since Processes C, G, and D all depend on branch-scoped reads and writes, the SOAP connectors cannot support our core workflow.
+
+**Additional factors favoring HTTP Client:**
+
+| Factor | HTTP Client | AtomSphere API Connector |
+|--------|-------------|--------------------------|
+| Branch/MergeRequest objects | Immediately available (REST) | Uncertain — introduced Nov 2024, may not be in WSDL |
+| JSON support | Native (Branch, MergeRequest are JSON-first) | SOAP XML only |
+| URL path flexibility | Full control (tilde syntax, dynamic segments) | WSDL-defined, no custom paths |
+| API variant coverage | Single connection for both `/api/rest/v1/` and `/partner/api/rest/v1/` | Requires two separate connectors |
+| Response header access | Yes (Process P needs HTTP 202 vs 200 for polling) | No |
+| queryMore pagination | Manual loop required | Automatic and transparent |
+| Rate limit retry (503) | Manual (3 retries, exponential backoff) | Automatic (5 retries) |
+| Profile generation | Manual JSON/XML profiles | Auto-generated via Import Wizard |
+
+**Pagination trade-off:** The HTTP Client returns a maximum of 100 results per QUERY call, requiring a `queryMore` loop with the returned `queryToken`. In practice, only 2-3 operations face pagination risk — `QUERY PackagedComponent` (Process A) and `QUERY IntegrationPack` (Process J) — both of which implement queryMore loops. Most other operations are single-item GET/POST/DELETE calls where pagination does not apply.
+
 ### Why Swimlanes for Approval
 Built-in Flow authorization containers. Three swimlanes implement a 2-layer approval workflow: Dev swimlane for submission, Peer Review swimlane for first approval gate (any dev or admin except submitter), Admin swimlane for final approval and deployment. SSO group restrictions on each swimlane. Flow pauses at each boundary waiting for the next authenticated user.
 

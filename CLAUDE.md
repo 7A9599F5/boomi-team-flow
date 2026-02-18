@@ -41,10 +41,11 @@ Platform API        DataHub
 - **P** checkReleaseStatus — poll ReleaseIntegrationPackStatus for release propagation tracking
 - **Q** validateScript — syntax and security validation for map extension script functions (Groovy + JavaScript)
 
-**21 Message Actions** (FSS Operations): one per process, plus `cancelTestDeployment` (E4 reuse) and `validateScript` (Process Q). When adding a new action, update: FSS op table in `04-process-canvas-fundamentals.md`, message actions table in `14-flow-service.md`, listener list in `14-flow-service.md`, Flow types list in `15-flow-dashboard-developer.md`, troubleshooting counts in `18-troubleshooting.md`, and `22-api-automation-guide.md` FSS table.
+**21 Message Actions** (FSS Operations): one per process, plus `cancelTestDeployment` (E4 reuse). When adding a new action, update: FSS op table in `04-process-canvas-fundamentals.md`, message actions table in `14-flow-service.md`, listener list in `14-flow-service.md`, Flow types list in `15-flow-dashboard-developer.md`, troubleshooting counts in `18-troubleshooting.md`, and `22-api-automation-guide.md` FSS table.
 
 **Key design decisions** (see `docs/architecture.md`):
 - Message Actions over Data Actions (complex logic requires full process control)
+- HTTP Client over AtomSphere API Connector (tilde syntax for branch operations, JSON support, immediate access to new API objects — official SOAP connectors can't construct `Component/{id}~{branchId}` URLs)
 - Public Cloud Atom (no firewall issues, everything within Boomi infra)
 - DataHub over external DB (no 30s+ latency from firewall/domain limitations)
 - Connections NOT promoted — pre-configured in parent `#Connections` folder, shared via admin-seeded ComponentMapping records
@@ -129,7 +130,7 @@ When working with Component CRUD templates (`create-component.xml`, `update-comp
 
 - **Commit messages**: conventional commits — `feat(scope):`, `fix(scope):`, `docs:`, etc.
 - **Spec files**: Markdown for documentation, JSON for data models/profiles, XML for API request templates, Groovy for scripts
-- **Naming**: processes use letter codes (A0, A–G, E2–E5, J, K–P); message actions use camelCase (`getDevAccounts`, `executePromotion`, `withdrawPromotion`)
+- **Naming**: processes use letter codes (A0, A–G, E2–E5, J, K–Q); message actions use camelCase (`getDevAccounts`, `executePromotion`, `withdrawPromotion`)
 - **Error codes**: uppercase snake_case (`MISSING_CONNECTION_MAPPINGS`, `COMPONENT_NOT_FOUND`, `BRANCH_LIMIT_REACHED`)
 - **SSO group names** — always use claim format `ABC_BOOMI_FLOW_CONTRIBUTOR`, `ABC_BOOMI_FLOW_ADMIN`, etc. Never use display format (`"Boomi Developers"`) as authorization values
 - **Branch limits** — operational threshold is 15, platform hard limit is 20. Grep for stale values (10, 18) when editing branch-related content
