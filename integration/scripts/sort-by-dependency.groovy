@@ -7,9 +7,18 @@ import java.util.logging.Logger
 Logger logger = Logger.getLogger("sort-by-dependency")
 
 try {
+    // Normalize raw Boomi API type values to canonical internal names
+    def normalizeType = { String t ->
+        if (t == "connector-settings") return "connection"
+        if (t == "connector-action") return "operation"
+        if (t?.startsWith("profile.")) return "profile"
+        if (t == "scripting") return "script"
+        return t ?: ""
+    }
+
     // Type priority mapping (lower = promoted first)
     def typePriority = { String type, String componentId, String rootId ->
-        type = type?.toLowerCase() ?: ''
+        type = normalizeType(type)?.toLowerCase() ?: ''
         if (type.contains('profile')) return 1
         if (type == 'connection') return 2
         if (type.contains('operation')) return 3

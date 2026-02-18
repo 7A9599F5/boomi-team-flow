@@ -33,7 +33,7 @@ try {
     // Read the sorted components from the document stream
     InputStream is = dataContext.getStream(0)
     Properties props = dataContext.getProperties(0)
-    def components = new JsonSlurper().parseText(is.text)
+    def components = new JsonSlurper().parseText(is.getText("UTF-8"))
 
     // Read the pre-loaded connection mapping cache (batch-queried from DataHub)
     String connCacheJson = ExecutionUtil.getDynamicProcessProperty("connectionMappingCache")
@@ -44,8 +44,9 @@ try {
     def compCache = new JsonSlurper().parseText(compCacheJson ?: "{}")
 
     // Separate connections from non-connections
-    def connections = components.findAll { it.type == "connection" }
-    def nonConnections = components.findAll { it.type != "connection" }
+    // Accept both canonical "connection" and raw Boomi API type "connector-settings"
+    def connections = components.findAll { it.type == "connection" || it.type == "connector-settings" }
+    def nonConnections = components.findAll { it.type != "connection" && it.type != "connector-settings" }
 
     // Validate ALL connections have mappings — collect ALL missing, don't stop on first
     def missingMappings = []

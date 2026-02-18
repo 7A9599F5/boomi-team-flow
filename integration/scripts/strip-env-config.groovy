@@ -8,7 +8,7 @@ import java.util.regex.Pattern
 Logger logger = Logger.getLogger("strip-env-config")
 
 // Component types that contain sensitive environment configuration
-def sensitiveTypes = ['process', 'operation', 'connection'] as Set
+def sensitiveTypes = ['process', 'operation', 'connection', 'connector-action'] as Set
 
 // Explicit element names to strip (case-sensitive match)
 def stripElementNames = [

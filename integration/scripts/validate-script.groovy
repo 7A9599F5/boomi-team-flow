@@ -19,6 +19,7 @@ def BLOCKED_IMPORTS = [
     "java.net.Socket", "java.net.ServerSocket", "java.net.URL", "java.net.HttpURLConnection",
     "java.lang.reflect.Method", "java.lang.reflect.Field",
     "groovy.lang.GroovyShell", "groovy.lang.GroovyClassLoader",
+    "groovy.lang.Eval",
     "java.lang.ClassLoader", "java.lang.Thread"
 ]
 
@@ -29,7 +30,8 @@ def BLOCKED_STAR_IMPORTS = [
 def BLOCKED_RECEIVERS = [
     "java.lang.Runtime", "java.lang.ProcessBuilder",
     "java.lang.System", "java.lang.ClassLoader",
-    "groovy.lang.GroovyShell", "groovy.lang.GroovyClassLoader"
+    "groovy.lang.GroovyShell", "groovy.lang.GroovyClassLoader",
+    "groovy.lang.Eval"
 ]
 
 int MAX_SCRIPT_SIZE = 10240  // 10 KB
@@ -125,6 +127,14 @@ try {
             try {
                 def engineManager = new ScriptEngineManager()
                 def engine = engineManager.getEngineByName("nashorn")
+                if (engine == null) {
+                    response.isValid = false
+                    response.errorCode = "JAVASCRIPT_ENGINE_UNAVAILABLE"
+                    response.errorMessage = "JavaScript validation requires Nashorn engine (Java 11-15) or GraalJS."
+                    String outputJson = JsonOutput.prettyPrint(JsonOutput.toJson(response))
+                    dataContext.storeStream(new ByteArrayInputStream(outputJson.getBytes("UTF-8")), props)
+                    continue
+                }
                 if (engine instanceof Compilable) {
                     ((Compilable) engine).compile(scriptContent)
                 }
@@ -161,6 +171,10 @@ try {
         validatedAt: new Date().format("yyyy-MM-dd'T'HH:mm:ss'Z'", TimeZone.getTimeZone("UTC"))
     ]
     String errorJson = JsonOutput.prettyPrint(JsonOutput.toJson(errorResponse))
-    // Re-throw to signal process failure after storing error response
+    // Store error response before re-throwing so the FSS caller receives a document
+    dataContext.storeStream(
+        new ByteArrayInputStream(errorJson.getBytes("UTF-8")),
+        new Properties()
+    )
     throw new Exception("Failed to validate script: " + e.getMessage())
 }
