@@ -70,23 +70,17 @@ Flow values are used to maintain state across pages and message steps.
 | `peerReviewStatus` | String | Current peer review status (PENDING_PEER_REVIEW, PEER_APPROVED, PEER_REJECTED) |
 | `pendingPeerReviews` | List | Peer review queue data from queryPeerReviewQueue (excludes own submissions) |
 | `selectedPeerReview` | Object | Currently selected promotion in the peer review queue |
-| `branchId` | String | Promotion branch ID returned by executePromotion — used for diff API calls and branch cleanup |
-| `branchName` | String | Promotion branch name (e.g., "promo-{promotionId}") |
+| `branchId` | String | Promotion branch ID returned by executePromotion — used for diff API calls and branch cleanup. Cleared after test deployment (branch deleted after packaging). Re-created by Process D for production merge. |
+| `branchName` | String | Promotion branch name (e.g., "promo-{promotionId}"). Cleared after test deployment. |
 | `diffBranchXml` | String | Normalized XML from promotion branch (from generateComponentDiff response) |
 | `diffMainXml` | String | Normalized XML from main branch (from generateComponentDiff response) |
 | `selectedDiffComponent` | Object | Currently selected component for diff viewing (prodComponentId, componentName, componentAction) |
-| `availableIntegrationPacks` | List | Integration Packs from listIntegrationPacks (Process J) for Page 4 combobox |
-| `suggestedPackId` | String | Suggested Integration Pack ID for current process (from listIntegrationPacks) |
 | `targetEnvironment` | String | Deployment target: "TEST" or "PRODUCTION" — set on Page 3 deployment target selection |
 | `isHotfix` | String | "true" or "false" — flags emergency production bypass |
 | `hotfixJustification` | String | Required text justification when isHotfix="true" (up to 1000 chars) |
 | `testPromotionId` | String | Links a production deployment back to its preceding test deployment |
 | `testIntegrationPackId` | String | Test Integration Pack ID — populated after test deployment |
 | `testIntegrationPackName` | String | Test Integration Pack name — populated after test deployment |
-| `hotfixTestPackId` | String | Test Integration Pack ID for hotfix test release |
-| `hotfixCreateNewTestPack` | String | "true"/"false" — whether to create new test pack for hotfix |
-| `hotfixNewTestPackName` | String | Name for new test pack (hotfix mode) |
-| `hotfixNewTestPackDescription` | String | Description for new test pack (hotfix mode) |
 | `testDeployments` | List | Test deployments ready for production promotion (from queryTestDeployments) |
 | `selectedTestDeployment` | Object | Currently selected test deployment in Production Readiness queue |
 | `activePromotions` | List | Current user's pending promotions (PENDING_PEER_REVIEW + PENDING_ADMIN_REVIEW, filtered by initiatedBy == $User/Email) |
@@ -100,6 +94,10 @@ Flow values are used to maintain state across pages and message steps.
 | `updatedFieldCount` | Integer | Count of fields updated by updateExtensions |
 | `copyResult` | Object | Result from copyExtensionsTestToProd (sectionsExcluded, fieldsCopied, encryptedFieldsSkipped) |
 | `isAdmin` | String | "true"/"false" — whether current user has admin tier (from getDevAccounts effectiveTier) |
+| `adminSelectedPackId` | String | Integration Pack ID selected by admin on Page 7 |
+| `adminSelectedPackName` | String | Integration Pack name selected by admin on Page 7 |
+| `pendingPackAssignments` | List | PENDING_PACK_ASSIGNMENT promotions for Page 7 Pack Assignment tab |
+| `availableIntegrationPacks` | List | Integration Packs from listIntegrationPacks — now populated on Page 7 (admin), not Page 4 (developer) |
 
 ## Flow Navigation (Step-by-Step)
 
@@ -129,9 +127,10 @@ Flow values are used to maintain state across pages and message steps.
 
 5b. **Page 3** → Deployment Target = "Test" → "Continue to Deployment" → **Page 4 (Test Mode)**
    - Page 4 directly calls `packageAndDeploy` with `deploymentTarget="TEST"`
+   - Process D packages from branch, then deletes the branch after packaging
    - Shows deployment results inline
    - No swimlane transition — stays in Developer swimlane
-   - Branch preserved for future production promotion
+   - Branch is deleted after test packaging; `branchId` and `branchName` are cleared
 
 5c. **Page 3** → Deployment Target = "Emergency Hotfix" → "Continue to Deployment" → **Page 4 (Hotfix Mode)**
    - Page 4 submits for peer review with hotfix flags
@@ -146,7 +145,8 @@ Flow values are used to maintain state across pages and message steps.
 14. **Page 9 (Production Readiness)** → Select tested deployment → "Promote to Production" → **Page 4 (Production from Test Mode)**
     - On load: Message step → `queryTestDeployments`
     - User selects a TEST_DEPLOYED promotion
-    - Sets `testPromotionId`, `targetEnvironment="PRODUCTION"`, carries forward branch info
+    - Sets `testPromotionId`, `targetEnvironment="PRODUCTION"`; carries forward `promotionId`, `processName`, `packageVersion`, component counts
+    - Branch info not carried forward (branch deleted after test packaging)
     - Page 4 submits for peer review
     - Flow transitions to Peer Review swimlane → Pages 5-6 → Page 7
 
@@ -166,10 +166,11 @@ Flow values are used to maintain state across pages and message steps.
 
 ### Admin Flow Path
 
-11. **Page 7 (Admin Approval Queue)** → "Approve" → Merge branch → main → Message step (`packageAndDeploy`) → Delete branch → Show results → **End**
+11. **Page 7 (Admin Approval Queue)** → "Approve" → Message step (`packageAndDeploy`) → Show results → **End**
     - On load: Message step → `queryStatus` with `adminReviewStatus` = "PENDING_ADMIN_REVIEW"
     - "View Diff" links call `generateComponentDiff` for branch-vs-main comparison
-    - Approve workflow: `POST /MergeRequest` (OVERRIDE) → execute merge → `packageAndDeploy` (from main) → `DELETE /Branch/{branchId}`
+    - Approve workflow: Message step → `packageAndDeploy` (Process D creates branch from test package, merges to main, packages, releases)
+    - Process D handles merge internally — no separate merge step on Page 7
     - Email notification sent to submitter + peer reviewer
 
 12. **Page 7** → "Deny" → `DELETE /Branch/{branchId}` → Notification to submitter + peer reviewer → **End**
@@ -273,7 +274,7 @@ All Message steps use the Boomi Integration Service connector. Each generates Re
 ### 6. Package and Deploy
 - **Step name:** `Package and Deploy`
 - **Message Action:** `packageAndDeploy`
-- **Used in:** Page 5, on "Approve" button click
+- **Used in:** Page 4 (test mode direct call) and Page 7 (admin approval and pack assignment)
 - **Request Type:** `PackageAndDeployRequest` (auto-generated)
 - **Response Type:** `PackageAndDeployResponse` (auto-generated)
 - **Input values:**
@@ -344,7 +345,7 @@ All Message steps use the Boomi Integration Service connector. Each generates Re
 ### 11. List Integration Packs
 - **Step name:** `List Integration Packs`
 - **Message Action:** `listIntegrationPacks`
-- **Used in:** Page 4 load (Deployment Submission)
+- **Used in:** Page 7 load (Admin Approval Queue — for IP selection during approval and pack assignment)
 - **Request Type:** `ListIntegrationPacksRequest` (auto-generated)
 - **Response Type:** `ListIntegrationPacksResponse` (auto-generated)
 - **Input values:**

@@ -47,7 +47,7 @@ No navigation guard is required for this page because it does not depend on prio
 | Process Name | `processName` | 18% | Yes | Bold text |
 | Package Version | `packageVersion` | 10% | Yes | Plain text |
 | Test Deployed | `testDeployedAt` | 14% | Yes | Date/time + relative age |
-| Branch Age | (calculated) | 10% | Yes | Days since `testDeployedAt` — amber if > 14 days, red if > 30 days |
+| Deployment Age | (calculated) | 10% | Yes | Days since `testDeployedAt` — amber if > 14 days, red if > 30 days |
 | Components | `componentsTotal` | 8% | Yes | Numeric |
 | Created/Updated | `componentsCreated` / `componentsUpdated` | 12% | Yes | "X new, Y updated" |
 | Test Pack | `testIntegrationPackName` | 15% | No | Plain text |
@@ -71,13 +71,13 @@ No navigation guard is required for this page because it does not depend on prio
    - Format: "YYYY-MM-DD HH:mm" with relative time in parentheses ("2 days ago")
    - Sortable: Chronological (default descending)
 
-4. **Branch Age**
+4. **Deployment Age**
    - Display: Number of days since test deployment
    - Format: Numeric with color coding:
      - **Green (0-14 days):** Normal — fresh test deployment
      - **Amber (15-30 days):** Warning — encourage timely production promotion
-     - **Red (> 30 days):** Critical — branch approaching stale state
-   - Tooltip: "Branches should be promoted to production within 30 days to avoid stale branch buildup"
+     - **Red (> 30 days):** Critical — test deployment approaching stale state
+   - Tooltip: "Test deployments should be promoted to production in a timely manner"
    - Sortable: Numeric
 
 5. **Components**
@@ -153,8 +153,8 @@ No navigation guard is required for this page because it does not depend on prio
 #### Test Deployment Info
 - **Test Deployed:** `{selectedTestDeployment.testDeployedAt}` (formatted)
 - **Test Integration Pack:** `{selectedTestDeployment.testIntegrationPackName}`
-- **Branch:** `{selectedTestDeployment.branchName}` (monospace)
-- **Branch Status:** "Active — preserved for production review"
+- **Branch:** Deleted after test packaging
+- **Branch Status:** "Deleted — will be recreated from package for production merge"
 
 #### Component Summary
 - **Total:** `{selectedTestDeployment.componentsTotal}`
@@ -183,10 +183,6 @@ No navigation guard is required for this page because it does not depend on prio
    - `testPromotionId` = `{selectedTestDeployment.promotionId}`
    - `targetEnvironment` = "PRODUCTION"
    - `isHotfix` = "false"
-   - `branchId` = `{selectedTestDeployment.branchId}`
-   - `branchName` = `{selectedTestDeployment.branchName}`
-   - `testIntegrationPackId` = `{selectedTestDeployment.testIntegrationPackId}`
-   - `testIntegrationPackName` = `{selectedTestDeployment.testIntegrationPackName}`
    - Carry forward: `promotionId`, `processName`, `packageVersion`, `componentsTotal`, `componentsCreated`, `componentsUpdated`
 2. Navigate to Page 4 (Deployment Submission) — pre-filled for production mode
 
@@ -222,9 +218,9 @@ No navigation guard is required for this page because it does not depend on prio
 |  ready for production. Select one to begin the peer      |
 |  review and admin approval process."                     |
 +----------------------------------------------------------+
-| STALE BRANCH WARNING (conditional)                        |
+| STALE DEPLOYMENT WARNING (conditional)                    |
 | ⚠ "X deployments have been in test for over 30 days.    |
-|  Consider promoting or canceling to free branch slots."   |
+|  Consider promoting to production to keep queue current." |
 +----------------------------------------------------------+
 | MAIN AREA                                                |
 |                                                          |
@@ -248,13 +244,15 @@ No navigation guard is required for this page because it does not depend on prio
 +----------------------------------------------------------+
 ```
 
-### Stale Branch Warning
+### Stale Deployment Warning
 
-**Visibility:** Shown when any test deployment has `Branch Age > 30 days`
+**Note:** Test branches are automatically deleted after packaging. The stale deployment age indicator helps identify test deployments that have not been promoted to production. The age color coding in the grid (green/amber/red) still applies to the deployment age and should be used to encourage timely production promotion.
+
+**Visibility:** Shown when any test deployment has `Deployment Age > 30 days`
 
 **Content:**
 - Warning icon and amber background
-- Text: "{count} deployment(s) have been in test for over 30 days. Consider promoting to production or canceling the test deployment to free up branch slots."
+- Text: "{count} deployment(s) have been in test for over 30 days. Consider promoting to production to keep the queue current."
 - "30-day threshold" is advisory, not enforced
 
 ### Layout Details
