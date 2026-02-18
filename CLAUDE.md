@@ -13,13 +13,13 @@ This is **not a traditional software codebase** — there is no build system, pa
 ```
 Flow Dashboard (3 swimlanes: Dev + Peer Review + Admin, 11 pages)
   ↓ Message Actions (Flow Service)
-Integration Engine (19 processes A0–G, E2–E5, J, K–P on Public Boomi Cloud Atom)
+Integration Engine (20 processes A0–G, E2–E5, J, K–Q on Public Boomi Cloud Atom)
   ↓                    ↓
 Platform API        DataHub
 (Partner API)       (ComponentMapping, DevAccountAccess, PromotionLog, ExtensionAccessMapping, ClientAccountConfig)
 ```
 
-**19 Integration Processes:**
+**20 Integration Processes:**
 - **A0** getDevAccounts — SSO group → dev account access lookup
 - **A** listDevPackages — query dev account's PackagedComponents
 - **B** resolveDependencies — recursive dependency traversal + mapping lookup
@@ -39,8 +39,9 @@ Platform API        DataHub
 - **N** copyExtensionsTestToProd — copy non-connection env extensions from Test to Prod
 - **O** updateMapExtension — save map extension changes (Phase 2 editing; Phase 1 read-only)
 - **P** checkReleaseStatus — poll ReleaseIntegrationPackStatus for release propagation tracking
+- **Q** validateScript — syntax and security validation for map extension script functions (Groovy + JavaScript)
 
-**20 Message Actions** (FSS Operations): one per process, plus `cancelTestDeployment` (E4 reuse). When adding a new action, update: FSS op table in `04-process-canvas-fundamentals.md`, message actions table in `14-flow-service.md`, listener list in `14-flow-service.md`, Flow types list in `15-flow-dashboard-developer.md`, troubleshooting counts in `18-troubleshooting.md`, and `22-api-automation-guide.md` FSS table.
+**21 Message Actions** (FSS Operations): one per process, plus `cancelTestDeployment` (E4 reuse) and `validateScript` (Process Q). When adding a new action, update: FSS op table in `04-process-canvas-fundamentals.md`, message actions table in `14-flow-service.md`, listener list in `14-flow-service.md`, Flow types list in `15-flow-dashboard-developer.md`, troubleshooting counts in `18-troubleshooting.md`, and `22-api-automation-guide.md` FSS table.
 
 **Key design decisions** (see `docs/architecture.md`):
 - Message Actions over Data Actions (complex logic requires full process control)
@@ -48,6 +49,7 @@ Platform API        DataHub
 - DataHub over external DB (no 30s+ latency from firewall/domain limitations)
 - Connections NOT promoted — pre-configured in parent `#Connections` folder, shared via admin-seeded ComponentMapping records
 - Mirrored folder paths: dev `/DevTeamA/Orders/Process/` → prod `/Promoted/DevTeamA/Orders/Process/`
+- Integration Pack selection is an admin function (Page 7), not a developer function — test deployments auto-detect IP from PromotionLog history; brand-new packages get `PENDING_PACK_ASSIGNMENT` status for admin assignment
 
 ## Repository Structure
 
@@ -56,9 +58,9 @@ datahub/
   models/              5 DataHub model specs (JSON) — ComponentMapping, DevAccountAccess, PromotionLog, ExtensionAccessMapping, ClientAccountConfig
   api-requests/        Golden record test XML templates
 integration/
-  profiles/            40 JSON request/response profiles (20 message actions × 2)
-  scripts/             10 Groovy scripts (dependency traversal, sorting, stripping, validation, rewriting, XML normalization, test deployment filtering, extension access cache, connection stripping for copy, extension data merging)
-  api-requests/        28 XML/JSON Platform API templates (Component CRUD, PackagedComponent, DeployedPackage, IntegrationPack, Branch, MergeRequest, Environment Extensions, Map Extensions)
+  profiles/            42 JSON request/response profiles (21 message actions × 2)
+  scripts/             11 Groovy scripts (dependency traversal, sorting, stripping, validation, rewriting, XML normalization, test deployment filtering, extension access cache, connection stripping for copy, extension data merging, script validation)
+  api-requests/        28 XML/JSON Platform API templates (Component CRUD, PackagedComponent, IntegrationPack, Branch, MergeRequest, ReleaseIntegrationPackStatus, Environment Extensions, Map Extensions)
     component-types/   13 per-type <bns:object> XML reference examples (process, profiles, connectors, maps, scripts, etc.)
   flow-service/        Flow Service specification (message actions, config, error codes)
 flow/
@@ -74,7 +76,7 @@ docs/
 
 1. `docs/architecture.md` — system design and key decisions
 2. `docs/build-guide/index.md` — the implementation playbook (7 phases, 26 focused files)
-3. `integration/flow-service/flow-service-spec.md` — complete API contract for all 20 message actions
+3. `integration/flow-service/flow-service-spec.md` — complete API contract for all 21 message actions
 4. `flow/flow-structure.md` — dashboard navigation, Flow values, swimlanes
 
 ## Groovy Scripts
@@ -93,6 +95,7 @@ Located in `integration/scripts/`, these run as Data Process steps inside Integr
 | `build-extension-access-cache.groovy` | Process D | Build ExtensionAccessMapping records from extensions + ComponentMapping + DevAccountAccess |
 | `strip-connections-for-copy.groovy` | Process N | Remove connections + PGP sections for Test-to-Prod copy |
 | `merge-extension-data.groovy` | Process L | Merge env extensions + map summaries + access mappings |
+| `validate-script.groovy` | Process Q | Syntax and security validation for Groovy/JavaScript scripts |
 
 ## DataHub Models
 
@@ -135,9 +138,10 @@ When working with Component CRUD templates (`create-component.xml`, `update-comp
 
 ## Working with the Build Guide
 
-- **Count references are scattered** — when changing component counts (processes, profiles, pages, actions, types), grep `docs/build-guide/`, `.claude/skills/`, `.claude/rules/`, and `CHANGELOG.md` for stale numbers. Key files: `00-overview.md`, `index.md`, `14-flow-service.md`, `15-flow-dashboard-developer.md`, `18-troubleshooting.md`, `19-appendix-naming-and-inventory.md`, `22-api-automation-guide.md`
-- **Current component counts** (verify before editing): 129 total — 5 models, 2 connections, 28 HTTP ops, 10 DH ops, 40 profiles, 19 processes, 20 FSS ops, 1 Flow Service, 2 custom components, 1 Flow connector, 1 Flow app, 10 scripts, 28 API request templates
+- **Count references are scattered** — when changing component counts (processes, profiles, pages, actions, types), grep `docs/build-guide/`, `.claude/skills/`, `.claude/rules/`, and `CHANGELOG.md` for stale numbers. Key files: `00-overview.md`, `index.md`, `04-process-canvas-fundamentals.md`, `14-flow-service.md`, `15-flow-dashboard-developer.md`, `18-troubleshooting.md`, `19-appendix-naming-and-inventory.md`, `22-api-automation-guide.md` (has counts in BOTH a Markdown table AND a bash OPERATIONS array)
+- **Current component counts** (verify before editing): 133 total — 5 models, 2 connections, 28 HTTP ops, 10 DH ops, 42 profiles, 20 processes, 21 FSS ops, 1 Flow Service, 2 custom components, 1 Flow connector, 1 Flow app, 11 scripts, 28 API request templates
 - **BOM total must be recomputed** — the total in `00-overview.md` drifts when individual row counts change. Always sum the rows: Models + Connections + HTTP Ops + DH Ops + Profiles + Processes + FSS Ops + Flow Service + Custom Component + Flow Connector + Flow App
+- **Inventory checklist must stay in sync** — `19-appendix-naming-and-inventory.md` has a numbered checklist that must match the BOM total. When inserting items, renumber ALL subsequent entries. The last item number must equal the BOM total.
 - **Spec files are source of truth** — `datahub/models/*.json`, `integration/profiles/*.json`, `flow/flow-structure.md`, and `flow/page-layouts/` define the system. Build guide docs must match them.
 - **Nav footer pattern** — every build guide file ends with `Prev: [...] | Next: [...] | [Back to Index](index.md)`
 - **Verify plan items against current state** — planned changes may already be implemented in the codebase
