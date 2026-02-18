@@ -1,0 +1,17 @@
+{
+  "_comment": "GET https://api.boomi.com/partner/api/rest/v1/{accountId}/ReleaseIntegrationPackStatus/{releaseId}",
+  "_notes": [
+    "Checks propagation status of an Integration Pack release",
+    "releaseId from ReleaseIntegrationPack response",
+    "Status values: PENDING, IN_PROGRESS, COMPLETE, FAILED",
+    "Releases can take up to 1 hour to propagate"
+  ],
+  "_http_operation": {
+    "method": "GET",
+    "url": "/partner/api/rest/v1/{accountId}/ReleaseIntegrationPackStatus/{releaseId}",
+    "urlParameters": {
+      "{accountId}": "DPP: primaryAccountId",
+      "{releaseId}": "DPP: releaseId"
+    }
+  }
+}

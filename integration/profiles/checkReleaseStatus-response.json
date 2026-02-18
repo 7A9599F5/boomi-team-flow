@@ -1,0 +1,15 @@
+{
+  "success": true,
+  "errorCode": "",
+  "errorMessage": "",
+  "releases": [
+    {
+      "releaseId": "string",
+      "releaseType": "string",
+      "integrationPackName": "string",
+      "status": "string",
+      "startTime": "string",
+      "completionTime": "string"
+    }
+  ]
+}

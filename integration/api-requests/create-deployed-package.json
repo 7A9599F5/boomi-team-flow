@@ -1,25 +1,13 @@
 {
-  "_comment": "POST https://api.boomi.com/partner/api/rest/v1/{primaryAccountId}/DeployedPackage",
-  "_notes": [
-    "Deploys a released Integration Pack component to a target environment",
-    "Called after PROMO - HTTP Op - POST ReleaseIntegrationPack for each target environment",
-    "environmentId: from the target account group",
-    "packageId: the released package ID from ReleaseIntegrationPack response",
-    "listenerStatus: optional, RUNNING (default) or PAUSED — controls listener state after deployment",
-    "componentType is NOT required — the API infers it from the packageId"
-  ],
+  "_deprecated": true,
+  "_replaced_by": "get-release-integration-pack-status.json",
+  "_reason": "Explicit DeployedPackage calls removed. ReleaseIntegrationPack auto-propagates to all environments where the Integration Pack is installed.",
+  "_original_comment": "POST https://api.boomi.com/partner/api/rest/v1/{accountId}/DeployedPackage",
   "_http_operation": {
     "method": "POST",
-    "url": "/partner/api/rest/v1/{primaryAccountId}/DeployedPackage",
+    "url": "/partner/api/rest/v1/{accountId}/DeployedPackage",
     "urlParameters": {
-      "{primaryAccountId}": "DPP: primaryAccountId"
-    },
-    "headers": {
-      "Accept": "application/json",
-      "Content-Type": "application/json"
+      "{accountId}": "DPP: primaryAccountId"
     }
-  },
-  "environmentId": "{targetEnvironmentId}",
-  "packageId": "{releasedPackageId}",
-  "notes": "{deploymentNotes}"
+  }
 }
