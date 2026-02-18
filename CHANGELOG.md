@@ -6,6 +6,115 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [0.10.0] - 2026-02-18
+
+### Added
+
+- **Mermaid diagrams throughout documentation**: 8 visual diagrams added — DataHub entity-relationship diagram, Flow 3-swimlane navigation map, process build order graph, phase dependency diagram, deployment modes decision tree, Process E family tree, dev swimlane navigation flow, promotion status lifecycle state machine
+- **Process C detailed execution flowchart**: Step-by-step Mermaid flowchart covering branch creation → poll readiness → tilde-syntax promote → strip env config → rewrite references → error handling
+- **End-to-end promotion sequence diagram**: Full lifecycle from developer package selection through peer review, admin approval, and deployment
+- **Per-type Component XML reference templates**: 13 `<bns:object>` examples in `integration/api-requests/component-types/` covering all promotable component types (process, JSON/XML/flat-file/EDI/DB profiles, connector operations, maps, map scripts, process scripts, process routes, cross-reference tables) plus connections
+- **Component API type values reference**: Documented non-obvious API `type` attribute values in CLAUDE.md (e.g., `connector-settings` for connections, `profile.json` for JSON profiles, `scripting` for both map and process scripts)
+- **Profile XML generator**: Python generator (`setup/generators/profile_generator.py`) auto-creates Boomi XML profile definitions from JSON profile specs; includes tests
+- **Script XML generator**: Python generator (`setup/generators/script_generator.py`) auto-creates Boomi script component XML from Groovy source files; includes tests
+- **Diagrams README index**: `docs/diagrams/README.md` cataloging all diagrams with descriptions and locations
+
+### Changed
+
+- **Architecture docs**: Replaced ASCII art with Mermaid diagrams for system overview, data flow, and promotion lifecycle; added status lifecycle state machine
+- **Build guide diagrams**: Added process build order, phase dependencies, deployment modes, Process E family, and dev swimlane navigation diagrams to relevant build-step files
+- **Setup automation**: Updated all 6 phases for Phase 7 — added extension editor HTTP/DataHub operations (phase 2), processes and scripts step (phase 3), pages (phase 5/6); integrated profile and script generators; updated validator counts to 124 total components
+- **API automation guide**: Updated counts and added generator documentation for profile/script XML generation
+
+---
+
+## [0.9.0] - 2026-02-17
+
+### Added
+
+- **Extension Editor (Phase 7)**: Complete environment extension management system enabling developers to view and edit process properties, dynamic process properties, and connection fields across client environments — without direct AtomSphere access
+- **ExtensionAccessMapping model**: New DataHub model caching the authorization chain (environment → component → dev account → SSO group) for fast extension access validation; match on `environmentId` + `prodComponentId`; source `PROMOTION_ENGINE`
+- **ClientAccountConfig model**: New DataHub model registering client accounts with environment mapping (Test/Prod environment IDs per account); match on `clientAccountId` + `ssoGroupId`; source `ADMIN_CONFIG`
+- **Process K (listClientAccounts)**: SSO group → accessible client accounts with Test/Prod environment IDs; admin tier bypasses team check
+- **Process L (getExtensions)**: Reads environment extensions + map extension summaries + access mapping data; merges into unified response via `merge-extension-data.groovy`
+- **Process M (updateExtensions)**: Saves environment extension changes with partial update semantics; validates access via ExtensionAccessMapping before write
+- **Process N (copyExtensionsTestToProd)**: Copies non-connection environment extensions from Test to Prod environment; strips connection and PGP sections via `strip-connections-for-copy.groovy`
+- **Process O (updateMapExtension)**: Saves map extension changes (Phase 2 editing; Phase 1 read-only placeholder)
+- **5 new FSS message actions**: `listClientAccounts`, `getExtensions`, `updateExtensions`, `copyExtensionsTestToProd`, `updateMapExtension`
+- **10 new profiles**: Request/response pairs for all 5 extension editor processes
+- **3 new Groovy scripts**: `build-extension-access-cache.groovy` (Process D — builds ExtensionAccessMapping records from extensions + ComponentMapping + DevAccountAccess), `strip-connections-for-copy.groovy` (Process N — removes connections + PGP sections), `merge-extension-data.groovy` (Process L — merges env extensions + map summaries + access data)
+- **Environment Extensions API templates**: `get-environment-extensions.xml`, `update-environment-extensions.xml`, `get-map-extensions.xml`, `update-map-extensions.xml`
+- **ExtensionEditor custom React component**: TypeScript + Webpack component for Boomi Flow — tabbed interface for process properties, dynamic process properties, and connection fields; inline editing with save/cancel; change tracking and unsaved-changes warnings
+- **Page 10 (Extension Manager)**: Client account selector → environment picker → ExtensionEditor component; access-controlled by ExtensionAccessMapping; Test-to-Prod copy button
+- **Page 11 (Extension Copy Confirmation)**: Review screen showing diff of extensions to copy from Test to Prod; excludes connections; confirm/cancel actions
+- **Build guide Phase 7**: 5 new build-step files — `20-phase7-extension-overview.md`, `21-phase7-extension-processes.md` (Processes K–O), `23-phase7-fss-and-dashboard.md`, `24-phase7-testing.md`, plus updates to `22-api-automation-guide.md`
+- **Process D cache refresh**: ExtensionAccessMapping records auto-rebuilt on every successful deployment
+
+### Changed
+
+- **Architecture docs**: Added Extension Editor section covering access control model, cache refresh strategy, and Test-to-Prod copy design
+- **Flow structure**: Added Pages 10–11; added 5 message steps; expanded to 11 pages across 3 swimlanes; added extension-related Flow values (`clientAccounts`, `selectedClientAccount`, `selectedEnvironment`, `extensionData`, `extensionChanges`, `copyPreview`)
+- **Flow Service spec**: Added 5 extension editor actions (#15–#19); updated action count to 19; added error codes `EXTENSION_ACCESS_DENIED`, `EXTENSION_UPDATE_FAILED`, `COPY_SOURCE_NOT_FOUND`
+- **Component counts**: Updated to 124 total — 5 models (+2), 27 HTTP ops (+4), 10 DH ops (+5), 38 profiles (+10), 18 processes (+5), 19 FSS ops (+5), 2 custom components (+1), 11 pages (+2), 10 scripts (+3), 27 API templates (+4)
+
+---
+
+## [0.8.0] - 2026-02-17
+
+### Added
+
+- **Process E5 (withdrawPromotion)**: Initiator-driven withdrawal of pending promotions; deletes promotion branch, sets status to `WITHDRAWN`; only allowed before admin approval; enforces initiator-only access
+- **Fail-fast partial promotion policy**: Process C deletes the promotion branch on any individual component failure; only `COMPLETED` or `FAILED` are valid outcomes; `PARTIALLY_COMPLETED` is explicitly not a valid status
+- **API alternatives**: curl and PowerShell examples added alongside Boomi HTTP Client instructions in all build guide phases — enables testing API operations without building full processes first
+- **51 user stories**: Comprehensive user story document (`docs/user-stories.md`) covering all roles (developer, peer reviewer, admin, operator) and all workflows (promotion, review, deployment, extension editing, mapping management)
+- **Contributor FAQ**: `docs/FAQ-contributor.md` with developer-facing answers on setup, workflow, and troubleshooting
+- **Team adoption guide**: `docs/team-adoption-guide.md` with rollout planning, training, and change management guidance
+- **Python setup automation**: `setup/` directory with Python script automating build guide steps — DataHub model creation, connection/operation setup, profile creation, process scaffolding, Flow Service configuration, Flow dashboard deployment
+- **New profiles**: `withdrawPromotion-request.json`, `withdrawPromotion-response.json`
+- **New error codes**: `WITHDRAWAL_NOT_ALLOWED`, `PROMOTION_NOT_FOUND`, `INITIATOR_ONLY`
+
+### Changed
+
+- **PromotionLog model**: Added `withdrawnBy`, `withdrawnAt`, `withdrawalReason` fields; added `WITHDRAWN` status
+- **Flow Service spec**: Added action #14 (`withdrawPromotion`); added `cancelTestDeployment` pseudo-action (reuses `queryTestDeployments` with cancel flag); documented fail-fast promotion policy
+- **Flow structure**: Added withdraw button on Promotion Status page; added `withdrawalReason` Flow value
+- **Page 3 (Promotion Status)**: Added "Withdraw" button for pending promotions (visible only to initiator, hidden after admin approval)
+- **Process D status gate**: Now explicitly checks for `COMPLETED` or `TEST_DEPLOYED` before merging; rejects any other status
+- **Build guide**: Added Build Approach section explaining specification-first methodology; expanded FAQ problem statement with organizational context and connection limit rationale
+
+### Security
+
+- **webpack-dev-server upgraded 4→5**: Resolves CVE-2025-30359 and CVE-2025-30360 in XmlDiffViewer dev dependency
+
+---
+
+## [0.7.0] - 2026-02-16
+
+### Added
+
+- **cancelTestDeployment action**: New FSS pseudo-action reusing Process E4 with cancel flag; `filter-already-promoted.groovy` script excludes test deployments already promoted to production
+- **Comprehensive architectural review report**: `docs/architecture-review.md` documenting full system audit findings, remediation actions taken, and remaining recommendations
+- **Platform API appendix**: Expanded `docs/build-guide/25-appendix-platform-api.md` with comprehensive endpoint reference, authentication patterns, and error handling examples
+- **4 missing HTTP connector operations**: Added `DELETE /Branch`, `POST /MergeRequest`, `PUT /MergeRequest/execute`, `GET /IntegrationPack/query` operations to build guide
+- **3 new API request templates**: Branch delete, merge request create, merge request execute
+
+### Fixed
+
+- **Profile field alignment**: All 24 JSON profiles realigned with flow-service-spec field names; added missing fields across request/response pairs
+- **API template corrections**: Fixed merge request field name (`branchId` → `sourceBranchId`); added metadata to all JSON API templates
+- **Critical script remediation**: Added cache reset logic to `build-visited-set.groovy`; added try/catch blocks to all scripts missing them; fixed case-sensitivity in self-review email comparison; strengthened credential stripping patterns in `strip-env-config.groovy`; corrected branch limit threshold from 18 to 15
+- **XmlDiffViewer hooks bug**: Fixed React hooks ordering violation causing intermittent crashes; added error boundary
+- **Navigation guards**: Added unsaved-changes warnings to Pages 2, 3, 4, and 6
+- **Stale count references**: Corrected BOM counts and inventory across build guide, CLAUDE.md, and API automation guide for 19 HTTP operations
+
+### Changed
+
+- **Build guide restructured for multi-environment**: Integrated multi-env deployment content directly into existing build-step files (Processes C, D, E, J; Flow dashboard pages; testing) instead of standalone Phase 7 file; removed `22-phase7-multi-environment.md`
+- **Build guide expanded**: Added tilde syntax and branch operations (ops 13–15) to HTTP client setup; added branch lifecycle to Process C; added merge and branch cleanup to Process D; added multi-env content to Process E, D, J, and testing docs; added multi-env to Flow dashboard pages
+- **Documentation completeness**: Added E2/E3 build guide steps that were previously missing; expanded testing documentation with multi-env scenarios
+
+---
+
 ## [0.6.0] - 2026-02-16
 
 ### Added

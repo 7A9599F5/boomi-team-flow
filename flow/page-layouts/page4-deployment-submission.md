@@ -29,7 +29,7 @@ The Deployment Submission page handles three deployment modes based on the `targ
 
 ### Mode 3: Emergency Hotfix (`targetEnvironment = "PRODUCTION"`, `isHotfix = "true"`)
 - **Header:** "Submit Emergency Hotfix for Peer Review"
-- **Warning banner:** Red — "⚠ EMERGENCY HOTFIX: This deployment bypasses the test environment. Both peer review and admin review are required."
+- **Warning banner:** Red — "⚠ EMERGENCY HOTFIX: This deployment releases to production first, then syncs to test. Both peer review and admin review are required."
 - **Hotfix justification:** Read-only display of justification from Page 3
 - **Integration Pack selector:** Filtered to production packs (`listIntegrationPacks` with `packPurpose="PRODUCTION"`)
 - **Submit button label:** "Submit Emergency Hotfix for Peer Review"
@@ -73,11 +73,6 @@ This prevents users from bookmarking or manually navigating to this page without
    - Populate Integration Pack Combobox with pack names
    - If `suggestedPackId` is returned: Pre-select the suggested pack in the combobox
    - Store results in Flow values: `availableIntegrationPacks`, `suggestedPackId`
-
-5. **Load account group options (optional):**
-   - Message step → API to get list of account groups (if available)
-   - Populate Combobox with group names
-   - Store in `availableAccountGroups` Flow value
 
 ## Components
 
@@ -158,6 +153,37 @@ This prevents users from bookmarking or manually navigating to this page without
 
 ---
 
+### Hotfix Test Integration Pack Selector (Mode 3 Only)
+
+**Component Type:** Combobox (Dropdown)
+
+**Visibility:** Only shown when `isHotfix = "true"`
+
+**Configuration:**
+- **Label:** "Test Integration Pack (Hotfix Sync)"
+- **Info text:** "The hotfix will also be released to the test Integration Pack to keep environments in sync."
+- **Placeholder:** "Select a test integration pack or create new..."
+- **Required:** Yes (when visible)
+
+**Options:**
+1. **Special option:** "Create New Test Integration Pack"
+   - Value: `"__CREATE_NEW_TEST__"` (special identifier)
+   - Icon: Plus icon (+)
+2. **Existing test packs:**
+   - Populated from `listIntegrationPacks` with `packPurpose="TEST"`
+   - Display field: `packName`
+   - Value field: `packId`
+
+**Behavior:**
+- **On select "Create New":** Show hotfix test pack name/description fields, set `hotfixCreateNewTestPack = true`
+- **On select existing:** Store `packId` → `hotfixTestPackId`, set `hotfixCreateNewTestPack = false`
+
+**Conditional fields (when creating new):**
+- **Hotfix Test Pack Name** (Text Input, required): stored in `hotfixNewTestPackName`
+- **Hotfix Test Pack Description** (Textarea, optional): stored in `hotfixNewTestPackDescription`
+
+---
+
 ### New Pack Name Input (Conditional)
 
 **Component Type:** Text Input
@@ -198,32 +224,6 @@ This prevents users from bookmarking or manually navigating to this page without
 **Styling:**
 - Indented or visually nested under New Pack Name
 - Full width or max 600px
-
----
-
-### Target Account Group Selector
-
-**Component Type:** Combobox (Dropdown)
-
-**Configuration:**
-- **Label:** "Target Account Group"
-- **Placeholder:** "Select the target account group..."
-- **Required:** Yes
-- **Data source:** `availableAccountGroups` API response (or static config)
-- **Display field:** `groupName`
-- **Value field:** `groupId`
-
-**Options:**
-- Example: "Production", "UAT", "QA", "Dev Sandbox"
-- Populated from primary account configuration
-- May include group descriptions in tooltip
-
-**Behavior:**
-- **On change:** Store selected `groupId` → `deploymentRequest.targetAccountGroupId`
-- **Validation message:** "Target account group is required" (if empty on submit)
-
-**Styling:**
-- Full width or max 400px
 
 ---
 
@@ -307,7 +307,8 @@ This prevents users from bookmarking or manually navigating to this page without
 
 **Test Deployment Post-Submit Results:**
 When `targetEnvironment = "TEST"`, the `packageAndDeploy` response is displayed inline:
-- Success: Green banner — "Successfully deployed to Test Integration Pack: {testIntegrationPackName}"
+- Success: Green banner — "Released to Test Integration Pack: {testIntegrationPackName} v{releaseVersion}"
+- Release ID: {releaseId}
 - Branch preserved message: "Your promotion branch has been preserved for future production review."
 - "Return to Dashboard" button
 - "View in Production Readiness" button → Page 9
@@ -317,7 +318,6 @@ When `targetEnvironment = "TEST"`, the `packageAndDeploy` response is displayed 
 - Check all required fields filled:
   - `packageVersion` not empty
   - `integrationPackId` selected OR (`createNewPack=true` AND `newPackName` not empty)
-  - `targetAccountGroupId` selected
 - If validation fails: Show error message, highlight empty required fields
 
 **Behavior on Click:**
@@ -335,7 +335,6 @@ When `targetEnvironment = "TEST"`, the `packageAndDeploy` response is displayed 
      "createNewPack": true/false,
      "newPackName": "{newPackName}" or null,
      "newPackDescription": "{newPackDescription}" or null,
-     "targetAccountGroupId": "{targetAccountGroupId}",
      "notes": "{notes}",
      "submittedBy": "{userEmail}",
      "submittedAt": "{timestamp}",
@@ -344,7 +343,11 @@ When `targetEnvironment = "TEST"`, the `packageAndDeploy` response is displayed 
      "devAccountId": "{selectedDevAccountId}",
      "devPackageId": "{selectedPackage.packageId}",
      "devPackageCreator": "{selectedPackage.createdBy}",
-     "devPackageVersion": "{selectedPackage.packageVersion}"
+     "devPackageVersion": "{selectedPackage.packageVersion}",
+     "hotfixTestPackId": "{hotfixTestPackId}" or null,
+     "hotfixCreateNewTestPack": true/false,
+     "hotfixNewTestPackName": "{hotfixNewTestPackName}" or null,
+     "hotfixNewTestPackDescription": "{hotfixNewTestPackDescription}" or null
    }
    ```
 
@@ -364,7 +367,6 @@ When `targetEnvironment = "TEST"`, the `packageAndDeploy` response is displayed 
 
      DEPLOYMENT DETAILS:
      Integration Pack: {integrationPackName or newPackName}
-     Target Account Group: {targetAccountGroupName}
 
      SUBMITTED BY:
      Name: {submitterName}
@@ -444,9 +446,6 @@ When `targetEnvironment = "TEST"`, the `packageAndDeploy` response is displayed 
 |    [_________________________]                           |
 |    [_________________________]                           |
 |                                                          |
-|  Target Account Group                                    |
-|  [Production ▼______________]                            |
-|                                                          |
 |  Deployment Notes                                        |
 |  [_________________________]                             |
 |  [_________________________]                             |
@@ -518,9 +517,6 @@ When `targetEnvironment = "TEST"`, the `packageAndDeploy` response is displayed 
 - Required: "New pack name is required when creating a new pack"
 - Max length: "Pack name cannot exceed 100 characters"
 
-**Target Account Group:**
-- Required: "Target account group is required"
-
 **Deployment Notes:**
 - Max length: "Notes cannot exceed 500 characters"
 
@@ -546,7 +542,6 @@ On "Submit for Peer Review" click:
 
   Promotion ID: abc123-def456-ghi789
   Package Version: 1.2.3
-  Target Account Group: Production
 
   You will receive email notifications as the review progresses.
   ```
@@ -592,7 +587,6 @@ On "Submit for Peer Review" click:
 3. **User fills out form:**
    - New Pack Name: "Order Management v3"
    - New Pack Description: "Handles order processing from API to database"
-   - Target Account Group: "Production"
    - Deployment Notes: "Deploy during maintenance window on Sunday 2am ET"
 
 4. **User clicks "Submit for Peer Review"**

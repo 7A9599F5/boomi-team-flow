@@ -428,6 +428,44 @@ To reconfigure:
 
 ---
 
+### Release Propagation Status
+
+**Visibility:** Only shown when the promotion has a `releaseId` in state (i.e., after a successful deployment).
+
+**Component Type:** Status Card
+
+**Configuration:**
+- **Header:** "Release Propagation"
+- **Auto-check:** On page load, if `releaseId` exists in state, automatically call `checkReleaseStatus` with `promotionId` and `releaseType = "ALL"`
+- **Refresh button:** Manual "Check Status" button to re-poll
+
+**Status Display:**
+
+| Release Type | Status | Icon | Color |
+|---|---|---|---|
+| Production | PENDING | Clock | Gray |
+| Production | IN_PROGRESS | Spinner | Blue |
+| Production | COMPLETE | Checkmark | Green |
+| Production | FAILED | X-circle | Red |
+| Test | PENDING | Clock | Gray |
+| Test | IN_PROGRESS | Spinner | Blue |
+| Test | COMPLETE | Checkmark | Green |
+| Test | FAILED | X-circle | Red |
+
+**Fields shown per release:**
+- Integration Pack Name
+- Release Type (Production / Test)
+- Status (with icon)
+- Start Time
+- Completion Time (or "Propagating..." if not complete)
+
+**Behavior:**
+- If status is PENDING or IN_PROGRESS, show info banner: "Releases can take up to 1 hour to propagate to all environments."
+- If status is FAILED, show error banner: "Release propagation failed. Contact your Boomi administrator."
+- If no releases found (non-deployed promotion), this section is hidden
+
+---
+
 ## Layout
 
 ### Page Structure

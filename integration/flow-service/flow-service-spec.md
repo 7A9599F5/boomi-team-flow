@@ -15,7 +15,7 @@
 
 ## Message Actions
 
-The Flow Service exposes 19 message actions, each linked to a corresponding Integration process.
+The Flow Service exposes 20 message actions, each linked to a corresponding Integration process.
 
 ### 1. getDevAccounts
 
@@ -180,9 +180,6 @@ else → effectiveTier = "READONLY" (no dashboard access — should not reach th
 - `newPackName` (string, conditional - required if createNewPack=true)
 - `newPackDescription` (string, conditional)
 - `existingPackId` (string, conditional - required if createNewPack=false)
-- `targetEnvironments` (array)
-  - `environmentId` (string)
-  - `environmentName` (string)
 - `devAccountId` (string, required) — Source dev account ID
 - `devPackageId` (string, required) — Source dev package ID
 - `devPackageCreator` (string) — Boomi user who created the dev package
@@ -193,17 +190,22 @@ else → effectiveTier = "READONLY" (no dashboard access — should not reach th
 - `testPromotionId` (string, optional) — populated when deploying from a completed test deployment; links back to the TEST PromotionLog record
 - `testIntegrationPackId` (string, optional) — for test deployments, the target test Integration Pack ID
 - `testIntegrationPackName` (string, optional) — for test deployments, the target test Integration Pack name
+- `hotfixTestPackId` (string, optional) — Test Integration Pack ID for hotfix test release
+- `hotfixCreateNewTestPack` (boolean, optional) — create new test pack for hotfix
+- `hotfixNewTestPackName` (string, conditional) — name for new test pack
+- `hotfixNewTestPackDescription` (string, conditional) — description for new test pack
 
 **Response Fields**:
 - `success` (boolean)
 - `packageId` (string)
 - `prodPackageId` (string) — Package ID of the created prod PackagedComponent
 - `integrationPackId` (string)
-- `deploymentResults` (array)
-  - `environmentId` (string)
-  - `environmentName` (string)
-  - `deployed` (boolean)
-  - `errorMessage` (string, optional)
+- `releaseId` (string) — ReleaseIntegrationPack response ID for status polling
+- `releaseVersion` (string) — released pack version
+- `testIntegrationPackId` (string, optional) — Test Integration Pack ID (hotfix mode)
+- `testIntegrationPackName` (string, optional) — Test Integration Pack name (hotfix mode)
+- `testReleaseId` (string, optional) — Test release ID (hotfix mode)
+- `testReleaseVersion` (string, optional) — Test release version (hotfix mode)
 - `deploymentTarget` (string) — echoed from request
 - `branchPreserved` (boolean) — true when branch is kept alive (test deployments only)
 - `isHotfix` (boolean) — echoed from request
@@ -221,29 +223,30 @@ Process D MUST validate that the admin submitting the deployment is not the same
 2. Create PackagedComponent from main
 3. Create/use Test Integration Pack (separate from production)
 4. Release Test Integration Pack
-5. Deploy to test environment(s)
-6. **DO NOT delete branch** — preserve for production review diffing
-7. Update PromotionLog: `status=TEST_DEPLOYED`, `testDeployedAt=now`, `testIntegrationPackId/Name`
-8. Response: `branchPreserved=true`
+5. **DO NOT delete branch** — preserve for production review diffing
+6. Update PromotionLog: `status=TEST_DEPLOYED`, `testDeployedAt=now`, `testIntegrationPackId/Name`
+7. Response: `branchPreserved=true`
 
 **Mode 2: PRODUCTION deployment from test** (`deploymentTarget="PRODUCTION"`, `testPromotionId` populated):
 1. **Skip merge** — content already on main from test deployment
 2. Create PackagedComponent from main (new version)
 3. Create/use Production Integration Pack
 4. Release Production Integration Pack
-5. Deploy to production environment(s)
-6. **Delete branch** (the one preserved from test phase)
-7. Update PromotionLog: `status=DEPLOYED`, `integrationPackId/Name`, `prodPackageId`
-8. Response: `branchPreserved=false`
+5. **Delete branch** (the one preserved from test phase)
+6. Update PromotionLog: `status=DEPLOYED`, `integrationPackId/Name`, `prodPackageId`
+7. Response: `branchPreserved=false`
 
 **Mode 3: PRODUCTION hotfix** (`deploymentTarget="PRODUCTION"`, `isHotfix=true`):
 1. Merge branch to main (same as current)
 2. Create PackagedComponent
 3. Create/use Production Integration Pack
-4. Release, deploy to production
-5. Delete branch
-6. Update PromotionLog: `status=DEPLOYED`, `isHotfix="true"`, `hotfixJustification`
-7. Response: `branchPreserved=false`, `isHotfix=true`
+4. Release Production Integration Pack
+5. Create/use Test Integration Pack (from `hotfixTestPackId` or new)
+6. Add PackagedComponent to Test Integration Pack
+7. Release Test Integration Pack (non-blocking — failure logged but does not fail the operation)
+8. Delete branch
+9. Update PromotionLog: `status=DEPLOYED`, `isHotfix="true"`, `hotfixJustification`, `testIntegrationPackId/Name`, `testReleaseId`
+10. Response: `branchPreserved=false`, `isHotfix=true`, `testIntegrationPackId`, `testReleaseId`
 
 ---
 
@@ -742,6 +745,45 @@ For each component in the `extensionPayload`:
 
 ---
 
+### 20. `checkReleaseStatus` — Check Release Propagation Status
+
+**Process**: PROMO - Process P - CheckReleaseStatus
+**FSS Operation**: PROMO - FSS Op - CheckReleaseStatus
+
+**Description**: Checks the propagation status of Integration Pack releases. Queries the PromotionLog for release IDs, then calls GET ReleaseIntegrationPackStatus for each. Supports checking production releases, test releases, or both. Releases can take up to 1 hour to propagate after ReleaseIntegrationPack is called.
+
+**Request Fields**:
+- `promotionId` (string, required) — PromotionLog record to check
+- `releaseType` (string, required: "PRODUCTION" | "TEST" | "ALL") — which release(s) to check
+
+**Response Fields**:
+- `success` (boolean)
+- `releases` (array):
+  - `releaseId` (string) — the release ID from ReleaseIntegrationPack response
+  - `releaseType` (string) — "PRODUCTION" or "TEST"
+  - `integrationPackName` (string) — name of the Integration Pack
+  - `status` (string) — "PENDING", "IN_PROGRESS", "COMPLETE", or "FAILED"
+  - `startTime` (string) — when the release was initiated
+  - `completionTime` (string) — when propagation completed (empty if not yet complete)
+- `errorCode` (string, optional)
+- `errorMessage` (string, optional)
+
+**Process Logic**:
+1. Query DataHub PromotionLog by `promotionId` to retrieve `releaseId` and `testReleaseId`
+2. Based on `releaseType`:
+   - "PRODUCTION": check `releaseId` only
+   - "TEST": check `testReleaseId` only
+   - "ALL": check both
+3. For each release ID, call GET ReleaseIntegrationPackStatus (HTTP Op #8)
+4. Map results to response format
+5. If a release ID is empty/null (e.g., no test release for non-hotfix), skip it
+
+**Error Codes**:
+- `PROMOTION_NOT_FOUND` — no PromotionLog record found for the given `promotionId`
+- `RELEASE_NOT_FOUND` — the requested release type has no release ID recorded
+
+---
+
 ## Configuration Values
 
 The Flow Service requires one configuration value to be set at deployment:
@@ -779,7 +821,7 @@ The Flow Service requires one configuration value to be set at deployment:
 ### Step 3: Verify Deployment
 
 1. Navigate to "Runtime Management" → "Listeners"
-2. Verify all 19 processes are visible and running:
+2. Verify all 20 processes are visible and running:
    - `PROMO - FSS Op - GetDevAccounts`
    - `PROMO - FSS Op - ListDevPackages`
    - `PROMO - FSS Op - ResolveDependencies`
@@ -799,6 +841,7 @@ The Flow Service requires one configuration value to be set at deployment:
    - `PROMO - FSS Op - UpdateExtensions`
    - `PROMO - FSS Op - CopyExtensionsTestToProd`
    - `PROMO - FSS Op - UpdateMapExtension`
+   - `PROMO - FSS Op - CheckReleaseStatus`
 3. Note the full service URL: `https://{cloud-base-url}/fs/PromotionService`
 
 ---
@@ -821,7 +864,7 @@ After deploying the Flow Service, configure the Flow application to connect to i
 ### Step 2: Retrieve Connector Configuration
 
 1. Click "Retrieve Connector Configuration Data"
-2. Flow will automatically discover all 19 message actions
+2. Flow will automatically discover all 20 message actions
 3. Auto-generated Flow Types will be created (see below)
 
 ### Step 3: Set Configuration Value
@@ -878,6 +921,8 @@ When you retrieve the connector configuration, Flow automatically generates requ
 36. `copyExtensionsTestToProd RESPONSE - copyExtensionsTestToProdResponse`
 37. `updateMapExtension REQUEST - updateMapExtensionRequest`
 38. `updateMapExtension RESPONSE - updateMapExtensionResponse`
+39. `checkReleaseStatus REQUEST - checkReleaseStatusRequest`
+40. `checkReleaseStatus RESPONSE - checkReleaseStatusResponse`
 
 These types are used throughout the Flow application to ensure type safety when calling the Flow Service operations.
 
@@ -971,6 +1016,7 @@ Decision: Check Success
 | `COPY_FAILED` | Test-to-Prod extension copy failed during GET or UPDATE | Check environment accessibility and retry |
 | `MAP_EXTENSION_READONLY` | Map extension editing is not yet available (Phase 2 feature) | Use Test-to-Prod copy for map extensions |
 | `CLIENT_ACCOUNT_NOT_FOUND` | Client account ID not found in ClientAccountConfig | Verify the client account is registered in DataHub |
+| `RELEASE_NOT_FOUND` | The requested release type has no release ID recorded in the PromotionLog | Verify the promotion was deployed and the correct releaseType is specified |
 
 **Error Handling Best Practices**:
 
@@ -1100,6 +1146,7 @@ The `devAccountId` parameter in several actions (listDevPackages, executePromoti
 | 1.2.0 | 2026-02-16 | Added cancelTestDeployment action for test branch cleanup; added PROMOTION_NOT_FOUND and INVALID_PROMOTION_STATUS error codes |
 | 1.3.0 | 2026-02-17 | Added withdrawPromotion action for initiator-driven withdrawal of pending promotions; added NOT_PROMOTION_INITIATOR error code |
 | 2.0.0 | 2026-02-17 | Extension Editor: 5 new message actions (listClientAccounts, getExtensions, updateExtensions, copyExtensionsTestToProd, updateMapExtension), 6 new error codes, total actions 14→19 |
+| 2.1.0 | 2026-02-18 | Added checkReleaseStatus action (Process P) for Integration Pack release propagation polling; added RELEASE_NOT_FOUND error code, total actions 19→20 |
 
 ---
 

@@ -86,6 +86,7 @@ globs:
   - `updateExtensions` (Process M)
   - `copyExtensionsTestToProd` (Process N)
   - `updateMapExtension` (Process O)
+  - `checkReleaseStatus` (Process P)
 
 ### Auto-Generated Flow Types
 When using Boomi Integration Service connector, Flow auto-generates request/response types:

@@ -5,14 +5,12 @@
   "packageId": "string",
   "prodPackageId": "string",
   "integrationPackId": "string",
-  "deploymentResults": [
-    {
-      "environmentId": "string",
-      "environmentName": "string",
-      "deployed": true,
-      "errorMessage": "string"
-    }
-  ],
+  "releaseId": "string",
+  "releaseVersion": "string",
+  "testIntegrationPackId": "string",
+  "testIntegrationPackName": "string",
+  "testReleaseId": "string",
+  "testReleaseVersion": "string",
   "deploymentTarget": "string",
   "branchPreserved": false,
   "isHotfix": false

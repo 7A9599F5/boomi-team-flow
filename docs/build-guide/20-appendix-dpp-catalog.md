@@ -85,13 +85,18 @@ These properties are available to all processes via Flow Service component confi
 | `integrationPackId` | String | Set Properties (step 2) or HTTP response (step 5) | HTTP Client Send (steps 5, 6, 7), Map (step 9) | false | Integration Pack ID (existing or newly created) |
 | `newPackName` | String | Set Properties (step 2) | HTTP Client Send (step 5), Map (step 9) | false | Name for new Integration Pack |
 | `newPackDescription` | String | Set Properties (step 2) | HTTP Client Send (step 5) | false | Description for new Integration Pack |
-| `targetAccountGroupId` | String | Set Properties (step 2) | HTTP Client Send (step 8) | false | Account group for deployment |
 | `deploymentTarget` | String | Set Properties (step 2) | Decision (step 2.1), Decision (step 8.5), Map (step 9) | false | `"TEST"` or `"PRODUCTION"` -- determines deployment mode |
 | `isHotfix` | String | Set Properties (step 2) | Decision (step 2.1), Map (step 9), DataHub Update | false | `"true"` / `"false"` -- flags emergency production bypass |
 | `hotfixJustification` | String | Set Properties (step 2) | DataHub Update (PromotionLog) | false | Justification text for hotfix (up to 1000 chars) |
 | `testPromotionId` | String | Set Properties (step 2) | Decision (step 2.1), DataHub Update (PromotionLog) | false | Links production deployment to preceding test deployment |
 | `testIntegrationPackId` | String | Set Properties (step 2) | DataHub Update (PromotionLog) | false | Test Integration Pack ID from test deployment |
 | `testIntegrationPackName` | String | Set Properties (step 2) | DataHub Update (PromotionLog) | false | Test Integration Pack name from test deployment |
+| `hotfixTestPackId` | String | Set Properties (step 2) or HTTP response (step 7.5.1) | HTTP Client Send (steps 7.5.2, 7.5.3) | false | Test Integration Pack ID for hotfix sync |
+| `hotfixCreateNewTestPack` | String | Set Properties (step 2) | Decision (step 7.5.1) | false | Whether to create new test pack for hotfix |
+| `hotfixNewTestPackName` | String | Set Properties (step 2) | HTTP Client Send (step 7.5.1) | false | Name for new test pack |
+| `hotfixNewTestPackDescription` | String | Set Properties (step 2) | HTTP Client Send (step 7.5.1) | false | Description for new test pack |
+| `testReleaseId` | String | HTTP Client response (step 7.5.3) | Map (step 9) | false | Test release ID for status polling |
+| `testReleaseFailed` | String | Error handler (step 7.5) | Map (step 9) | false | "true" if test release failed (non-blocking) |
 | `mergeRequestId` | String | HTTP Client response (step 2.5) | HTTP Client Send (steps 2.6, polling) | false | Merge request ID for execute and status polling |
 | `packagedComponentId` | String | HTTP Client response (step 3) | HTTP Client Send (steps 5, 6), Map (step 9) | false | Created PackagedComponent ID |
 

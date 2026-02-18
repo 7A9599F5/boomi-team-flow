@@ -83,6 +83,10 @@ Flow values are used to maintain state across pages and message steps.
 | `testPromotionId` | String | Links a production deployment back to its preceding test deployment |
 | `testIntegrationPackId` | String | Test Integration Pack ID — populated after test deployment |
 | `testIntegrationPackName` | String | Test Integration Pack name — populated after test deployment |
+| `hotfixTestPackId` | String | Test Integration Pack ID for hotfix test release |
+| `hotfixCreateNewTestPack` | String | "true"/"false" — whether to create new test pack for hotfix |
+| `hotfixNewTestPackName` | String | Name for new test pack (hotfix mode) |
+| `hotfixNewTestPackDescription` | String | Description for new test pack (hotfix mode) |
 | `testDeployments` | List | Test deployments ready for production promotion (from queryTestDeployments) |
 | `selectedTestDeployment` | Object | Currently selected test deployment in Production Readiness queue |
 | `activePromotions` | List | Current user's pending promotions (PENDING_PEER_REVIEW + PENDING_ADMIN_REVIEW, filtered by initiatedBy == $User/Email) |

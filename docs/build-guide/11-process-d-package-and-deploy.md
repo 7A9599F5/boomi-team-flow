@@ -2,7 +2,7 @@
 
 > **API Alternative:** This process can be created programmatically via `POST /Component` with `type="process"`. Due to the complexity of process canvas XML (shapes, routing, DPP mappings, script references), the recommended workflow is: (1) build the process manually following the steps below, (2) use `GET /Component/{processId}` to export the XML, (3) store the XML as a template for automated recreation. See [Appendix D: API Automation Guide](22-api-automation-guide.md) for the full workflow.
 
-This process creates a PackagedComponent from a promoted component, optionally creates or updates an Integration Pack, and deploys to target environments.
+This process creates a PackagedComponent from a promoted component, optionally creates or updates an Integration Pack, and releases it.
 
 #### Profiles
 
@@ -21,22 +21,28 @@ The request JSON contains:
 - `createNewPack` (boolean): `true` to create a new Integration Pack, `false` to add to existing
 - `newPackName` (string): name for new pack (required if `createNewPack = true`)
 - `newPackDescription` (string): description for new pack
-- `targetAccountGroupId` (string): account group to deploy to
 - `deploymentTarget` (string): `"TEST"` or `"PRODUCTION"` — determines deployment mode
 - `isHotfix` (string): `"true"` / `"false"` — flags emergency production bypass
 - `hotfixJustification` (string): required when isHotfix=`"true"` (up to 1000 chars)
 - `testPromotionId` (string): for production-from-test mode, links back to the TEST promotion
 - `testIntegrationPackId` (string): Test Integration Pack ID from the test deployment
 - `testIntegrationPackName` (string): Test Integration Pack name from the test deployment
+- `hotfixTestPackId` (string): Test Integration Pack ID for hotfix test release (Mode 3 only)
+- `hotfixCreateNewTestPack` (boolean): true to create new test pack for hotfix
+- `hotfixNewTestPackName` (string): name for new test pack (required if hotfixCreateNewTestPack=true)
+- `hotfixNewTestPackDescription` (string): description for new test pack
 
 The response JSON contains:
 - `success`, `errorCode`, `errorMessage` (standard error contract)
 - `packagedComponentId` (string): ID of the created PackagedComponent
 - `integrationPackId` (string): ID of the Integration Pack (new or existing)
 - `integrationPackName` (string): name of the Integration Pack
+- `releaseId` (string): ID from ReleaseIntegrationPack response, for status polling
 - `releaseVersion` (string): the released pack version
-- `deploymentStatus` (string): overall deployment status
-- `deployedEnvironments` (array): each entry has `environmentId`, `environmentName`, `status`
+- `testIntegrationPackId` (string): Test Integration Pack ID (hotfix mode only)
+- `testIntegrationPackName` (string): Test Integration Pack name (hotfix mode only)
+- `testReleaseId` (string): Test release ID (hotfix mode only)
+- `testReleaseVersion` (string): Test release version (hotfix mode only)
 - `deploymentTarget` (string): echoes the deployment mode used
 - `branchPreserved` (string): `"true"` if branch was kept (test mode), `"false"` if deleted
 - `isHotfix` (string): `"true"` if this was an emergency hotfix deployment
@@ -60,6 +66,12 @@ Create `PROMO - FSS Op - PackageAndDeploy` per Section 3.B, using `PROMO - Profi
 | `testPromotionId` | (from request) | Links production to preceding test deployment |
 | `cacheRefreshFailed` | "false" | Tracks whether ExtensionAccessMapping cache refresh succeeded |
 | `extensionAccessMappingCount` | "0" | Count of ExtensionAccessMapping records created/updated |
+| `hotfixTestPackId` | (from request or step 7.5.1) | Test Integration Pack for hotfix sync |
+| `hotfixCreateNewTestPack` | (from request) | Whether to create new test pack |
+| `hotfixNewTestPackName` | (from request) | Name for new test pack |
+| `hotfixNewTestPackDescription` | (from request) | Description for new test pack |
+| `testReleaseId` | (set in step 7.5.3) | Test release ID for status polling |
+| `testReleaseFailed` | "false" | Whether test release failed (non-blocking) |
 
 #### Canvas — Shape by Shape
 
@@ -75,7 +87,6 @@ Create `PROMO - FSS Op - PackageAndDeploy` per Section 3.B, using `PROMO - Profi
    - DPP `integrationPackId` = document path: `integrationPackId`
    - DPP `newPackName` = document path: `newPackName`
    - DPP `newPackDescription` = document path: `newPackDescription`
-   - DPP `targetAccountGroupId` = document path: `targetAccountGroupId`
    - DPP `deploymentTarget` = document path: `deploymentTarget`
    - DPP `isHotfix` = document path: `isHotfix`
    - DPP `hotfixJustification` = document path: `hotfixJustification`
@@ -103,9 +114,9 @@ Create `PROMO - FSS Op - PackageAndDeploy` per Section 3.B, using `PROMO - Profi
 
 2.2. **Decision — Deployment Mode**
    - The process supports 3 deployment modes based on `deploymentTarget`, `testPromotionId`, and `isHotfix`:
-     - **Mode 1 — TEST** (`deploymentTarget = "TEST"`): Merge → package → deploy to test, preserve branch, update PromotionLog with test status
-     - **Mode 2 — PRODUCTION from test** (`deploymentTarget = "PRODUCTION"` AND `testPromotionId` is non-empty): Skip merge (content already on main from test), package from main → deploy to production, delete branch
-     - **Mode 3 — PRODUCTION hotfix** (`deploymentTarget = "PRODUCTION"` AND `isHotfix = "true"`): Merge → package → deploy to production, delete branch, flag as hotfix
+     - **Mode 1 — TEST** (`deploymentTarget = "TEST"`): Merge → package → release to test Integration Pack, preserve branch, update PromotionLog with test status
+     - **Mode 2 — PRODUCTION from test** (`deploymentTarget = "PRODUCTION"` AND `testPromotionId` is non-empty): Skip merge (content already on main from test), package from main → release to production Integration Pack, delete branch
+     - **Mode 3 — PRODUCTION hotfix** (`deploymentTarget = "PRODUCTION"` AND `isHotfix = "true"`): Merge → package → release to production → release to test → delete branch, flag as hotfix
    - Use a Decision shape on DPP `deploymentTarget`:
      - **`TEST`** branch → step 2.3 (test-specific pre-processing)
      - **`PRODUCTION`** branch → Decision on DPP `testPromotionId`:
@@ -128,7 +139,6 @@ flowchart TD
     testPackage["Create PackagedComponent"]
     testPack["Create / Add to Integration Pack"]
     testRelease["Release Integration Pack"]
-    testDeploy["Deploy to Test Environment"]
     testCache["Refresh ExtensionAccessMapping Cache"]
     testBranchKeep["Preserve Branch\n(branch stays for prod promotion)"]
     testStatus["Status → TEST_DEPLOYED"]
@@ -137,7 +147,6 @@ flowchart TD
     prodPackage["Create PackagedComponent"]
     prodPack["Create / Add to Integration Pack"]
     prodRelease["Release Integration Pack"]
-    prodDeploy["Deploy to Production"]
     prodCache["Refresh ExtensionAccessMapping Cache"]
     prodBranchDel["Delete Branch"]
     prodStatus["Status → PROD_DEPLOYED"]
@@ -146,7 +155,8 @@ flowchart TD
     hotfixPackage["Create PackagedComponent"]
     hotfixPack["Create / Add to Integration Pack\n(with hotfix flag)"]
     hotfixRelease["Release Integration Pack"]
-    hotfixDeploy["Deploy to Production"]
+    hotfixTestPack["Create / Use Test Integration Pack"]
+    hotfixTestRelease["Release Test Integration Pack"]
     hotfixCache["Refresh ExtensionAccessMapping Cache"]
     hotfixBranchDel["Delete Branch"]
     hotfixStatus["Status → PROD_DEPLOYED\n(isHotfix = true)"]
@@ -167,11 +177,11 @@ flowchart TD
     testPromotionCheck -->|"Non-empty\n(production-from-test)"| prodSkipMerge
     testPromotionCheck -->|"Empty\n(hotfix)"| hotfixMerge
 
-    testMerge --> testPackage --> testPack --> testRelease --> testDeploy --> testCache --> testBranchKeep --> testStatus
+    testMerge --> testPackage --> testPack --> testRelease --> testCache --> testBranchKeep --> testStatus
 
-    prodSkipMerge --> prodPackage --> prodPack --> prodRelease --> prodDeploy --> prodCache --> prodBranchDel --> prodStatus
+    prodSkipMerge --> prodPackage --> prodPack --> prodRelease --> prodCache --> prodBranchDel --> prodStatus
 
-    hotfixMerge --> hotfixPackage --> hotfixPack --> hotfixRelease --> hotfixDeploy --> hotfixCache --> hotfixBranchDel --> hotfixStatus
+    hotfixMerge --> hotfixPackage --> hotfixPack --> hotfixRelease --> hotfixTestPack --> hotfixTestRelease --> hotfixCache --> hotfixBranchDel --> hotfixStatus
 ```
 
 2.3. **TEST Mode Pre-Processing**
@@ -239,28 +249,37 @@ flowchart TD
    - Operation: `PROMO - HTTP Op - POST ReleaseIntegrationPack` (operation 18)
    - URL parameter `{1}` = DPP `primaryAccountId`
    - Request body: JSON with `integrationPackId` = DPP `integrationPackId`, `version` = DPP `packageVersion`, `notes` = promotion metadata. See `/integration/api-requests/release-integration-pack.json`.
-   - Response returns the released `packageId` used for deployment in step 8
+   - Extract `releaseId` from the response; store in DPP `releaseId`. This is the final API step before branch decision.
 
-8. **For Each Target Environment — Deploy**
-   - If `targetAccountGroupId` is provided, deploy the released pack:
-   - **HTTP Client Send** — POST DeployedPackage
-     - Connector: `PROMO - Partner API Connection`
-     - Operation: `PROMO - HTTP Op - POST DeployedPackage`
-     - URL parameter `{1}` = DPP `primaryAccountId`
-     - Request body: JSON with `packageId`, `environmentId`, and deployment parameters
-   - Accumulate deployment results for each environment (success/failure per environment)
-   - Add 120ms gap between deployment calls
+7.5. **Hotfix Test Release (Mode 3 Only)**
+   - This step only executes when `isHotfix = "true"`. After releasing to the Production Integration Pack, release the same PackagedComponent to a Test Integration Pack to keep test environments in sync.
 
-8.3. **ExtensionAccessMapping Cache Refresh (Post-Deployment)**
-   - After successful deployment to target environments, refresh the extension access mapping cache for each deployed environment
+   7.5.1. **Decision — Create/Use Test Pack**
+   - Condition: DPP `hotfixCreateNewTestPack` **EQUALS** `"true"`
+   - **YES** branch: POST IntegrationPack (reuse `PROMO - HTTP Op - POST IntegrationPack`, operation 9) with `hotfixNewTestPackName` / `hotfixNewTestPackDescription`. Store result in DPP `hotfixTestPackId`.
+   - **NO** branch: Use existing `hotfixTestPackId` from request.
+
+   7.5.2. **Add PackagedComponent to Test Pack**
+   - Reuse `PROMO - HTTP Op - POST Add To IntegrationPack` (operation 17) with URL parameters `{2}` = DPP `hotfixTestPackId`, `{3}` = DPP `packagedComponentId`
+
+   7.5.3. **Release Test Integration Pack**
+   - Reuse `PROMO - HTTP Op - POST ReleaseIntegrationPack` (operation 18) with `integrationPackId` = DPP `hotfixTestPackId`, `version` = DPP `packageVersion`
+   - Extract `testReleaseId` from the response; store in DPP `testReleaseId`
+
+   **Error Handling:** Test release failure is **NON-BLOCKING**. Production release already succeeded. Log the error, set DPP `testReleaseFailed` = `"true"`, and continue to branch deletion. The hotfix is live in production regardless.
+
+8. **(Removed)** — Explicit DeployedPackage calls removed. ReleaseIntegrationPack auto-propagates to all environments where the Integration Pack is installed. Environment installation is managed separately outside this flow.
+
+8.3. **ExtensionAccessMapping Cache Refresh (Post-Release)**
+   - After successful release, refresh the extension access mapping cache for the release environment context
    - This step enables the Extension Editor feature to provide fast, process-level access control for extension editing
 
-   **Sub-steps for each deployed environment:**
+   **Sub-steps for the release environment context:**
    1. **HTTP Client Send — GET EnvironmentExtensions**
       - Connector: `PROMO - Partner API Connection`
       - Operation: `PROMO - HTTP Op - GET EnvironmentExtensions`
       - URL parameter `{1}` = DPP `primaryAccountId`
-      - Query: `environmentId = {targetEnvironmentId}` (from deployment results)
+      - Query: `environmentId = {targetEnvironmentId}` (from release context)
       - Response: Full EnvironmentExtensions object with all extension components
 
    2. **DataHub Query — ComponentMapping Lookup**
@@ -288,10 +307,10 @@ flowchart TD
       - Upsert each record to DataHub (match on `environmentId` + `prodComponentId`)
       - Records that already exist are updated; new records are created
 
-   **Error Handling:** Cache refresh failures MUST NOT fail the overall deployment. If the cache refresh fails:
+   **Error Handling:** Cache refresh failures MUST NOT fail the overall release. If the cache refresh fails:
    - Log the error with `logger.warning("ExtensionAccessMapping cache refresh failed for environment {environmentId}: {error}")`
    - Set DPP `cacheRefreshFailed` = `"true"` for downstream reporting
-   - Continue to step 8.5 (branch deletion) — the deployment was successful even if the cache refresh failed
+   - Continue to step 8.5 (branch deletion) — the release was successful even if the cache refresh failed
    - Admin can trigger a manual cache refresh later via the Extension Editor's refresh action
 
    **DPP additions:**
@@ -301,6 +320,7 @@ flowchart TD
 8.5. **Decision — Delete or Preserve Branch**
    - **TEST mode** (`deploymentTarget = "TEST"`): **SKIP branch deletion** — branch is preserved for future production promotion and diff review
    - **PRODUCTION mode** (both from-test and hotfix): **DELETE branch**
+   - **Note (Mode 3 hotfix):** Branch is deleted only after BOTH the production release (step 7) and the test release (step 7.5) have been attempted. Test release failure is non-blocking — the branch is still deleted even if the test release fails.
 
 8.6. **HTTP Client Send — DELETE Branch (Cleanup)** (PRODUCTION modes only)
    - Connector: `PROMO - Partner API Connection`
@@ -318,9 +338,8 @@ flowchart TD
      - `packagedComponentId` from DPP
      - `integrationPackId` from DPP
      - `integrationPackName` = DPP `newPackName` (or queried name for existing pack)
+     - `releaseId` from DPP `releaseId`
      - `releaseVersion` from step 7 response
-     - `deploymentStatus` = `"DEPLOYED"` if all succeeded, `"PARTIAL"` if some failed
-     - `deployedEnvironments` array from step 8 results
      - `deploymentTarget` = DPP `deploymentTarget`
      - `branchPreserved` = `"true"` if TEST mode, `"false"` if PRODUCTION mode
      - `isHotfix` = DPP `isHotfix`
@@ -335,7 +354,6 @@ Wrap the entire process (steps 2.5-8.5) in a **Try/Catch**:
 - **Merge failure** (step 2.6): attempt `DELETE /Branch/{branchId}`, return error with `errorCode = "MERGE_FAILED"`
 - **PackagedComponent creation failure**: attempt `DELETE /Branch/{branchId}`, return error with `errorCode = "PROMOTION_FAILED"`
 - **Integration Pack failure**: attempt `DELETE /Branch/{branchId}`, return error with `errorCode = "PROMOTION_FAILED"`
-- **Deployment failure**: per-environment — mark individual environments as failed in the `deployedEnvironments` array, but continue deploying to remaining environments. Set `deploymentStatus = "PARTIAL"`. Branch is still deleted in step 8.5 (after the deployment loop).
 - **Catch block**: In all catastrophic failure cases, attempt `DELETE /Branch/{branchId}` before returning the error response. Log delete failures but do not mask the original error.
 
 #### Branch Deletion on Rejection/Denial
@@ -366,18 +384,18 @@ When an admin denies the deployment at Page 7:
 
 **Test deployment (Mode 1):**
 - Promote a component (Process C), then send a Package and Deploy request with `deploymentTarget = "TEST"`, `createNewPack = true`, `newPackName = "Orders - TEST"`
-- **Expected**: `success = true`, `branchPreserved = "true"`, `deploymentTarget = "TEST"`, branch still exists (GET `/Branch/{branchId}` returns `200`)
+- **Expected**: `success = true`, `branchPreserved = "true"`, `deploymentTarget = "TEST"`, `releaseId` populated, branch still exists (GET `/Branch/{branchId}` returns `200`)
 - **Expected PromotionLog**: `status = "TEST_DEPLOYED"`, `testDeployedAt` populated, `testIntegrationPackId`/`testIntegrationPackName` populated, `branchId` still set
 
 **Production from test (Mode 2):**
 - Using the test deployment from Mode 1, send a Package and Deploy request with `deploymentTarget = "PRODUCTION"`, `testPromotionId = "{testPromotionId}"`, existing production `integrationPackId`
-- **Expected**: `success = true`, `branchPreserved = "false"`, merge is skipped, branch is deleted (GET `/Branch/{branchId}` returns `404`)
+- **Expected**: `success = true`, `branchPreserved = "false"`, merge is skipped, `releaseId` populated, branch is deleted (GET `/Branch/{branchId}` returns `404`)
 - **Expected PromotionLog**: `status = "DEPLOYED"`, `testPromotionId` links back to test record
 
 **Hotfix (Mode 3):**
-- Promote a component (Process C), then send a Package and Deploy request with `deploymentTarget = "PRODUCTION"`, `isHotfix = "true"`, `hotfixJustification = "Critical API fix"`
-- **Expected**: `success = true`, `isHotfix = "true"`, `branchPreserved = "false"`, branch is deleted
-- **Expected PromotionLog**: `status = "DEPLOYED"`, `isHotfix = "true"`, `hotfixJustification` populated
+- Promote a component (Process C), then send a Package and Deploy request with `deploymentTarget = "PRODUCTION"`, `isHotfix = "true"`, `hotfixJustification = "Critical API fix"`, `hotfixTestPackId` or `hotfixCreateNewTestPack = true`
+- **Expected**: `success = true`, `isHotfix = "true"`, `branchPreserved = "false"`, branch is deleted, `testIntegrationPackId` populated, `testReleaseId` populated
+- **Expected PromotionLog**: `status = "DEPLOYED"`, `isHotfix = "true"`, `hotfixJustification` populated, `testIntegrationPackId`/`testIntegrationPackName` populated, `testReleaseId` populated
 
 ---
 

@@ -52,6 +52,7 @@ No navigation guard is required for this page because it does not depend on prio
 | Created/Updated | `componentsCreated` / `componentsUpdated` | 12% | Yes | "X new, Y updated" |
 | Test Pack | `testIntegrationPackName` | 15% | No | Plain text |
 | Submitted By | `initiatedBy` | 13% | Yes | Email or name |
+| Release Status | (fetched via `checkReleaseStatus`) | 10% | No | Badge with icon — see detail below |
 
 **Column Details:**
 
@@ -98,6 +99,21 @@ No navigation guard is required for this page because it does not depend on prio
    - Display: Submitter email or name
    - Format: Plain text
    - Sortable: Alphabetical
+
+#### Release Status Column (New)
+
+**Column Header:** "Release Status"
+**Position:** After the last existing column
+**Data Source:** For each row, if `releaseId` exists, call `checkReleaseStatus` with `releaseType = "TEST"` (since this page shows test deployments ready for production)
+
+**Display:**
+- **No release:** Empty / dash
+- **PENDING:** "Pending" (gray badge)
+- **IN_PROGRESS:** "Propagating..." (blue badge with spinner)
+- **COMPLETE:** "Complete" (green badge with checkmark)
+- **FAILED:** "Failed" (red badge)
+
+**Note:** Status is fetched on page load for all visible rows. A "Refresh All" button in the grid header re-checks all statuses.
 
 **Row Selection:**
 - **Mode:** Single-row selection
