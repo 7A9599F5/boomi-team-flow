@@ -24,7 +24,7 @@
 
 All components promoted by the system are placed in this folder hierarchy. Boomi auto-creates folders that do not exist.
 
-### Complete 129-Component Inventory Checklist
+### Complete 133-Component Inventory Checklist
 
 ```
 Phase 1 -- DataHub Models (3):
@@ -183,8 +183,18 @@ Phase 7 -- FSS Operations (+5):
 [ ] 127. PROMO - FSS Op - CopyExtensionsTestToProd
 [ ] 128. PROMO - FSS Op - UpdateMapExtension
 
+Phase 7 -- JSON Profiles (+2, validateScript):
+[ ] 129. PROMO - Profile - ValidateScriptRequest
+[ ] 130. PROMO - Profile - ValidateScriptResponse
+
+Phase 7 -- Integration Process (+1, validateScript):
+[ ] 131. PROMO - Validate Script
+
+Phase 7 -- FSS Operation (+1, validateScript):
+[ ] 132. PROMO - FSS Op - ValidateScript
+
 Phase 7 -- Custom Component (+1):
-[ ] 129. ExtensionEditor
+[ ] 133. ExtensionEditor
 ```
 
 ---

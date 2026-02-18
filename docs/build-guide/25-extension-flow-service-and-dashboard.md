@@ -25,6 +25,8 @@ After adding the 5 new FSS Operations and 10 new profiles, update the Flow Servi
 | 17 | `updateExtensions` | `PROMO - FSS Op - UpdateExtensions` | `PROMO - Profile - UpdateExtensionsRequest` | `PROMO - Profile - UpdateExtensionsResponse` |
 | 18 | `copyExtensionsTestToProd` | `PROMO - FSS Op - CopyExtensionsTestToProd` | `PROMO - Profile - CopyExtensionsTestToProdRequest` | `PROMO - Profile - CopyExtensionsTestToProdResponse` |
 | 19 | `updateMapExtension` | `PROMO - FSS Op - UpdateMapExtension` | `PROMO - Profile - UpdateMapExtensionRequest` | `PROMO - Profile - UpdateMapExtensionResponse` |
+| 20 | `checkReleaseStatus` | `PROMO - FSS Op - CheckReleaseStatus` | `PROMO - Profile - CheckReleaseStatusRequest` | `PROMO - Profile - CheckReleaseStatusResponse` |
+| 21 | `validateScript` | `PROMO - FSS Op - ValidateScript` | `PROMO - Profile - ValidateScriptRequest` | `PROMO - Profile - ValidateScriptResponse` |
 
 4. Save the component.
 
@@ -34,10 +36,10 @@ After updating the Flow Service:
 
 1. Create a new PackagedComponent with version `2.0.0` and notes "Added extension editor message actions".
 2. Deploy to the same environment.
-3. Verify all **19 listeners** appear in Runtime Management → Listeners.
+3. Verify all **21 listeners** appear in Runtime Management → Listeners.
 4. Re-retrieve connector configuration in Flow to auto-discover the 10 new types.
 
-**Verify:** Flow connector should now show **38 types** (19 actions × 2 types each).
+**Verify:** Flow connector should now show **42 types** (21 actions × 2 types each).
 
 ### Step 7E — Deploy ExtensionEditor Custom Component
 
