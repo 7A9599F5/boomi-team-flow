@@ -9,12 +9,20 @@
     "Components are promoted to the branch via tilde syntax: POST /Component/{id}~{branchId}"
   ],
   "_available_fields_not_used": [
-    "packageId (string) — branch from a specific PackagedComponent version instead of HEAD. Mutually exclusive with parentId.",
     "parentId (string) — branch from a specific component version (by componentId). Mutually exclusive with packageId.",
     "deploymentId (string) — branch from a specific deployment snapshot.",
-    "These fields are unused in this project because Process C always branches from HEAD (current main state)."
+    "These fields are unused in this project."
+  ],
+  "_packageId_usage": [
+    "packageId (string) — branch from a specific PackagedComponent version instead of HEAD. Mutually exclusive with parentId.",
+    "Used in Mode 2 (production-from-test): create a branch from the test PackagedComponent (prodPackageId from the TEST PromotionLog record) to prepare for merge to main.",
+    "Process D sets packageId = testPromotionLog.prodPackageId when mode=2 to ensure the branch matches exactly what was validated in test.",
+    "For Mode 1 (test) and Mode 3 (hotfix), omit packageId — branch from HEAD (current main state)."
   ],
   "_lifecycle": [
+    "Mode 1 (test): CREATE from HEAD → PROMOTE components → PACKAGE from branch (branchName set) → deploy to test → branch persists for future production",
+    "Mode 2 (production-from-test): CREATE from test packageId → MergeRequest OVERRIDE → execute MERGE → PACKAGE from main → deploy to production → DELETE branch",
+    "Mode 3 (hotfix): CREATE from HEAD → PROMOTE components → PACKAGE from branch → release to production → release to test → DELETE branch",
     "1. CREATE: POST /Branch → returns branchId",
     "2. POLL: GET /Branch/{branchId} until ready=true",
     "3. PROMOTE: Process C writes to branch via Component/{id}~{branchId}",
@@ -43,5 +51,7 @@
     "errorMessage": "Too many active promotions. Please wait for pending reviews to complete."
   },
   "name": "promo-{promotionId}",
-  "description": "Promotion branch for {promotionId}"
+  "description": "Promotion branch for {promotionId}",
+  "_packageId_conditional": "Include packageId only for Mode 2 (production-from-test). Set to testPromotionLog.prodPackageId.",
+  "packageId": "{testProdPackageId}"
 }

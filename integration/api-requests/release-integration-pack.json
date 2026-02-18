@@ -4,7 +4,9 @@
     "Releases an Integration Pack, creating a deployable snapshot",
     "Must be called AFTER adding all PackagedComponents to the pack",
     "After release, changes to the pack require a new release",
-    "Response includes the released packageId used for deployment"
+    "Response includes the released packageId used for deployment",
+    "MULTI-PACKAGE SAFETY PATTERN: Before releasing, query the Integration Pack state to retrieve ALL currently included PackagedComponents. Include every component (existing + new) in the ReleasePackagedComponents array, each with its target version. This prevents accidentally dropping existing packages from the IP — omitting a component from the array removes it from the release.",
+    "Safety steps: (1) GET /IntegrationPack/{integrationPackId} to list current components and versions, (2) append the new prodPackageId + version to the list, (3) include the full merged list in ReleasePackagedComponents below."
   ],
   "_http_operation": {
     "method": "POST",
@@ -19,5 +21,9 @@
   },
   "integrationPackId": "{integrationPackId}",
   "version": "{releaseVersion}",
-  "notes": "{releaseNotes}"
+  "notes": "{releaseNotes}",
+  "ReleasePackagedComponents": [
+    { "componentId": "{componentId1}", "version": "{version1}" },
+    { "componentId": "{componentId2}", "version": "{version2}" }
+  ]
 }

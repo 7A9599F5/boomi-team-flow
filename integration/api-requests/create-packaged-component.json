@@ -6,7 +6,8 @@
     "componentId: the prod component ID from the promotion results",
     "componentType: typically 'process' for the root component",
     "packageVersion: version string provided by the user (e.g., '1.0.0')",
-    "notes: deployment notes + dev metadata block appended by Process D"
+    "notes: deployment notes + dev metadata block appended by Process D",
+    "branchName: OPTIONAL — set for test mode (Mode 1) to package from the promotion branch instead of main. Omit for production packaging (Mode 2/3/4) where main already contains the merged component."
   ],
   "_http_operation": {
     "method": "POST",
@@ -23,5 +24,6 @@
   "componentType": "process",
   "packageVersion": "{packageVersion}",
   "notes": "{deploymentNotes}\n\n--- Source Package Info ---\nDev Account ID: {devAccountId}\nDev Package ID: {devPackageId}\nDev Package Creator: {devPackageCreator}\nDev Package Version: {devPackageVersion}",
-  "shareable": true
+  "shareable": true,
+  "branchName": "{branchName}"
 }
