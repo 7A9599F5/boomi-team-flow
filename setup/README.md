@@ -61,7 +61,7 @@ Configuration is loaded from three sources, in priority order:
 | `BOOMI_TOKEN` | `boomi_token` | API token from AtomSphere |
 | `BOOMI_ACCOUNT` | `boomi_account_id` | Boomi account ID |
 | `BOOMI_REPO` | `boomi_repo_id` | DataHub repository ID |
-| `BOOMI_ENVIRONMENT` | `target_environment_id` | Target environment for deployment |
+| `BOOMI_FSS_ENVIRONMENT` | `fss_environment_id` | Flow Services Server environment ID |
 
 ```bash
 # Example: export all credentials before running
@@ -69,7 +69,7 @@ export BOOMI_USER="admin@example.com"
 export BOOMI_TOKEN="your-api-token"
 export BOOMI_ACCOUNT="account-abc123"
 export BOOMI_REPO="repo-xyz789"
-export BOOMI_ENVIRONMENT="env-prod-001"
+export BOOMI_FSS_ENVIRONMENT="env-prod-001"
 ```
 
 > **Security note:** Credentials (`BOOMI_USER`, `BOOMI_TOKEN`) are never written to the state file. They must be provided via environment variables or interactive prompt on each run.
@@ -243,7 +243,7 @@ All progress is persisted to `.boomi-setup-state.json` (write-through — saved 
     "boomi_account_id": "...",
     "boomi_repo_id": "...",
     "cloud_base_url": "https://api.boomi.com",
-    "target_environment_id": "..."
+    "fss_environment_id": "..."
   },
   "component_ids": {
     "models": { "ComponentMapping": "model-id-1", "...": "..." },

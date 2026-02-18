@@ -49,7 +49,7 @@ def _empty_state() -> dict:
             "boomi_account_id": "",
             "boomi_repo_id": "",
             "cloud_base_url": "https://api.boomi.com",
-            "target_environment_id": "",
+            "fss_environment_id": "",
         },
         "component_ids": _empty_component_ids(),
         "steps": {},

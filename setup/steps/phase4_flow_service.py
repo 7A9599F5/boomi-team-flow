@@ -92,9 +92,9 @@ class PackageAndDeployFlowService(BaseStep):
             ui.print_error("Flow Service component ID not found. Complete step 4.0 first.")
             return StepStatus.FAILED
 
-        env_id = state.config.get("target_environment_id", "")
+        env_id = state.config.get("fss_environment_id", "")
         if not env_id:
-            ui.print_error("Target environment ID not configured.")
+            ui.print_error("FSS Environment ID not configured.")
             return StepStatus.FAILED
 
         if dry_run:

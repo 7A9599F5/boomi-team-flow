@@ -17,7 +17,7 @@ def mock_config() -> BoomiConfig:
         boomi_account_id="test-account-123",
         boomi_repo_id="test-repo-456",
         cloud_base_url="https://api.boomi.com",
-        target_environment_id="test-env-789",
+        fss_environment_id="test-env-789",
         boomi_user="testuser@example.com",
         boomi_token="test-token-secret",
     )

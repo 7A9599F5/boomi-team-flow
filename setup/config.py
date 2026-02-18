@@ -17,8 +17,8 @@ class BoomiConfig(BaseModel):
         default="https://api.boomi.com",
         description="Boomi Platform API base URL",
     )
-    target_environment_id: str = Field(
-        default="", description="Target environment ID for deployment"
+    fss_environment_id: str = Field(
+        default="", description="Flow Services Server environment ID"
     )
     boomi_user: str = Field(default="", description="Boomi API username")
     boomi_token: str = Field(default="", description="Boomi API token")
@@ -32,7 +32,7 @@ class BoomiConfig(BaseModel):
         """
         return all([
             self.boomi_account_id,
-            self.target_environment_id,
+            self.fss_environment_id,
             self.boomi_user,
             self.boomi_token,
         ])
@@ -48,7 +48,7 @@ class BoomiConfig(BaseModel):
             "boomi_account_id": self.boomi_account_id,
             "boomi_repo_id": self.boomi_repo_id,
             "cloud_base_url": self.cloud_base_url,
-            "target_environment_id": self.target_environment_id,
+            "fss_environment_id": self.fss_environment_id,
         }
 
 
@@ -58,7 +58,7 @@ _ENV_MAP: dict[str, str] = {
     "BOOMI_TOKEN": "boomi_token",
     "BOOMI_ACCOUNT": "boomi_account_id",
     "BOOMI_REPO": "boomi_repo_id",
-    "BOOMI_ENVIRONMENT": "target_environment_id",
+    "BOOMI_FSS_ENVIRONMENT": "fss_environment_id",
 }
 
 # Fields that should be prompted interactively (with labels).
@@ -67,7 +67,7 @@ _ENV_MAP: dict[str, str] = {
 # BOOMI_REPO env var to skip repository creation.
 _INTERACTIVE_FIELDS: list[tuple[str, str, bool]] = [
     ("boomi_account_id", "Boomi Account ID", False),
-    ("target_environment_id", "Target Environment ID", False),
+    ("fss_environment_id", "FSS Environment ID", False),
     ("boomi_user", "Boomi API Username", False),
     ("boomi_token", "Boomi API Token", True),
 ]
@@ -86,7 +86,7 @@ def load_config(
 
     # Layer 1: Load non-credential fields from state file
     if existing_state_config:
-        for key in ("boomi_account_id", "boomi_repo_id", "cloud_base_url", "target_environment_id"):
+        for key in ("boomi_account_id", "boomi_repo_id", "cloud_base_url", "fss_environment_id"):
             val = existing_state_config.get(key, "")
             if val:
                 values[key] = val
