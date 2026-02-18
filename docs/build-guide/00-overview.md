@@ -35,7 +35,7 @@ For components with complex internal XML (Integration Processes, Maps), the guid
 
 ## Bill of Materials
 
-The system comprises **132 components** across 7 phases:
+The system comprises **133 components** across 7 phases:
 
 | Phase | Category | Count | Components |
 |-------|----------|-------|------------|
@@ -57,7 +57,7 @@ The system comprises **132 components** across 7 phases:
 | 7 | Integration Processes | 6 | K (listClientAccounts), L (getExtensions), M (updateExtensions), N (copyExtensionsTestToProd), O (updateMapExtension), Q (validateScript) |
 | 7 | FSS Operations | 6 | One per new message action |
 | 7 | Custom Component | 1 | ExtensionEditor (React custom component for env extension editing) |
-| | **Total** | **132** | |
+| | **Total** | **133** | |
 
 ---
 
