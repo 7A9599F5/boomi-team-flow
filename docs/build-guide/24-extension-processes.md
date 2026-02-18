@@ -1,6 +1,6 @@
-## Phase 7: Extension Editor Processes (K–O)
+## Phase 7: Extension Editor Processes (K–O, Q)
 
-This section documents the 5 integration processes that power the Extension Editor feature. Build them in order: K → L → M → N → O. Process K has no dependencies; the remaining processes build on K's context.
+This section documents the 6 integration processes that power the Extension Editor feature. Build them in order: K → L → M → N → O → Q. Process K has no dependencies; the remaining processes build on K's context.
 
 > **API Alternative:** Each of these processes can be created programmatically via `POST /Component` with `type="process"`. Due to the complexity of process canvas XML (shapes, routing, DPP mappings, script references), the recommended workflow is: (1) build the process manually following the steps below, (2) use `GET /Component/{processId}` to export the XML, (3) store the XML as a template for automated recreation. See [Appendix D: API Automation Guide](22-api-automation-guide.md) for the full workflow.
 
@@ -570,6 +570,114 @@ In Phase 1, the Decision shape at step 3 always routes to the error path. The pr
 - Send any `updateMapExtension` request in Phase 1
 - **Expected**: response with `success = false`, `errorCode = "MAP_EXTENSION_READONLY"`, and `mapExtensionId` echoed back
 - Confirm that `getExtensions` still returns map extension summaries correctly (read path unaffected by Phase 1 write restriction)
+
+---
+
+### Process Q: Validate Script (`PROMO - Validate Script`)
+
+This process validates the syntax and security of Groovy or JavaScript scripts used in map extension functions. It performs compile-time checking without executing the script. For Groovy, it applies AST-level security validation using `SecureASTCustomizer` to block dangerous imports and receivers. For JavaScript, it uses Nashorn's compile-only mode. This process is entirely stateless — no HTTP API calls, no DataHub operations.
+
+#### Profiles
+
+| Profile | Source File |
+|---------|------------|
+| `PROMO - Profile - ValidateScriptRequest` | `/integration/profiles/validateScript-request.json` |
+| `PROMO - Profile - ValidateScriptResponse` | `/integration/profiles/validateScript-response.json` |
+
+The request JSON contains:
+- `clientAccountId` (string): target client sub-account ID (context only)
+- `environmentId` (string): target environment ID (context only)
+- `mapExtensionId` (string): map extension ID from summary query
+- `functionName` (string): name of the script function being validated
+- `scriptContent` (string): the full script source to validate
+- `language` (string): `"GROOVY"` or `"JAVASCRIPT"` (case-insensitive, normalized to uppercase)
+- `userSsoGroups` (array of strings): for audit trail
+- `userEmail` (string): for audit trail
+
+The response JSON contains:
+- `success`, `errorCode`, `errorMessage` (standard error contract)
+- `language` (string): echoed (normalized to uppercase)
+- `functionName` (string): echoed
+- `isValid` (boolean): `true` if the script passed all checks
+- `errors` (array): each entry has `line`, `column`, `message`, `type` (SYNTAX | SECURITY | SIZE)
+- `warningCount` (integer): reserved (always 0)
+- `validatedAt` (string): ISO 8601 UTC timestamp
+
+#### FSS Operation
+
+Create `PROMO - FSS Op - ValidateScript` per the pattern in Section 3.B, using `PROMO - Profile - ValidateScriptRequest` and `PROMO - Profile - ValidateScriptResponse`.
+
+#### Canvas — Shape by Shape
+
+1. **Start shape** — Connector = Boomi Flow Services Server, Action = Listen, Operation = `PROMO - FSS Op - ValidateScript`
+
+2. **Set Properties** (read request fields)
+   - DPP `clientAccountId` = read from document path: `clientAccountId`
+   - DPP `environmentId` = read from document path: `environmentId`
+   - DPP `mapExtensionId` = read from document path: `mapExtensionId`
+   - DPP `functionName` = read from document path: `functionName`
+   - DPP `scriptContent` = read from document path: `scriptContent`
+   - DPP `language` = read from document path: `language`
+   - DPP `userSsoGroups` = read from document path: `userSsoGroups`
+   - DPP `userEmail` = read from document path: `userEmail`
+
+3. **Data Process — validate-script.groovy**
+   - Add a **Data Process** shape referencing `validate-script.groovy` (from `/integration/scripts/`)
+   - The script handles all validation logic internally:
+     - Input validation (language enum, empty check, size limit)
+     - Groovy path: `SecureASTCustomizer` → `CompilerConfiguration` → `GroovyShell.parse()`
+     - JavaScript path: `ScriptEngineManager("nashorn")` → `Compilable.compile()`
+     - Error extraction from `MultipleCompilationErrorsException` and `ScriptException`
+   - Output is the complete response JSON (success, isValid, errors array, timestamps)
+   - Always calls `dataContext.storeStream()` per Groovy standards
+
+4. **Return Documents** — sends the validation response back through the FSS listener
+
+#### Dynamic Process Properties
+
+| Name | Type | Persist | Purpose |
+|------|------|---------|---------|
+| `clientAccountId` | String | false | Context field from request; not used for API calls |
+| `environmentId` | String | false | Context field from request; not used for API calls |
+| `mapExtensionId` | String | false | Map extension ID; context for logging |
+| `functionName` | String | false | Function name being validated; echoed in response |
+| `scriptContent` | String | false | Full script source; passed to validation engine |
+| `language` | String | false | GROOVY or JAVASCRIPT; determines validation path |
+| `userSsoGroups` | String (JSON array) | false | Audit trail; not used for authorization |
+| `userEmail` | String | false | Audit trail; not used for authorization |
+
+#### Implementer Notes
+
+- **Stateless**: Process Q makes no HTTP API calls and no DataHub queries. The entire validation runs within a single Data Process (Groovy) shape.
+- **Performance**: Typical execution < 2 seconds. `GroovyShell` and `ScriptEngineManager` are instantiated per invocation (no caching across executions in Boomi's sandboxed environment).
+- **Security policy**: The `SecureASTCustomizer` blocks imports of `Runtime`, `ProcessBuilder`, `File`, `Socket`, `URL`, reflection classes, `GroovyShell`, `GroovyClassLoader`, `ClassLoader`, and `Thread`. Star imports from `java.lang.reflect`, `java.net`, and `groovy.lang` are also blocked.
+- **Size limit**: 10 KB maximum script size. Scripts exceeding this limit are rejected before any compilation attempt.
+- **No execution**: Scripts are parsed/compiled only — never executed. This eliminates runtime side-effect risks entirely.
+
+#### Error Codes
+
+| Error Code | Trigger Condition |
+|------------|-------------------|
+| `INVALID_LANGUAGE` | `language` is not GROOVY or JAVASCRIPT |
+| `SCRIPT_EMPTY` | `scriptContent` is blank or whitespace only |
+| `SCRIPT_TOO_LARGE` | Script exceeds 10 KB size limit |
+| `GROOVY_SYNTAX_ERROR` | Groovy compilation failed (details in `errors[]`) |
+| `GROOVY_SECURITY_VIOLATION` | Blocked import or receiver detected (details in `errors[]`) |
+| `JAVASCRIPT_SYNTAX_ERROR` | JavaScript parse failed (details in `errors[]`) |
+| `VALIDATION_INTERNAL_ERROR` | Engine internal failure (`success=false`) |
+
+#### Verify
+
+- Send a `validateScript` request with `language = "GROOVY"` and valid Groovy code (e.g., `def x = 1 + 2; return x`)
+- **Expected**: `success = true`, `isValid = true`, empty `errors` array
+- Send a request with `language = "GROOVY"` and invalid syntax (e.g., `def x = {{{`)
+- **Expected**: `success = true`, `isValid = false`, `errors` array with at least one entry of `type = "SYNTAX"`
+- Send a request with `language = "GROOVY"` and a blocked import (e.g., `import java.lang.Runtime; Runtime.getRuntime()`)
+- **Expected**: `success = true`, `isValid = false`, `errors` array with `type = "SECURITY"`
+- Send a request with `language = "JAVASCRIPT"` and valid JS (e.g., `var x = 1 + 2;`)
+- **Expected**: `success = true`, `isValid = true`
+- Send a request with `language = "PYTHON"`
+- **Expected**: `success = true`, `isValid = false`, `errorCode = "INVALID_LANGUAGE"`
 
 ---
 
