@@ -48,6 +48,8 @@ FSS_OPS = [
     ("updateExtensions", "PROMO - FSS Op - UpdateExtensions"),
     ("copyExtensionsTestToProd", "PROMO - FSS Op - CopyExtensionsTestToProd"),
     ("updateMapExtension", "PROMO - FSS Op - UpdateMapExtension"),
+    ("checkReleaseStatus", "PROMO - FSS Op - CheckReleaseStatus"),
+    ("validateScript", "PROMO - FSS Op - ValidateScript"),
 ]
 
 # Ordered list of processes for manual build (letter_code, display_name, build_guide_file)
@@ -71,6 +73,8 @@ PROCESS_BUILD_ORDER = [
     ("M", "PROMO - Process M - UpdateExtensions", "20-process-m-update-extensions.md"),
     ("N", "PROMO - Process N - CopyExtensionsTestToProd", "20-process-n-copy-extensions.md"),
     ("O", "PROMO - Process O - UpdateMapExtension", "20-process-o-update-map-extension.md"),
+    ("P", "PROMO - Process P - CheckReleaseStatus", "11-process-d-package-and-deploy.md"),
+    ("Q", "PROMO - Process Q - ValidateScript", "24-extension-processes.md"),
 ]
 
 
@@ -159,7 +163,7 @@ class CreateProfiles(BaseStep):
         remaining = state.get_remaining_items(self.step_id, all_profiles)
 
         if not remaining:
-            ui.print_success("All 38 profiles already created.")
+            ui.print_success("All 42 profiles already created.")
             return StepStatus.COMPLETED
 
         ui.print_info(f"Creating {len(remaining)} of {len(all_profiles)} profiles...")
@@ -204,7 +208,7 @@ class CreateProfiles(BaseStep):
 # ---- Step 3.1b: CreateScripts ----------------------------------------------
 
 class CreateScripts(BaseStep):
-    """Automatically create all 10 Groovy process scripts via Platform API."""
+    """Automatically create all 11 Groovy process scripts via Platform API."""
 
     @property
     def step_id(self) -> str:
@@ -229,7 +233,7 @@ class CreateScripts(BaseStep):
         remaining = state.get_remaining_items(self.step_id, all_scripts)
 
         if not remaining:
-            ui.print_success("All 10 scripts already created.")
+            ui.print_success("All 11 scripts already created.")
             return StepStatus.COMPLETED
 
         ui.print_info(f"Creating {len(remaining)} of {len(all_scripts)} scripts...")
@@ -329,7 +333,7 @@ class DiscoverFssTemplate(BaseStep):
 # ---- Step 3.3: CreateFssOps -----------------------------------------------
 
 class CreateFssOps(BaseStep):
-    """Automatically create all 19 FSS operations via Platform API."""
+    """Automatically create all 21 FSS operations via Platform API."""
 
     @property
     def step_id(self) -> str:

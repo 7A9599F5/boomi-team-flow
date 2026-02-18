@@ -168,7 +168,7 @@ python -m setup.main --state-file /path/to/state.json <command>
 | 2.0 | Create Folder Structure | auto | — | Creates `/Promoted/` folder tree with Profiles, Connections, Operations subfolders |
 | 2.1 | Create HTTP Client Connection | semi | 2.0 | Collects API credentials; creates the `PROMO - Partner API Connection` component |
 | 2.2 | Discover HTTP Operation Template | manual | 2.1 | Guides you to manually create the first HTTP operation in the UI; exports its XML as a template |
-| 2.3 | Create HTTP Client Operations | auto | 2.2 | Batch-creates the remaining 18 HTTP operations from the template |
+| 2.3 | Create HTTP Client Operations | auto | 2.2 | Batch-creates the remaining 27 HTTP operations from the template |
 
 ### Phase 2b: DataHub Connection
 
@@ -229,7 +229,7 @@ All progress is persisted to `.boomi-setup-state.json` (write-through — saved 
 
 - **Resume after interruption** — rerun `setup` and completed steps are skipped
 - **Crash recovery** — steps marked `in_progress` at crash time are re-executed on next run
-- **Batch resume** — within batch-creation steps (e.g., creating 18 HTTP ops), individual items are tracked so only remaining items are created
+- **Batch resume** — within batch-creation steps (e.g., creating 27 HTTP ops), individual items are tracked so only remaining items are created
 - **Component ID tracking** — every created component's ID is stored for use by later steps
 
 ### State File Structure

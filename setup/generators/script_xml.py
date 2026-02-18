@@ -12,6 +12,7 @@ SCRIPT_NAME_MAP: dict[str, str] = {
     "build-extension-access-cache": "PROMO - Script - BuildExtensionAccessCache",
     "strip-connections-for-copy": "PROMO - Script - StripConnectionsForCopy",
     "merge-extension-data": "PROMO - Script - MergeExtensionData",
+    "validate-script": "PROMO - Script - ValidateScript",
 }
 
 _TEMPLATE = """\

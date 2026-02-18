@@ -314,11 +314,11 @@ class VerifyPhase2(BaseStep):
         ui.print_step(self.step_id, self.name, self.step_type.value)
 
         if dry_run:
-            ui.print_info("Would verify: 27 HTTP ops, 10 DH ops, 2 connections")
+            ui.print_info("Would verify: 28 HTTP ops, 10 DH ops, 2 connections")
             return StepStatus.COMPLETED
 
         checks = [
-            ("PROMO - HTTP Op", 27, "HTTP operations"),
+            ("PROMO - HTTP Op", 28, "HTTP operations"),
             ("PROMO - DH Op", 10, "DataHub operations"),
         ]
 

@@ -1,6 +1,6 @@
 ## Appendix B: Dynamic Process Properties (DPP) Catalog
 
-This catalog documents every DPP used across all 13 integration processes. Use it for troubleshooting, debugging, and understanding data flow between shapes.
+This catalog documents every DPP used across all 20 integration processes. Use it for troubleshooting, debugging, and understanding data flow between shapes.
 
 ### Global DPPs
 
@@ -8,7 +8,7 @@ These properties are available to all processes via Flow Service component confi
 
 | DPP Name | Type | Set By | Used By | Persist | Description |
 |----------|------|--------|---------|---------|-------------|
-| `primaryAccountId` | String | Flow Service config | All processes (A0, A, B, C, D, E, E2, E3, E4, E5, F, G, J) | N/A | Primary Boomi account ID; used in all Partner API URL parameters |
+| `primaryAccountId` | String | Flow Service config | All processes (A0, A, B, C, D, E, E2, E3, E4, E5, F, G, J, K, L, M, N, O, P, Q) | N/A | Primary Boomi account ID; used in all Partner API URL parameters |
 
 ---
 
@@ -225,6 +225,100 @@ Components are sorted by type for bottom-up promotion. Lower priority number mea
 | 4 | `map` | References profiles and operations |
 | 5 | `process` (sub-process) | References all of the above |
 | 6 | `process` (root) | Promoted last -- depends on everything; identified by matching `rootComponentId` |
+
+---
+
+### Process K: List Client Accounts
+
+| DPP Name | Type | Set By | Used By | Persist | Description |
+|----------|------|--------|---------|---------|-------------|
+| `userSsoGroups` | String (JSON array) | Set Properties (step 2) | Decision (step 3), Data Process (step 4) | false | SSO groups from request; used to determine admin vs contributor access |
+| `primaryAccountId` | String | Set Properties (step 2) | HTTP Client Send (steps 5a, 5b) | false | Primary account ID from Flow Service config; passed to `overrideAccount` HTTP calls |
+| `clientAccountCount` | String | Data Process (step 6) | (logging) | false | Count of returned client accounts; set by collection Groovy script |
+
+---
+
+### Process L: Get Extensions
+
+| DPP Name | Type | Set By | Used By | Persist | Description |
+|----------|------|--------|---------|---------|-------------|
+| `clientAccountId` | String | Set Properties (step 2) | HTTP Client Send (steps 4, 5), Connector (step 6) | false | Target client sub-account ID; passed to `overrideAccount` |
+| `environmentId` | String | Set Properties (step 2) | HTTP Client Send (steps 4, 5), Connector (step 6), Map (step 8) | false | Target environment ID; used in API URL path and DataHub filter |
+| `userSsoGroups` | String (JSON array) | Set Properties (step 2) | Data Process (step 7) | false | SSO groups for access filtering; passed to merge script |
+| `userEmail` | String | Set Properties (step 2) | Data Process (step 7) | false | Requesting user email; for audit trail in merge script |
+| `rawExtensionData` | String (JSON) | HTTP Client Send (step 4) | Data Process (step 7) | false | Raw EnvironmentExtensions GET response; fed into merge script |
+| `rawMapSummaryData` | String (JSON) | HTTP Client Send (step 5) | Data Process (step 7) | false | Raw MapExtensionsSummary response; fed into merge script |
+| `extensionCount` | String | Data Process (step 7) | Map (step 8) | false | Total extension component count from merge script |
+| `mapExtensionCount` | String | Data Process (step 7) | Map (step 8) | false | Map extension count from merge script |
+
+---
+
+### Process M: Update Extensions
+
+| DPP Name | Type | Set By | Used By | Persist | Description |
+|----------|------|--------|---------|---------|-------------|
+| `clientAccountId` | String | Set Properties (step 2) | Connector (step 4), HTTP Client Send (step 7) | false | Target client sub-account ID; passed to `overrideAccount` |
+| `environmentId` | String | Set Properties (step 2) | Connector (step 4), HTTP Client Send (step 7), Map (step 8) | false | Target environment ID; used in API URL and DataHub filter |
+| `extensionPayload` | String (JSON) | Set Properties (step 2) | Data Process (step 5), HTTP Client Send (step 7) | false | Partial EnvironmentExtensions payload to send to Platform API |
+| `userSsoGroups` | String (JSON array) | Set Properties (step 2) | Data Process (step 5) | false | User's SSO groups for tier and access validation |
+| `userEmail` | String | Set Properties (step 2) | Data Process (step 5) | false | Requesting user email; for audit trail |
+| `updatedFieldCount` | String | Data Process (step 5) | Map (step 8) | false | Count of authorized fields being changed; set by validation Groovy |
+| `unauthorizedFields` | String | Data Process (step 5) | Decision (step 6) | false | Comma-separated list of unauthorized component names (empty = authorized) |
+| `unauthorizedReason` | String | Data Process (step 5) | Map (error response, step 6) | false | Error code to return when unauthorized fields are detected |
+
+---
+
+### Process N: Copy Extensions Test to Prod
+
+| DPP Name | Type | Set By | Used By | Persist | Description |
+|----------|------|--------|---------|---------|-------------|
+| `clientAccountId` | String | Set Properties (step 2) | HTTP Client Send (steps 4, 6) | false | Target client sub-account ID; passed to `overrideAccount` |
+| `testEnvironmentId` | String | Set Properties (step 2) | HTTP Client Send (step 4), Map (step 8) | false | Source Test environment ID for the GET call |
+| `prodEnvironmentId` | String | Set Properties (step 2) | HTTP Client Send (step 6), Map (step 8) | false | Target Production environment ID for the UPDATE call |
+| `targetEnvironmentId` | String | Set Properties (step 2) | Data Process `strip-connections-for-copy.groovy` (step 5) | false | Must match `prodEnvironmentId`; read by strip script to rewrite the environment ID |
+| `userSsoGroups` | String (JSON array) | Set Properties (step 2) | Decision (step 3) | false | SSO groups for admin tier validation |
+| `userEmail` | String | Set Properties (step 2) | (audit trail) | false | Requesting user email; for audit trail |
+| `sectionsExcluded` | String | Data Process (step 5) | Map (step 8) | false | Set by strip script: comma-separated excluded sections (e.g., "connections,PGPCertificates") |
+| `fieldsCopied` | String | Data Process (step 5) | Map (step 8) | false | Set by strip script: count of copyable fields in the payload |
+| `encryptedFieldsSkipped` | String | Data Process (step 5) | Map (step 8) | false | Set by strip script: count of encrypted fields that could not be copied |
+| `copyFailed` | String | Error handler (step 6) | Decision (step 7) | false | Set to "true" if the UPDATE HTTP call fails |
+
+---
+
+### Process O: Update Map Extension
+
+| DPP Name | Type | Set By | Used By | Persist | Description |
+|----------|------|--------|---------|---------|-------------|
+| `clientAccountId` | String | Set Properties (step 2) | HTTP Client Send (step 4, Phase 2 only) | false | Target client sub-account ID; passed to `overrideAccount` in Phase 2 |
+| `environmentId` | String | Set Properties (step 2) | HTTP Client Send (step 4, Phase 2 only) | false | Target environment ID; used in Phase 2 API URL |
+| `mapExtensionId` | String | Set Properties (step 2) | Map (step 3a error response), HTTP Client Send (step 4, Phase 2) | false | Map extension ID from request; echoed in error response |
+
+---
+
+### Process P: Check Release Status
+
+| DPP Name | Type | Set By | Used By | Persist | Description |
+|----------|------|--------|---------|---------|-------------|
+| `promotionId` | String | Set Properties (step 2) | DataHub Query (step 3) | false | PromotionLog record to look up release IDs from |
+| `releaseType` | String | Set Properties (step 2) | Decision (step 4) | false | Which release(s) to check: `"PRODUCTION"`, `"TEST"`, or `"ALL"` |
+| `releaseId` | String | DataHub Query (step 3) | HTTP Client Send (step 5), Map (step 6) | false | Production release ID from PromotionLog; used to call GET ReleaseIntegrationPackStatus |
+| `testReleaseId` | String | DataHub Query (step 3) | HTTP Client Send (step 5), Map (step 6) | false | Test release ID from PromotionLog (hotfix mode only); empty for non-hotfix |
+| `releaseStatus` | String | HTTP Client Send (step 5) | Map (step 6) | false | Current propagation status returned from GET ReleaseIntegrationPackStatus |
+
+---
+
+### Process Q: Validate Script
+
+| DPP Name | Type | Set By | Used By | Persist | Description |
+|----------|------|--------|---------|---------|-------------|
+| `clientAccountId` | String | Set Properties (step 2) | (context only — not used for API calls) | false | Context field from request; not used for API calls |
+| `environmentId` | String | Set Properties (step 2) | (context only — not used for API calls) | false | Context field from request; not used for API calls |
+| `mapExtensionId` | String | Set Properties (step 2) | (context for logging) | false | Map extension ID; context for logging |
+| `functionName` | String | Set Properties (step 2) | Data Process `validate-script.groovy` (step 3) | false | Function name being validated; echoed in response |
+| `scriptContent` | String | Set Properties (step 2) | Data Process `validate-script.groovy` (step 3) | false | Full script source; passed to validation engine |
+| `language` | String | Set Properties (step 2) | Data Process `validate-script.groovy` (step 3) | false | GROOVY or JAVASCRIPT; determines validation path |
+| `userSsoGroups` | String (JSON array) | Set Properties (step 2) | (audit trail — not used for authorization) | false | Audit trail; not used for authorization |
+| `userEmail` | String | Set Properties (step 2) | (audit trail — not used for authorization) | false | Audit trail; not used for authorization |
 
 ---
 

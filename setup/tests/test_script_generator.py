@@ -72,7 +72,7 @@ class TestScriptTypeAndLanguage:
 
 class TestStemToComponentName:
     def test_stem_to_component_name(self) -> None:
-        """All 10 stem mappings resolve to correct component names."""
+        """All 11 stem mappings resolve to correct component names."""
         expected = {
             "build-visited-set": "PROMO - Script - BuildVisitedSet",
             "sort-by-dependency": "PROMO - Script - SortByDependency",
@@ -84,8 +84,9 @@ class TestStemToComponentName:
             "build-extension-access-cache": "PROMO - Script - BuildExtensionAccessCache",
             "strip-connections-for-copy": "PROMO - Script - StripConnectionsForCopy",
             "merge-extension-data": "PROMO - Script - MergeExtensionData",
+            "validate-script": "PROMO - Script - ValidateScript",
         }
-        assert len(SCRIPT_NAME_MAP) == 10
+        assert len(SCRIPT_NAME_MAP) == 11
         for stem, name in expected.items():
             assert script_stem_to_component_name(stem) == name
 

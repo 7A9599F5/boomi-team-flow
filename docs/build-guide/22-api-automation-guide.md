@@ -1312,4 +1312,4 @@ All batch operations must respect the Platform API rate limits:
 See [Appendix C: Platform API Reference](21-appendix-platform-api-reference.md) for complete rate limiting and error handling details.
 
 ---
-Prev: [Appendix C: Platform API Reference](21-appendix-platform-api-reference.md) | [Back to Index](index.md)
+Prev: [Appendix C: Platform API Reference](21-appendix-platform-api-reference.md) | Next: [Phase 7: Extension Editor Overview](23-phase7-extension-editor-overview.md) | [Back to Index](index.md)

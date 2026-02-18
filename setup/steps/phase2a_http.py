@@ -9,7 +9,7 @@ from setup.ui import console as ui
 from setup.ui.prompts import collect_component_id, guide_and_collect, guide_and_wait
 
 
-# 27 HTTP Client Operations — name, method, URL path
+# 28 HTTP Client Operations — name, method, URL path
 HTTP_OPERATIONS: list[tuple[str, str, str]] = [
     ("PROMO - HTTP Op - GET Component", "GET", "/partner/api/rest/v1/{1}/Component/{2}"),
     ("PROMO - HTTP Op - POST Component Create", "POST", "/partner/api/rest/v1/{1}/Component~{2}"),
@@ -262,7 +262,7 @@ class DiscoverHttpTemplate(BaseStep):
 
 
 class CreateHttpOps(BaseStep):
-    """Step 2.3 — Batch-create the remaining 18 HTTP Client Operations from template."""
+    """Step 2.3 — Batch-create the remaining 27 HTTP Client Operations from template."""
 
     @property
     def step_id(self) -> str:

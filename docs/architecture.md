@@ -19,7 +19,7 @@ graph TD
     end
 
     subgraph fss["Flow Service (Message Actions)"]
-        msgActions["20 Message Actions\ngetDevAccounts / listDevPackages\nresolveDependencies / executePromotion\npackageAndDeploy / queryStatus\nqueryPeerReviewQueue / submitPeerReview\nqueryTestDeployments / withdrawPromotion\nmanageMappings / generateComponentDiff\nlistIntegrationPacks / listClientAccounts\ngetExtensions / updateExtensions\ncopyExtensionsTestToProd / updateMapExtension\ncheckReleaseStatus"]
+        msgActions["21 Message Actions\ngetDevAccounts / listDevPackages\nresolveDependencies / executePromotion\npackageAndDeploy / queryStatus\nqueryPeerReviewQueue / submitPeerReview\nqueryTestDeployments / withdrawPromotion\nmanageMappings / generateComponentDiff\nlistIntegrationPacks / listClientAccounts\ngetExtensions / updateExtensions\ncopyExtensionsTestToProd / updateMapExtension\ncheckReleaseStatus\nvalidateScript"]
     end
 
     subgraph engine["Integration Engine (Public Boomi Cloud Atom)"]
@@ -45,7 +45,7 @@ No firewall issues. Flow → Integration → DataHub all within Boomi's cloud in
 External databases have 30+ second latency due to firewall/domain limitations. DataHub is accessible without latency when Integration atom is on public Boomi cloud. Match rules provide built-in UPSERT behavior.
 
 ### Why Flow Services Server
-Single Flow Service component defines the contract. Exposes all 13 processes as Message Actions. Handles connection management, timeout callbacks, and authentication automatically.
+Single Flow Service component defines the contract. Exposes all 20 processes as Message Actions. Handles connection management, timeout callbacks, and authentication automatically.
 
 ### Why HTTP Client (Not AtomSphere API Connector)
 
@@ -277,6 +277,13 @@ stateDiagram-v2
 | F | Mapping CRUD | manageMappings | Read/write ComponentMapping records |
 | G | Generate Component Diff | generateComponentDiff | Fetch branch vs main XML for side-by-side diff |
 | J | List Integration Packs | listIntegrationPacks | Query MULTI-type packs + suggest based on history |
+| K | List Client Accounts | listClientAccounts | SSO group → accessible client accounts + environments |
+| L | Get Extensions | getExtensions | Read env extensions + map extension summaries, merge with access data |
+| M | Update Extensions | updateExtensions | Save env extension changes (partial update, access-validated) |
+| N | Copy Extensions Test to Prod | copyExtensionsTestToProd | Copy non-connection env extensions from Test to Prod |
+| O | Update Map Extension | updateMapExtension | Save map extension changes (Phase 2 editing) |
+| P | Check Release Status | checkReleaseStatus | Poll ReleaseIntegrationPackStatus for release propagation |
+| Q | Validate Script | validateScript | Syntax and security validation for map extension scripts |
 
 ## Promotion Engine Logic (Process C)
 

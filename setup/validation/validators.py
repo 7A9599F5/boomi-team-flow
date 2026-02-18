@@ -85,11 +85,11 @@ def validate_sources_exist(
 def validate_http_ops_count(
     platform_api: Any, state: Any
 ) -> tuple[bool, str]:
-    """Count HTTP operations matching 'PROMO - HTTP Op' prefix, expect 27."""
+    """Count HTTP operations matching 'PROMO - HTTP Op' prefix, expect 28."""
     count = platform_api.count_components_by_prefix("PROMO - HTTP Op")
-    if count != 27:
-        return False, f"Found {count} HTTP operations, expected 27"
-    return True, "All 27 HTTP operations found"
+    if count != 28:
+        return False, f"Found {count} HTTP operations, expected 28"
+    return True, "All 28 HTTP operations found"
 
 
 def validate_dh_ops_count(
@@ -105,31 +105,31 @@ def validate_dh_ops_count(
 def validate_profile_count(
     platform_api: Any, state: Any
 ) -> tuple[bool, str]:
-    """Count profiles matching 'PROMO - Profile' prefix, expect 38."""
+    """Count profiles matching 'PROMO - Profile' prefix, expect 42."""
     count = platform_api.count_components_by_prefix("PROMO - Profile")
-    if count != 38:
-        return False, f"Found {count} profiles, expected 38"
-    return True, "All 38 profiles found"
+    if count != 42:
+        return False, f"Found {count} profiles, expected 42"
+    return True, "All 42 profiles found"
 
 
 def validate_fss_ops_count(
     platform_api: Any, state: Any
 ) -> tuple[bool, str]:
-    """Count FSS operations matching 'PROMO - FSS Op' prefix, expect 19."""
+    """Count FSS operations matching 'PROMO - FSS Op' prefix, expect 21."""
     count = platform_api.count_components_by_prefix("PROMO - FSS Op")
-    if count != 19:
-        return False, f"Found {count} FSS operations, expected 19"
-    return True, "All 19 FSS operations found"
+    if count != 21:
+        return False, f"Found {count} FSS operations, expected 21"
+    return True, "All 21 FSS operations found"
 
 
 def validate_process_count(
     platform_api: Any, state: Any
 ) -> tuple[bool, str]:
-    """Count processes matching 'PROMO - Process' prefix, expect 18."""
+    """Count processes matching 'PROMO - Process' prefix, expect 20."""
     count = platform_api.count_components_by_prefix("PROMO - Process")
-    if count != 18:
-        return False, f"Found {count} processes, expected 18"
-    return True, "All 18 processes found"
+    if count != 20:
+        return False, f"Found {count} processes, expected 20"
+    return True, "All 20 processes found"
 
 
 def validate_flow_service_deployed(

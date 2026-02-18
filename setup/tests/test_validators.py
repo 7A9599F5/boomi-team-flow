@@ -164,13 +164,13 @@ class TestValidateSourcesExist:
 
 class TestValidateHttpOpsCount:
     def test_validate_http_ops_count_correct(self) -> None:
-        """Count returns 27 — success."""
+        """Count returns 28 — success."""
         mock_platform = MagicMock()
-        mock_platform.count_components_by_prefix.return_value = 27
+        mock_platform.count_components_by_prefix.return_value = 28
 
         success, msg = validate_http_ops_count(mock_platform, MagicMock())
         assert success is True
-        assert "27" in msg
+        assert "28" in msg
 
     def test_validate_http_ops_count_wrong(self) -> None:
         """Count returns 15, expect failure."""

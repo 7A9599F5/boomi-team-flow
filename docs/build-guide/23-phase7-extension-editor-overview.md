@@ -91,4 +91,4 @@ Step 7A: DataHub Models (ExtensionAccessMapping, ClientAccountConfig)
 5. **Connection admin gate** — Connections require `ABC_BOOMI_FLOW_ADMIN` SSO group. Non-admins see connection extensions read-only.
 
 ---
-Next: [Extension Processes K-O](24-extension-processes.md) | [Back to Index](index.md)
+Prev: [Appendix D: API Automation Guide](22-api-automation-guide.md) | Next: [Extension Processes K-O](24-extension-processes.md) | [Back to Index](index.md)
