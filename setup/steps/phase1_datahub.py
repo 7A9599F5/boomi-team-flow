@@ -86,6 +86,10 @@ class CreateRepo(BaseStep):
             ui.print_error(f"Failed to create repository: {exc}")
             return StepStatus.FAILED
 
+        # Persist repo ID immediately so re-runs don't create duplicates
+        state.update_config({"boomi_repo_id": repo_id})
+        self.config.boomi_repo_id = repo_id
+
         # Step 4: Poll until creation completes
         try:
             ui.print_info("Waiting for repository creation to complete...")
@@ -93,11 +97,6 @@ class CreateRepo(BaseStep):
         except BoomiApiError as exc:
             ui.print_error(f"Repository creation did not complete: {exc}")
             return StepStatus.FAILED
-
-        state.update_config({"boomi_repo_id": repo_id})
-        # Update the live config object so DataHubApi._repo_base
-        # picks up the new repo_id for subsequent steps (1.1+).
-        self.config.boomi_repo_id = repo_id
         ui.print_success(f"Created repository '{self.REPO_NAME}' (ID: {repo_id})")
         return StepStatus.COMPLETED
 

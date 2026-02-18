@@ -88,9 +88,23 @@ class DataHubApi:
     def poll_repo_created(
         self, repo_id: str, interval: int = 3, max_retries: int = 20
     ) -> str:
-        """Poll get_repo_creation_status until SUCCESS or failure."""
+        """Poll get_repo_creation_status until SUCCESS or failure.
+
+        Tolerates transient 5xx errors from the status endpoint — common
+        during initial repository provisioning.
+        """
         for attempt in range(max_retries):
-            status = self.get_repo_creation_status(repo_id)
+            try:
+                status = self.get_repo_creation_status(repo_id)
+            except BoomiApiError as exc:
+                if 500 <= exc.status_code < 600:
+                    logger.warning(
+                        "Transient %d polling repo %s status (attempt %d/%d)",
+                        exc.status_code, repo_id, attempt + 1, max_retries,
+                    )
+                    time.sleep(interval)
+                    continue
+                raise
             if status == "SUCCESS":
                 logger.info("Repository %s creation succeeded", repo_id)
                 return status
