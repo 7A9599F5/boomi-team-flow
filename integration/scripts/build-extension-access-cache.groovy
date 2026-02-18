@@ -32,7 +32,7 @@ try {
         // devAccountId -> list of SSO group IDs
         def ssoGroupsByAccount = [:].withDefault { [] }
         devAccountAccessRecords.each { access ->
-            if (access.isActive == "true") {
+            if (access.isActive == true || access.isActive?.toString() == "true") {
                 ssoGroupsByAccount[access.devAccountId] << access.ssoGroupId
             }
         }

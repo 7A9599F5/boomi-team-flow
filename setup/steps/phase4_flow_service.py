@@ -98,7 +98,9 @@ class PackageAndDeployFlowService(BaseStep):
             return StepStatus.FAILED
 
         if dry_run:
-            ui.print_info(f"Would package {flow_service_id}, create Integration Pack, deploy.")
+            ui.print_info(
+                f"Would package {flow_service_id} and deploy to environment {env_id}."
+            )
             return StepStatus.COMPLETED
 
         try:
@@ -117,44 +119,13 @@ class PackageAndDeployFlowService(BaseStep):
                 return StepStatus.FAILED
             ui.print_success(f"Packaged component created -> {package_id}")
 
-            # Step 2: Create Integration Pack
-            ui.print_info("Creating Integration Pack...")
-            pack_result = self.platform_api.create_integration_pack(
-                "PROMO Flow Service", "Promotion system Flow Service"
-            )
-            pack_id = (
-                pack_result.get("integrationPackId", pack_result.get("@id", ""))
-                if isinstance(pack_result, dict)
-                else str(pack_result)
-            )
-            if not pack_id:
-                ui.print_error("Failed to get Integration Pack ID.")
-                return StepStatus.FAILED
-            ui.print_success(f"Integration Pack created -> {pack_id}")
-
-            # Step 3: Add package to Integration Pack
-            ui.print_info("Adding package to Integration Pack...")
-            self.platform_api.add_to_integration_pack(pack_id, package_id)
-            ui.print_success("Package added to Integration Pack.")
-
-            # Step 4: Release Integration Pack
-            ui.print_info("Releasing Integration Pack...")
-            release_result = self.platform_api.release_integration_pack(
-                pack_id, "1.0", "Initial release"
-            )
-            release_id = (
-                release_result.get("releaseId", release_result.get("@id", ""))
-                if isinstance(release_result, dict)
-                else str(release_result)
-            )
-            if not release_id:
-                ui.print_error("Failed to get release ID.")
-                return StepStatus.FAILED
-            ui.print_success(f"Integration Pack released -> {release_id}")
-
-            # Step 5: Deploy
+            # Step 2: Deploy directly to the publisher's own environment.
+            # The Integration Pack release pathway (create IP → add → release →
+            # deploy) is for distributing to subscriber/client accounts. For
+            # deploying to the publisher's own environment, POST /DeployedPackage
+            # with the packageId is the correct approach.
             ui.print_info(f"Deploying to environment {env_id}...")
-            self.platform_api.deploy_package(release_id, env_id)
+            self.platform_api.deploy_flow_service(package_id, env_id)
             ui.print_success("Flow Service deployed successfully.")
 
             return StepStatus.COMPLETED

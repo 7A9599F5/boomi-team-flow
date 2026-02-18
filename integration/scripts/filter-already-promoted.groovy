@@ -37,7 +37,7 @@ try {
         Properties props = dataContext.getProperties(i)
 
         String docText = is.getText("UTF-8")
-        def xml = new XmlSlurper().parseText(docText)
+        def xml = new XmlSlurper(false, false).parseText(docText)
         String promotionId = xml.promotionId?.text() ?: ""
 
         if (promotionId && promotedSet.contains(promotionId)) {

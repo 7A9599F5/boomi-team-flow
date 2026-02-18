@@ -37,10 +37,20 @@ class CreateRepo(BaseStep):
     def execute(self, state: SetupState, dry_run: bool = False) -> StepStatus:
         ui.print_step(self.step_id, self.name, self.step_type.value)
 
-        # Skip if already configured
+        # Skip if already configured, but still ensure hub_cloud_url is populated
         existing = state.config.get("boomi_repo_id", "")
         if existing:
             ui.print_success(f"Repository already exists (ID: {existing})")
+            # C2a fix: ensure hub_cloud_url is populated from list_repositories
+            # so that record operations can use the correct Repository API host.
+            if not state.config.get("hub_cloud_url") and not dry_run:
+                try:
+                    self.datahub_api.list_repositories()
+                    if self.datahub_api._config.hub_cloud_url:
+                        state.update_config({"hub_cloud_url": self.datahub_api._config.hub_cloud_url})
+                        ui.print_info(f"Hub cloud URL refreshed: {self.datahub_api._config.hub_cloud_url}")
+                except BoomiApiError:
+                    pass  # Non-fatal; will fail later when record ops are called
             return StepStatus.COMPLETED
 
         if dry_run:
@@ -97,6 +107,23 @@ class CreateRepo(BaseStep):
         except BoomiApiError as exc:
             ui.print_error(f"Repository creation did not complete: {exc}")
             return StepStatus.FAILED
+
+        # Step 5: Fetch repository list to extract hub_cloud_url (repositoryBaseUrl)
+        # C2a fix: hub_cloud_url is required for Repository API record operations.
+        try:
+            ui.print_info("Fetching repository details to obtain hub cloud URL...")
+            self.datahub_api.list_repositories()
+            if self.datahub_api._config.hub_cloud_url:
+                state.update_config({"hub_cloud_url": self.datahub_api._config.hub_cloud_url})
+                ui.print_info(f"Hub cloud URL: {self.datahub_api._config.hub_cloud_url}")
+            else:
+                ui.print_warning(
+                    "Could not extract hub cloud URL from repository response. "
+                    "Record operations may fail."
+                )
+        except BoomiApiError as exc:
+            ui.print_warning(f"Could not fetch repository details: {exc}")
+
         ui.print_success(f"Created repository '{self.REPO_NAME}' (ID: {repo_id})")
         return StepStatus.COMPLETED
 
@@ -205,6 +232,10 @@ class CreateModel(BaseStep):
             ui.print_success(f"Model '{self._model_name}' deployed (ID: {model_id})")
 
             state.store_component_id("models", self._model_name, model_id)
+            # C2a fix: store universe_id (= model_id) so record operations can build
+            # the correct Repository API URL: /mdm/universes/{universeId}/records
+            state.store_universe_id(self._model_name, model_id)
+            self.datahub_api._config.universe_ids[self._model_name] = model_id
             return StepStatus.COMPLETED
         except BoomiApiError as exc:
             ui.print_error(f"Failed to create model '{self._model_name}': {exc}")
@@ -233,10 +264,14 @@ class SeedDevAccess(BaseStep):
     def _build_record_xml(
         self, sso_group_id: str, group_name: str, dev_account_id: str, dev_account_name: str
     ) -> str:
+        # C2c fix: include <id> source entity ID so DataHub does not quarantine the record.
+        # The composite key uses the two match fields separated by colon.
+        entity_id = f"{sso_group_id}:{dev_account_id}"
         return (
             '<?xml version="1.0" encoding="UTF-8"?>\n'
             '<batch src="ADMIN_CONFIG">\n'
             "  <DevAccountAccess>\n"
+            f"    <id>{entity_id}</id>\n"
             f"    <ssoGroupId>{sso_group_id}</ssoGroupId>\n"
             f"    <ssoGroupName>{group_name}</ssoGroupName>\n"
             f"    <devAccountId>{dev_account_id}</devAccountId>\n"
@@ -327,10 +362,13 @@ class TestCrud(BaseStep):
 
         test_dev_id = "test-crud-00000000"
         test_account_id = "test-account-00000000"
+        # C2c fix: include <id> source entity ID (composite of match fields)
+        test_entity_id = f"{test_dev_id}:{test_account_id}"
         record_xml = (
             '<?xml version="1.0" encoding="UTF-8"?>\n'
             '<batch src="PROMOTION_ENGINE">\n'
             "  <ComponentMapping>\n"
+            f"    <id>{test_entity_id}</id>\n"
             f"    <devComponentId>{test_dev_id}</devComponentId>\n"
             f"    <devAccountId>{test_account_id}</devAccountId>\n"
             "    <prodComponentId>test-prod-00000000</prodComponentId>\n"
@@ -349,17 +387,19 @@ class TestCrud(BaseStep):
             ui.print_success("Test record created")
 
             # Query
+            # M3 fix: fieldId values must use UPPER_SNAKE_CASE uniqueId format
+            # (DEV_COMPONENT_ID, DEV_ACCOUNT_ID) to match the model's field uniqueId.
             ui.print_info("Querying test record...")
             query_xml = (
                 '<?xml version="1.0" encoding="UTF-8"?>\n'
                 '<RecordQueryRequest limit="10">\n'
                 "  <view>\n"
-                "    <fieldId>devComponentId</fieldId>\n"
-                "    <fieldId>devAccountId</fieldId>\n"
+                "    <fieldId>DEV_COMPONENT_ID</fieldId>\n"
+                "    <fieldId>DEV_ACCOUNT_ID</fieldId>\n"
                 "  </view>\n"
                 '  <filter op="AND">\n'
                 "    <fieldValue>\n"
-                "      <fieldId>devComponentId</fieldId>\n"
+                "      <fieldId>DEV_COMPONENT_ID</fieldId>\n"
                 "      <operator>EQUALS</operator>\n"
                 f"      <value>{test_dev_id}</value>\n"
                 "    </fieldValue>\n"

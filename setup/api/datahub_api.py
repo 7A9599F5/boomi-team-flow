@@ -2,12 +2,18 @@
 
 All Platform API endpoints are XML-only — JSON request/response bodies
 are not supported.  See rest-api.md for full reference.
+
+Two separate API surfaces:
+  - Platform API  (api.boomi.com)   — model/repo lifecycle, credentials: BOOMI_TOKEN.user:token
+  - Repository API (hub_cloud_url)  — record CRUD,          credentials: Basic accountId:hubAuthToken
 """
 from __future__ import annotations
 
+import base64
 import logging
 import re
 import time
+import xml.etree.ElementTree as ET
 from typing import Optional
 from xml.sax.saxutils import escape as xml_escape
 
@@ -17,10 +23,11 @@ from setup.config import BoomiConfig
 logger = logging.getLogger(__name__)
 
 # Map JSON model-spec field types → Platform API type attribute values
+# M1 fix: DATE_TIME (with underscore) is the correct value, not DATETIME
 _FIELD_TYPE_MAP = {
     "String": "STRING",
     "Number": "INTEGER",
-    "Date": "DATETIME",
+    "Date": "DATE_TIME",
     "Boolean": "BOOLEAN",
 }
 
@@ -29,7 +36,13 @@ _XSI_NS = "http://www.w3.org/2001/XMLSchema-instance"
 
 
 class DataHubApi:
-    """Wrapper for Boomi DataHub MDM REST API v1 operations."""
+    """Wrapper for Boomi DataHub MDM REST API v1 operations.
+
+    Uses two distinct API surfaces:
+    - Platform API (self._client, base=api.boomi.com) for model/repo lifecycle operations.
+    - Repository API (self._repo_client, base=hub_cloud_url) for record CRUD operations.
+      The Repository API uses Basic Auth with {accountId}:{hubAuthToken}.
+    """
 
     def __init__(self, client: BoomiClient, config: BoomiConfig) -> None:
         self._client = client
@@ -37,11 +50,67 @@ class DataHubApi:
         self._base = (
             f"{config.cloud_base_url}/mdm/api/rest/v1/{config.boomi_account_id}"
         )
+        # Lazily initialized Repository API client (different host + credentials)
+        self._repo_client_instance: Optional[BoomiClient] = None
 
     @property
-    def _repo_base(self) -> str:
-        """Repository-scoped base URL (for record operations)."""
-        return f"{self._base}/repositories/{self._config.boomi_repo_id}"
+    def _repo_client(self) -> BoomiClient:
+        """Lazy-initialized BoomiClient for Repository API record operations.
+
+        Uses Basic Auth with {accountId}:{hubAuthToken} credentials.
+        The hub_auth_token and hub_cloud_url must be set on config before
+        record operations are called (populated by GetDhToken + list_repositories).
+        """
+        if self._repo_client_instance is None:
+            account_id = self._config.boomi_account_id
+            auth_token = self._config.hub_auth_token
+            if not auth_token:
+                raise BoomiApiError(
+                    401,
+                    "hub_auth_token is not configured — run step 2.4 (GetDhToken) first",
+                    "",
+                )
+            # Repository API uses Basic Auth: base64("{accountId}:{hubAuthToken}")
+            raw = f"{account_id}:{auth_token}"
+            encoded = base64.b64encode(raw.encode()).decode()
+            auth_header = f"Basic {encoded}"
+            # Build a BoomiClient instance for the Repository API using plain Basic Auth.
+            # BoomiClient.__init__ always prepends "BOOMI_TOKEN." to the auth string, which
+            # is wrong for the Repository API. We bypass __init__ via __new__ and set
+            # _auth_header directly so the session uses the correct Basic Auth format.
+            import requests as _requests  # noqa: PLC0415
+            repo_client = BoomiClient.__new__(BoomiClient)
+            repo_client._auth_header = auth_header
+            repo_client._last_call_time = 0.0
+            repo_client._session = _requests.Session()
+            repo_client._session.headers["Authorization"] = auth_header
+            repo_client._session.headers["Accept"] = "application/json"
+            self._repo_client_instance = repo_client
+        return self._repo_client_instance
+
+    def _record_base(self, model_name: str) -> str:
+        """Base URL for Repository API record operations.
+
+        C2a fix: Uses hub_cloud_url (not api.boomi.com) and universe_id (not repo_id/model_name).
+        Pattern: https://{hub_cloud_url}/mdm/universes/{universeId}
+        """
+        hub_url = self._config.hub_cloud_url
+        if not hub_url:
+            raise BoomiApiError(
+                400,
+                "hub_cloud_url is not configured — call list_repositories() first to extract "
+                "repositoryBaseUrl and store it in config.hub_cloud_url",
+                "",
+            )
+        universe_id = self._config.universe_ids.get(model_name, "")
+        if not universe_id:
+            raise BoomiApiError(
+                400,
+                f"universe_id for model '{model_name}' is not configured — "
+                "call create_model() and store the returned model ID in config.universe_ids",
+                "",
+            )
+        return f"{hub_url}/mdm/universes/{universe_id}"
 
     # ------------------------------------------------------------------
     # Hub Cloud operations
@@ -60,17 +129,31 @@ class DataHubApi:
 
     @staticmethod
     def _parse_clouds_xml(xml_str: str) -> list[dict[str, str]]:
-        """Parse <mdm:Clouds> XML response into list of cloud dicts."""
+        """Parse <mdm:Clouds> XML response into list of cloud dicts.
+
+        M13 fix: Use xml.etree.ElementTree instead of a regex that assumes
+        fixed XML attribute ordering (XML attributes are unordered per spec).
+        """
         clouds = []
-        for match in re.finditer(
-            r'<mdm:Cloud\s+cloudId="([^"]+)"\s+containerId="([^"]+)"\s+name="([^"]+)"',
-            xml_str,
-        ):
-            clouds.append({
-                "cloudId": match.group(1),
-                "containerId": match.group(2),
-                "name": match.group(3),
-            })
+        try:
+            root = ET.fromstring(xml_str)
+            # Try namespace-aware search first
+            ns = {"mdm": "http://mdm.api.platform.boomi.com/"}
+            cloud_elements = root.findall(".//mdm:Cloud", ns)
+            if not cloud_elements:
+                # Fall back to namespace-unaware search in case namespace differs
+                cloud_elements = [
+                    el for el in root.iter()
+                    if el.tag.endswith("}Cloud") or el.tag == "Cloud"
+                ]
+            for cloud in cloud_elements:
+                clouds.append({
+                    "cloudId": cloud.get("cloudId", ""),
+                    "containerId": cloud.get("containerId", ""),
+                    "name": cloud.get("name", ""),
+                })
+        except ET.ParseError as exc:
+            logger.warning("Failed to parse clouds XML: %s", exc)
         return clouds
 
     # ------------------------------------------------------------------
@@ -127,9 +210,33 @@ class DataHubApi:
         )
 
     def list_repositories(self) -> dict | str:
-        """GET /repositories."""
+        """GET /repositories.
+
+        Also extracts and stores repositoryBaseUrl (hub_cloud_url) from the response
+        into config so that record operations can use the correct Repository API host.
+        """
         url = f"{self._base}/repositories"
-        return self._client.get(url, accept_xml=True)
+        result = self._client.get(url, accept_xml=True)
+        if isinstance(result, str):
+            self._extract_and_store_hub_cloud_url(result)
+        return result
+
+    def _extract_and_store_hub_cloud_url(self, xml_str: str) -> None:
+        """Extract repositoryBaseUrl from GET /repositories XML and store in config.
+
+        The repositoryBaseUrl attribute on the repository element contains the
+        hub cloud hostname used for all Repository API record operations.
+        """
+        # Try attribute-based extraction (repositoryBaseUrl="https://...")
+        match = re.search(r'repositoryBaseUrl="([^"]+)"', xml_str)
+        if match:
+            self._config.hub_cloud_url = match.group(1)
+            logger.debug("Extracted hub_cloud_url: %s", self._config.hub_cloud_url)
+        else:
+            logger.warning(
+                "Could not extract repositoryBaseUrl from GET /repositories response. "
+                "Record operations will fail until hub_cloud_url is configured."
+            )
 
     # ------------------------------------------------------------------
     # Source operations  (account-scoped, NOT repository-scoped)
@@ -265,29 +372,51 @@ class DataHubApi:
         )
 
     # ------------------------------------------------------------------
-    # Record operations  (repository-scoped)
+    # Record operations  (Repository API — hub_cloud_url, repo credentials)
     # ------------------------------------------------------------------
 
     def query_records(self, model_name: str, filter_xml: str) -> dict | str:
-        """POST /repositories/{repoId}/models/{modelName}/records/query."""
-        url = f"{self._repo_base}/models/{model_name}/records/query"
-        return self._client.post(
+        """POST https://{hub_cloud_url}/mdm/universes/{universeId}/records/query.
+
+        C2a fix: Uses Repository API host (hub_cloud_url) and universe ID path.
+        C2b fix: Uses repo credentials via _repo_client (accountId:hubAuthToken Basic Auth).
+        """
+        url = f"{self._record_base(model_name)}/records/query"
+        return self._repo_client.post(
             url, data=filter_xml, content_type="application/xml", accept_xml=True,
         )
 
-    def create_record(
-        self, model_name: str, record_xml: str, source: str
-    ) -> dict | str:
-        """POST /repositories/{repoId}/models/{modelName}/records?source={source}."""
-        url = f"{self._repo_base}/models/{model_name}/records?source={source}"
-        return self._client.post(
+    def create_record(self, model_name: str, record_xml: str, source: str) -> dict | str:
+        """POST https://{hub_cloud_url}/mdm/universes/{universeId}/records.
+
+        C2a fix: Uses Repository API host (hub_cloud_url) and universe ID path.
+        C2b fix: Uses repo credentials via _repo_client.
+        C2d fix: No ?source= query parameter — source is specified only in <batch src="...">.
+        """
+        url = f"{self._record_base(model_name)}/records"
+        return self._repo_client.post(
             url, data=record_xml, content_type="application/xml", accept_xml=True,
         )
 
     def delete_record(self, model_name: str, record_id: str) -> dict | str:
-        """DELETE /repositories/{repoId}/models/{modelName}/records/{recordId}."""
-        url = f"{self._repo_base}/models/{model_name}/records/{record_id}"
-        return self._client.delete(url, accept_xml=True)
+        """End-date a record via batch POST with op="DELETE".
+
+        C2a fix: Uses Repository API host and universe ID path.
+        C2b fix: Uses repo credentials via _repo_client.
+        C2e fix: Repository API does not support HTTP DELETE. Use batch POST with
+                 op="DELETE" on the entity element to end-date the record.
+        """
+        entity_tag = xml_escape(model_name)
+        delete_xml = (
+            '<?xml version="1.0" encoding="UTF-8"?>\n'
+            '<batch src="PROMOTION_ENGINE">\n'
+            f'  <{entity_tag} op="DELETE"><id>{xml_escape(record_id)}</id></{entity_tag}>\n'
+            "</batch>"
+        )
+        url = f"{self._record_base(model_name)}/records"
+        return self._repo_client.post(
+            url, data=delete_xml, content_type="application/xml", accept_xml=True,
+        )
 
     # ------------------------------------------------------------------
     # XML builders
@@ -311,7 +440,8 @@ class DataHubApi:
         # --- fields ---
         for field in spec["fields"]:
             ftype = _FIELD_TYPE_MAP.get(field["type"], "STRING")
-            uid = field["name"].upper()
+            # M3 fix: generate UPPER_SNAKE_CASE uniqueId (e.g. devComponentId → DEV_COMPONENT_ID)
+            uid = re.sub(r"(?<!^)(?=[A-Z])", "_", field["name"]).upper()
             req = str(field.get("required", False)).lower()
             lines.append(
                 f'        <mdm:field name="{xml_escape(field["name"])}"'
@@ -326,7 +456,9 @@ class DataHubApi:
             is_default = "true" if idx == 0 else "false"
             sid = xml_escape(src["name"])
             lines.extend([
-                f'        <mdm:source id="{sid}" type="Contribute"'
+                # M2a fix: type="Both" (contribute + receive channel updates).
+                # "Contribute" is not a valid DataHub source type value.
+                f'        <mdm:source id="{sid}" type="Both"'
                 f' allowMultipleLinks="false" default="{is_default}">',
                 "            <mdm:inbound>",
                 '                <mdm:createApproval required="false"/>',
@@ -337,6 +469,11 @@ class DataHubApi:
                 "                <mdm:earlyChangeDetectionEnabled>"
                 "true</mdm:earlyChangeDetectionEnabled>",
                 "            </mdm:inbound>",
+                # M2b fix: add <mdm:outbound> block so the source can receive channel updates.
+                "            <mdm:outbound>",
+                "                <mdm:channelUpdatesFields>All</mdm:channelUpdatesFields>",
+                "                <mdm:sendCreates>true</mdm:sendCreates>",
+                "            </mdm:outbound>",
                 "        </mdm:source>",
             ])
         lines.append("    </mdm:sources>")
@@ -349,10 +486,13 @@ class DataHubApi:
         for rule in spec.get("matchRules", []):
             lines.append('        <mdm:matchRule topLevelOperator="AND">')
             for field_name in rule["fields"]:
+                # M3 fix: fieldUniqueId must use UPPER_SNAKE_CASE to match the uniqueId
+                # generated for the field above (e.g. devComponentId → DEV_COMPONENT_ID)
+                field_uid = re.sub(r"(?<!^)(?=[A-Z])", "_", field_name).upper()
                 lines.extend([
                     "            <mdm:simpleExpression>",
                     f"                <mdm:fieldUniqueId>"
-                    f"{field_name.upper()}</mdm:fieldUniqueId>",
+                    f"{field_uid}</mdm:fieldUniqueId>",
                     "            </mdm:simpleExpression>",
                 ])
             lines.append("        </mdm:matchRule>")

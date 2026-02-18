@@ -50,6 +50,9 @@ def _empty_state() -> dict:
             "boomi_repo_id": "",
             "cloud_base_url": "https://api.boomi.com",
             "fss_environment_id": "",
+            "datahub_token": "",
+            "hub_cloud_url": "",
+            "universe_ids": {},
         },
         "component_ids": _empty_component_ids(),
         "steps": {},
@@ -124,6 +127,13 @@ class SetupState:
     def update_config(self, config_dict: dict) -> None:
         """Update non-credential config fields and save."""
         self._data["config"].update(config_dict)
+        self.save()
+
+    def store_universe_id(self, model_name: str, universe_id: str) -> None:
+        """Store a DataHub universe ID (model UUID) for a model name and save."""
+        if "universe_ids" not in self._data["config"]:
+            self._data["config"]["universe_ids"] = {}
+        self._data["config"]["universe_ids"][model_name] = universe_id
         self.save()
 
     # -- Step Status -----------------------------------------------------------
