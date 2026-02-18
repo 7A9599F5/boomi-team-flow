@@ -113,7 +113,7 @@ class BoomiClient:
     def post(
         self,
         url: str,
-        data: str,
+        data: Optional[str] = None,
         content_type: str = "application/json",
         accept_xml: bool = False,
         **kwargs: Any,

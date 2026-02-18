@@ -64,8 +64,9 @@ class DataHubApi:
         Sends an empty body. Returns the repository ID string.
         """
         url = f"{self._base}/clouds/{cloud_id}/repositories/{repo_name}/create"
-        # Response is a plain UUID string, not JSON — use accept_xml to get raw text
-        result = self._client.post(url, data="", accept_xml=True)
+        # Empty body POST — pass None so no Content-Type is sent
+        # (DataHub Platform API does not support JSON request bodies)
+        result = self._client.post(url, accept_xml=True)
         if isinstance(result, str):
             return result.strip()
         if isinstance(result, dict):
