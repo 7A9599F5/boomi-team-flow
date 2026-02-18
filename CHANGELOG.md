@@ -6,6 +6,29 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [0.11.0] — 2026-02-18
+
+### Added
+- **Main branch protection**: Test deployments no longer merge to main — packaged directly from the promotion branch using `branchName` field on POST /PackagedComponent
+- **Admin Integration Pack ownership**: Developers no longer select IPs; admin assigns on Page 7. Auto-detection from PromotionLog history for returning packages; `PENDING_PACK_ASSIGNMENT` status for brand-new packages
+- **Mode 4 (PACK_ASSIGNMENT)**: New Process D mode for admin IP assignment to previously packaged components
+- **Pack Assignment Queue tab on Page 7**: Admin tab for PENDING_PACK_ASSIGNMENT promotions with IP selector
+- **Multi-package release safety**: Query IP state via GET /IntegrationPack before releasing; explicit `ReleasePackagedComponents` array prevents dropping packages
+- **GET IntegrationPack HTTP operation**: New HTTP op for querying IP state (28 total HTTP ops, 129 BOM total)
+
+### Changed
+- **Process D rewritten**: 4 deployment modes (TEST, PRODUCTION, HOTFIX, PACK_ASSIGNMENT) with new branch lifecycle
+- **Page 4 simplified**: Removed Integration Pack selector — developers submit version + notes only
+- **Page 7 expanded**: Added IP selector, pack assignment queue, multi-package collapsible view
+- **Page 9 updated**: Branch info removed (deleted after test packaging), "Branch Age" → "Deployment Age"
+- **Branch lifecycle**: All modes now delete branches (test: after packaging; prod/hotfix: after release)
+- **Production-from-test (Mode 2)**: Creates new branch from test PackagedComponent, merges to main, packages
+
+### Fixed
+- **Python setup script**: Replaced stale `DeployedPackage` references with `ReleaseIntegrationPackStatus`
+
+---
+
 ## [0.10.0] - 2026-02-18
 
 ### Added
