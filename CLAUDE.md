@@ -130,7 +130,7 @@ When working with Component CRUD templates (`create-component.xml`, `update-comp
 - **Error codes**: uppercase snake_case (`MISSING_CONNECTION_MAPPINGS`, `COMPONENT_NOT_FOUND`, `BRANCH_LIMIT_REACHED`)
 - **SSO group names** — always use claim format `ABC_BOOMI_FLOW_CONTRIBUTOR`, `ABC_BOOMI_FLOW_ADMIN`, etc. Never use display format (`"Boomi Developers"`) as authorization values
 - **Branch limits** — operational threshold is 15, platform hard limit is 20. Grep for stale values (10, 18) when editing branch-related content
-- **Fail-fast promotion** — Process C deletes the promotion branch on any component failure. Only `COMPLETED` or `FAILED` are valid Process C outcomes; `PARTIALLY_COMPLETED` is not a valid status. Process D gates on `COMPLETED` or `TEST_DEPLOYED` before merging.
+- **Fail-fast promotion** — Process C deletes the promotion branch on any component failure. Only `COMPLETED` or `FAILED` are valid Process C outcomes; `PARTIALLY_COMPLETED` is not a valid status. Process D gates on `COMPLETED`, `TEST_DEPLOYED`, or `PENDING_PACK_ASSIGNMENT` before proceeding.
 - **Test deployment language** — describe the dev→test path as "automated validation, no manual gates/approval." Never use "no review required" or "without review" — this leaves room for future automated checks (e.g., missing connector mapping rejection) that aren't manual approval gates.
 
 ## Working with the Build Guide

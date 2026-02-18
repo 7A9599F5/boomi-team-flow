@@ -267,7 +267,7 @@ Invoke-RestMethod -Uri "https://api.boomi.com/partner/api/rest/v1/{accountId}/Co
 
 This workflow is especially valuable for:
 - **40 JSON profiles** — create one, export, template the remaining 39
-- **27 HTTP Client operations** — create one, export, template the remaining 26
+- **28 HTTP Client operations** — create one, export, template the remaining 27
 - **20 FSS operations** — create one, export, template the remaining 19
 - **Cross-account migration** — export all components from one account, recreate in another
 
