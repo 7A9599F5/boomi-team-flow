@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 import time
 from typing import Optional
 
@@ -27,13 +28,84 @@ class DataHubApi:
         """Repository-scoped base URL."""
         return f"{self._base}/repositories/{self._config.boomi_repo_id}"
 
+    # -- Hub Cloud operations --
+
+    def get_hub_clouds(self) -> list[dict[str, str]]:
+        """GET /clouds — list available Hub Clouds.
+
+        Returns list of dicts with keys: cloudId, containerId, name.
+        """
+        url = f"{self._base}/clouds"
+        result = self._client.get(url, accept_xml=True)
+        if isinstance(result, str):
+            return self._parse_clouds_xml(result)
+        return []
+
+    @staticmethod
+    def _parse_clouds_xml(xml_str: str) -> list[dict[str, str]]:
+        """Parse <mdm:Clouds> XML response into list of cloud dicts."""
+        clouds = []
+        for match in re.finditer(
+            r'<mdm:Cloud\s+cloudId="([^"]+)"\s+containerId="([^"]+)"\s+name="([^"]+)"',
+            xml_str,
+        ):
+            clouds.append({
+                "cloudId": match.group(1),
+                "containerId": match.group(2),
+                "name": match.group(3),
+            })
+        return clouds
+
     # -- Repository operations --
 
-    def create_repository(self, name: str, description: str) -> dict | str:
-        """POST /repositories to create a new repository."""
-        url = f"{self._base}/repositories"
-        body = json.dumps({"name": name, "description": description})
-        return self._client.post(url, data=body)
+    def create_repository(self, cloud_id: str, repo_name: str) -> str:
+        """POST /clouds/{cloudId}/repositories/{repoName}/create.
+
+        Sends an empty body. Returns the repository ID string.
+        """
+        url = f"{self._base}/clouds/{cloud_id}/repositories/{repo_name}/create"
+        # Response is a plain UUID string, not JSON — use accept_xml to get raw text
+        result = self._client.post(url, data="", accept_xml=True)
+        if isinstance(result, str):
+            return result.strip()
+        if isinstance(result, dict):
+            return result.get("id", str(result))
+        return str(result)
+
+    def get_repo_creation_status(self, repo_id: str) -> str:
+        """GET /repositories/{repoId}/status — poll creation status.
+
+        Returns status string: SUCCESS, PENDING, or DELETED.
+        """
+        url = f"{self._base}/repositories/{repo_id}/status"
+        result = self._client.get(url, accept_xml=True)
+        if isinstance(result, str):
+            match = re.search(r'status="([^"]+)"', result)
+            if match:
+                return match.group(1)
+        return "UNKNOWN"
+
+    def poll_repo_created(
+        self, repo_id: str, interval: int = 3, max_retries: int = 20
+    ) -> str:
+        """Poll get_repo_creation_status until SUCCESS or failure."""
+        for attempt in range(max_retries):
+            status = self.get_repo_creation_status(repo_id)
+            if status == "SUCCESS":
+                logger.info("Repository %s creation succeeded", repo_id)
+                return status
+            if status == "DELETED":
+                raise BoomiApiError(
+                    410, f"Repository {repo_id} was deleted during creation", ""
+                )
+            logger.debug(
+                "Repository %s status=%s (attempt %d/%d)",
+                repo_id, status, attempt + 1, max_retries,
+            )
+            time.sleep(interval)
+        raise BoomiApiError(
+            408, f"Repository {repo_id} not ready after {max_retries} polls", ""
+        )
 
     def list_repositories(self) -> dict | str:
         """GET /repositories."""

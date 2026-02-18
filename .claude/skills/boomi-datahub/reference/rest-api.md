@@ -483,6 +483,64 @@ GET /mdm/api/rest/v1/{accountID}/models/{modelID}
 
 **Response**: JSON model specification (same structure as model creation).
 
+#### Get Hub Clouds
+
+**Endpoint**:
+```
+GET /mdm/api/rest/v1/{accountID}/clouds
+```
+
+**Purpose**: List available Hub Clouds for the account. Required before creating a repository.
+
+**Required Privilege**: `MDM - Repository Management` + `API Access`
+
+**Response** (XML):
+```xml
+<mdm:Clouds xmlns:mdm="http://mdm.api.platform.boomi.com/">
+    <mdm:Cloud cloudId="01234567-89ab-cdef-0123-456789abcdef"
+               containerId="fedcba98-7654-3210-fedc-ba9876543210"
+               name="USA East Hub Cloud"/>
+</mdm:Clouds>
+```
+
+#### Create Repository
+
+**Endpoint**:
+```
+POST /mdm/api/rest/v1/{accountID}/clouds/{cloudID}/repositories/{repositoryName}/create
+```
+
+**Purpose**: Request creation of a repository on a specified Hub Cloud. Creation is async — poll status with Get Repository Creation Status.
+
+**Request Body**: Empty
+
+**Required Privilege**: `MDM - Repository Management` + `API Access`
+
+**Response** (200 OK): Plain text repository ID string:
+```
+23456789-abcd-ef01-2345-6789abcdef01
+```
+
+**Error Responses**:
+- 400: Missing privileges or repository limit exceeded for the cloud
+- 403: Authentication failure or inaccessible account
+
+#### Get Repository Creation Status
+
+**Endpoint**:
+```
+GET /mdm/api/rest/v1/{accountID}/repositories/{repositoryID}/status
+```
+
+**Purpose**: Check async repository creation status.
+
+**Response** (XML):
+```xml
+<mdm:RepositoryStatus xmlns:mdm="http://mdm.api.platform.boomi.com/" status="SUCCESS"/>
+```
+
+**Status values**: `SUCCESS`, `PENDING`, `DELETED`
+
 #### List Repositories
 
 **Endpoint**:

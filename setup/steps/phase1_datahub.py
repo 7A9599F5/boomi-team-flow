@@ -7,11 +7,20 @@ from setup.state import SetupState
 from setup.steps.base import BaseStep
 from setup.templates.loader import load_model_spec
 from setup.ui import console as ui
-from setup.ui.prompts import guide_and_collect, guide_and_confirm
+from setup.ui.prompts import guide_and_collect, guide_and_confirm, prompt_choice
 
 
 class CreateRepo(BaseStep):
-    """Step 1.0 — Create the PromotionHub DataHub repository."""
+    """Step 1.0 — Create the PromotionHub DataHub repository.
+
+    Uses the Platform API endpoint:
+      POST /clouds/{cloudId}/repositories/{repoName}/create
+    which requires first fetching available Hub Clouds via GET /clouds.
+    Repository creation is async — polls GET /repositories/{repoId}/status
+    until SUCCESS.
+    """
+
+    REPO_NAME = "PromotionHub"
 
     @property
     def step_id(self) -> str:
@@ -23,7 +32,7 @@ class CreateRepo(BaseStep):
 
     @property
     def step_type(self) -> StepType:
-        return StepType.AUTO
+        return StepType.SEMI
 
     def execute(self, state: SetupState, dry_run: bool = False) -> StepStatus:
         ui.print_step(self.step_id, self.name, self.step_type.value)
@@ -38,23 +47,59 @@ class CreateRepo(BaseStep):
             ui.print_info("Would create DataHub repository 'PromotionHub'")
             return StepStatus.COMPLETED
 
+        # Step 1: Fetch available Hub Clouds
         try:
-            result = self.datahub_api.create_repository(
-                "PromotionHub", "Promotion engine data store"
+            ui.print_info("Fetching available Hub Clouds...")
+            clouds = self.datahub_api.get_hub_clouds()
+        except BoomiApiError as exc:
+            ui.print_error(f"Failed to fetch Hub Clouds: {exc}")
+            return StepStatus.FAILED
+
+        if not clouds:
+            ui.print_error(
+                "No Hub Clouds found. Ensure your account has DataHub "
+                "provisioned and the API user has MDM - Repository Management privilege."
             )
-            repo_id = result["id"] if isinstance(result, dict) else ""
+            return StepStatus.FAILED
+
+        # Step 2: Select a Hub Cloud
+        if len(clouds) == 1:
+            cloud = clouds[0]
+            ui.print_info(f"Using Hub Cloud: {cloud['name']} ({cloud['cloudId']})")
+        else:
+            choices = [f"{c['name']} ({c['cloudId']})" for c in clouds]
+            idx = prompt_choice("Select a Hub Cloud for the repository:", choices)
+            cloud = clouds[idx]
+            ui.print_info(f"Selected Hub Cloud: {cloud['name']}")
+
+        # Step 3: Create the repository (async)
+        try:
+            ui.print_info(f"Creating repository '{self.REPO_NAME}' on {cloud['name']}...")
+            repo_id = self.datahub_api.create_repository(
+                cloud["cloudId"], self.REPO_NAME
+            )
             if not repo_id:
                 ui.print_error("No repository ID returned from API")
                 return StepStatus.FAILED
-            state.update_config({"boomi_repo_id": repo_id})
-            # Update the live config object so DataHubApi._repo_base
-            # picks up the new repo_id for subsequent steps (1.1+).
-            self.config.boomi_repo_id = repo_id
-            ui.print_success(f"Created repository 'PromotionHub' (ID: {repo_id})")
-            return StepStatus.COMPLETED
+            ui.print_info(f"Repository creation initiated (ID: {repo_id})")
         except BoomiApiError as exc:
             ui.print_error(f"Failed to create repository: {exc}")
             return StepStatus.FAILED
+
+        # Step 4: Poll until creation completes
+        try:
+            ui.print_info("Waiting for repository creation to complete...")
+            self.datahub_api.poll_repo_created(repo_id)
+        except BoomiApiError as exc:
+            ui.print_error(f"Repository creation did not complete: {exc}")
+            return StepStatus.FAILED
+
+        state.update_config({"boomi_repo_id": repo_id})
+        # Update the live config object so DataHubApi._repo_base
+        # picks up the new repo_id for subsequent steps (1.1+).
+        self.config.boomi_repo_id = repo_id
+        ui.print_success(f"Created repository '{self.REPO_NAME}' (ID: {repo_id})")
+        return StepStatus.COMPLETED
 
 
 class CreateSources(BaseStep):
