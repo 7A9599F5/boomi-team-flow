@@ -136,14 +136,11 @@ class CreateSources(BaseStep):
 
         for source_name in remaining:
             try:
-                result = self.datahub_api.create_source(source_name, "contribute-only")
-                source_id = result["id"] if isinstance(result, dict) else ""
-                if not source_id:
-                    ui.print_error(f"No source ID returned for {source_name}")
-                    return StepStatus.FAILED
-                state.store_component_id("sources", source_name, source_id)
+                self.datahub_api.create_source(source_name)
+                # DataHub sourceId = the name we provide; API returns <true/>
+                state.store_component_id("sources", source_name, source_name)
                 state.mark_step_item_complete(self.step_id, source_name)
-                ui.print_success(f"Created source '{source_name}' (ID: {source_id})")
+                ui.print_success(f"Created source '{source_name}'")
             except BoomiApiError as exc:
                 ui.print_error(f"Failed to create source '{source_name}': {exc}")
                 return StepStatus.FAILED
@@ -195,21 +192,16 @@ class CreateModel(BaseStep):
 
         try:
             spec = load_model_spec(self._model_name)
-            result = self.datahub_api.create_model(spec)
-            model_id = result["id"] if isinstance(result, dict) else ""
-            if not model_id:
-                ui.print_error(f"No model ID returned for {self._model_name}")
-                return StepStatus.FAILED
-
+            model_id = self.datahub_api.create_model(spec)
             ui.print_info(f"Created model '{self._model_name}' (ID: {model_id})")
 
             self.datahub_api.publish_model(model_id)
             ui.print_info(f"Published model '{self._model_name}'")
 
-            self.datahub_api.deploy_model(model_id)
+            deployment_id = self.datahub_api.deploy_model(model_id)
             ui.print_info(f"Deploying model '{self._model_name}'...")
 
-            self.datahub_api.poll_model_deployed(model_id)
+            self.datahub_api.poll_model_deployed(model_id, deployment_id)
             ui.print_success(f"Model '{self._model_name}' deployed (ID: {model_id})")
 
             state.store_component_id("models", self._model_name, model_id)
