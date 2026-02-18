@@ -401,12 +401,14 @@ curl -X GET "https://c01-usa-east.hub.boomi.com/mdm/universes/universe-123/recor
 
 ## Platform API
 
-**Purpose**: Platform-level administrative operations on models, repositories, and universes.
+**Purpose**: Platform-level administrative operations on models, repositories, sources, and universes.
+
+All operations are **account-scoped** (not repository-scoped). Models and sources are account-level resources that get deployed/attached to repositories via universe operations.
 
 ### Base URL
 
 ```
-https://api.boomi.com/mdm/api/rest/v1
+https://api.boomi.com/mdm/api/rest/v1/{accountID}
 ```
 
 **Note**: Platform API uses standard Boomi API endpoint (not Hub Cloud-specific).
@@ -433,68 +435,33 @@ X-Boomi-OTP: <authentication-code>
 #### 2. API Token
 
 **Credentials**:
-- **Username**: API token ID
+- **Username**: `BOOMI_TOKEN.{user}`
 - **Password**: API token value
 
 **Header Format**:
 ```
-Authorization: Basic <Base64(tokenID:tokenValue)>
+Authorization: Basic <Base64(BOOMI_TOKEN.user:tokenValue)>
 ```
 
-**Required Privilege**: `API Access` for all Platform API requests.
+**Required Privilege**: `API Access` for all Platform API requests. Individual operations require additional MDM privileges listed below.
 
-### Endpoints
+### Response Format
 
-#### List Models
+**All Platform API responses are XML** (namespace `http://mdm.api.platform.boomi.com/`). Unlike the AtomSphere API, the DataHub Platform API does not support JSON request/response bodies.
 
-**Endpoint**:
-```
-GET /mdm/api/rest/v1/{accountID}/models
-```
-
-**Purpose**: Retrieve all DataHub models in account.
-
-**Example**:
-```bash
-curl -X GET "https://api.boomi.com/mdm/api/rest/v1/my-account-id/models" \
-  -H "Authorization: Basic <base64-credentials>"
-```
-
-**Response**:
-```json
-[
-  {
-    "id": "model-123",
-    "name": "ComponentMapping",
-    "status": "PUBLISHED",
-    "version": 2
-  }
-]
-```
-
-#### Get Model Details
-
-**Endpoint**:
-```
-GET /mdm/api/rest/v1/{accountID}/models/{modelID}
-```
-
-**Purpose**: Retrieve detailed model definition (fields, match rules, sources).
-
-**Response**: JSON model specification (same structure as model creation).
+### Hub Cloud Endpoints
 
 #### Get Hub Clouds
 
-**Endpoint**:
 ```
-GET /mdm/api/rest/v1/{accountID}/clouds
+GET /{accountID}/clouds
 ```
 
-**Purpose**: List available Hub Clouds for the account. Required before creating a repository.
+List available Hub Clouds for the account. Required before creating a repository.
 
-**Required Privilege**: `MDM - Repository Management` + `API Access`
+**Privilege**: `MDM - Repository Management`
 
-**Response** (XML):
+**Response**:
 ```xml
 <mdm:Clouds xmlns:mdm="http://mdm.api.platform.boomi.com/">
     <mdm:Cloud cloudId="01234567-89ab-cdef-0123-456789abcdef"
@@ -503,110 +470,393 @@ GET /mdm/api/rest/v1/{accountID}/clouds
 </mdm:Clouds>
 ```
 
+### Repository Endpoints
+
 #### Create Repository
 
-**Endpoint**:
 ```
-POST /mdm/api/rest/v1/{accountID}/clouds/{cloudID}/repositories/{repositoryName}/create
+POST /{accountID}/clouds/{cloudID}/repositories/{repositoryName}/create
 ```
 
-**Purpose**: Request creation of a repository on a specified Hub Cloud. Creation is async — poll status with Get Repository Creation Status.
+Request async creation of a repository on a specified Hub Cloud. Poll status with Get Repository Creation Status.
 
 **Request Body**: Empty
 
-**Required Privilege**: `MDM - Repository Management` + `API Access`
+**Privilege**: `MDM - Repository Management`
 
-**Response** (200 OK): Plain text repository ID string:
+**Response** (200): Plain text repository ID string:
 ```
 23456789-abcd-ef01-2345-6789abcdef01
 ```
 
-**Error Responses**:
-- 400: Missing privileges or repository limit exceeded for the cloud
-- 403: Authentication failure or inaccessible account
+**Errors**: 400 if privileges missing or cloud repo limit exceeded.
 
 #### Get Repository Creation Status
 
-**Endpoint**:
 ```
-GET /mdm/api/rest/v1/{accountID}/repositories/{repositoryID}/status
+GET /{accountID}/repositories/{repositoryID}/status
 ```
 
-**Purpose**: Check async repository creation status.
+Poll async repository creation progress.
 
-**Response** (XML):
+**Response**:
 ```xml
 <mdm:RepositoryStatus xmlns:mdm="http://mdm.api.platform.boomi.com/" status="SUCCESS"/>
 ```
 
 **Status values**: `SUCCESS`, `PENDING`, `DELETED`
 
-#### List Repositories
+#### Delete Repository
 
-**Endpoint**:
 ```
-GET /mdm/api/rest/v1/{accountID}/repositories
+DELETE /{accountID}/repositories/{repositoryID}
 ```
 
-**Purpose**: Retrieve all DataHub repositories in account.
+Delete a repository. **Cannot delete if it contains a deployed model** — undeploy first.
+
+**Privilege**: `MDM - Repository Management`
+
+**Response** (200): `true`
+
+#### Get Repositories Summary
+
+```
+GET /{accountID}/repositories
+```
+
+List all repositories with record counts per universe.
+
+**Privilege**: `MDM - View Repositories`
 
 **Response**:
-```json
-[
-  {
-    "id": "repo-123",
-    "name": "Production Repository",
-    "cloudHost": "c01-usa-east.hub.boomi.com"
-  }
-]
+```xml
+<mdm:Repositories xmlns:mdm="http://mdm.api.platform.boomi.com/">
+    <mdm:Repository id="repo-123" name="PromotionHub"
+                    atomName="PromotionHub" repositoryBaseUrl="c01-usa-east.hub.boomi.com">
+        <mdm:Universe name="ComponentMapping" id="univ-456">
+            <mdm:goldenRecords>150</mdm:goldenRecords>
+            <mdm:quarantinedRecords>3</mdm:quarantinedRecords>
+        </mdm:Universe>
+    </mdm:Repository>
+</mdm:Repositories>
 ```
 
-#### Deploy Model to Repository
+#### Get Repository Summary
 
-**Endpoint**:
 ```
-POST /mdm/api/rest/v1/{accountID}/repositories/{repoID}/universes/{universeID}/deploy
-```
-
-**Purpose**: Deploy published model version to repository (creates or updates universe).
-
-**Request**:
-```json
-{
-  "modelID": "model-123",
-  "modelVersion": 2
-}
+GET /{accountID}/repositories/{repositoryID}
 ```
 
-**Response**: Deployment status and universe ID.
+Get a single repository with aggregate counts and per-universe breakdown.
 
-#### Query Staged Entities (Platform API Variant)
+**Privilege**: `MDM - View Repositories`
 
-**Endpoint**:
+**Response**: Same structure as single `<mdm:Repository>` element above.
+
+### Model Endpoints
+
+Models are **account-level** resources. They are deployed to repositories via Universe operations.
+
+#### Get Models (List)
+
 ```
-POST /mdm/api/rest/v1/{accountID}/repositories/{repoID}/universes/{universeID}/staging
+GET /{accountID}/models
 ```
 
-**Purpose**: Query staged entities via Platform API (alternative to Repository API).
+**Optional Query Parameters**:
+- `name` — filter by model name
+- `publicationStatus` — `all`, `draft`, or `publish`
 
-**Note**: Repository API variant is more commonly used for staging queries.
+**Privilege**: `MDM - View Models`
 
-### Response Formats
+**Response**:
+```xml
+<mdm:Models xmlns:mdm="http://mdm.api.platform.boomi.com/">
+    <mdm:Model>
+        <mdm:name>ComponentMapping</mdm:name>
+        <mdm:id>model-123</mdm:id>
+        <mdm:publicationStatus>true</mdm:publicationStatus>
+        <mdm:latestVersion>2</mdm:latestVersion>
+    </mdm:Model>
+</mdm:Models>
+```
 
-**Repository API**: XML only
+#### Get Model (Detail)
 
-**Platform API**: XML or JSON (depending on endpoint, most support JSON)
+```
+GET /{accountID}/models/{modelID}
+GET /{accountID}/models/{modelID}?version={version}
+GET /{accountID}/models/{modelID}?draft=true
+```
+
+Retrieve full model definition (fields, match rules, sources, tags).
+
+**Privilege**: `MDM - View Models`
+
+**Response**: `<mdm:GetModelResponse>` with full model specification.
+
+#### Create Model
+
+```
+POST /{accountID}/models
+```
+
+**Request Body** (XML):
+```xml
+<mdm:CreateModelRequest xmlns:mdm="http://mdm.api.platform.boomi.com/"
+                        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+    <mdm:name>ComponentMapping</mdm:name>
+    <mdm:fields>
+        <mdm:field name="devComponentId" type="STRING" required="true"/>
+        <!-- ... -->
+    </mdm:fields>
+    <mdm:matchRules><!-- ... --></mdm:matchRules>
+</mdm:CreateModelRequest>
+```
+
+**Privilege**: `MDM - Edit Models`
+
+**Response**:
+```xml
+<mdm:CreateModelResponse xmlns:mdm="http://mdm.api.platform.boomi.com/">
+    <mdm:id>model-123</mdm:id>
+</mdm:CreateModelResponse>
+```
+
+**Model name**: 2-40 characters.
+
+#### Update Model
+
+```
+PUT /{accountID}/models/{modelID}
+```
+
+Copy `<mdm:GetModelResponse>` content into `<mdm:UpdateModelRequest>` and modify.
+
+**Privilege**: `MDM - Edit Models`
+
+**Response**:
+```xml
+<mdm:UpdateModelResponse xmlns:mdm="http://mdm.api.platform.boomi.com/">
+    <mdm:id>model-123</mdm:id>
+</mdm:UpdateModelResponse>
+```
+
+#### Publish Model
+
+```
+POST /{accountID}/models/{modelID}/publish
+```
+
+**Request Body** (XML):
+```xml
+<mdm:PublishModelRequest xmlns:mdm="http://mdm.api.platform.boomi.com/"
+                         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+    <mdm:notes>Initial publish</mdm:notes>
+</mdm:PublishModelRequest>
+```
+
+**Privilege**: `MDM - Edit Models`
+
+**Response**:
+```xml
+<mdm:PublishModelResponse xmlns:mdm="http://mdm.api.platform.boomi.com/">
+    <mdm:version>1</mdm:version>
+    <mdm:lastModifiedDate>2024-01-15T10:00:00Z</mdm:lastModifiedDate>
+    <mdm:user>admin@company.com</mdm:user>
+</mdm:PublishModelResponse>
+```
+
+#### Delete Model
+
+```
+DELETE /{accountID}/models/{modelID}
+```
+
+**Cannot delete while deployed** — undeploy first.
+
+**Privilege**: `MDM - Edit Models`
+
+**Response** (200): `true`
+
+### Source Endpoints
+
+Sources are **account-level** resources attached to models, not repositories.
+
+#### Get Sources
+
+```
+GET /{accountID}/sources
+```
+
+**Privilege**: `MDM - Source Management`
+
+**Response**:
+```xml
+<mdm:AccountSources xmlns:mdm="http://mdm.api.platform.boomi.com/">
+    <mdm:AccountSource>
+        <mdm:name>PROMOTION_ENGINE</mdm:name>
+        <mdm:sourceId>PROMOTION_ENGINE</mdm:sourceId>
+    </mdm:AccountSource>
+    <mdm:AccountSource>
+        <mdm:name>ADMIN_SEEDING</mdm:name>
+        <mdm:sourceId>ADMIN_SEEDING</mdm:sourceId>
+    </mdm:AccountSource>
+</mdm:AccountSources>
+```
+
+#### Create Source
+
+```
+POST /{accountID}/sources/create
+```
+
+**Request Body** (XML):
+```xml
+<mdm:CreateSourceRequest xmlns:mdm="http://mdm.api.platform.boomi.com/"
+                         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+    <mdm:name>PROMOTION_ENGINE</mdm:name>
+    <mdm:sourceId>PROMOTION_ENGINE</mdm:sourceId>
+</mdm:CreateSourceRequest>
+```
+
+- `name`: max 255 characters
+- `sourceId`: max 50 characters, alphanumeric + underscore + hyphen only
+- `entityIdUrl` (optional): URL template with `{id}` placeholder
+
+**Privilege**: `MDM - Source Management`
+
+**Response** (200): `<true/>`
+
+#### Delete Source
+
+```
+DELETE /{accountID}/sources/{sourceID}
+```
+
+**Cannot delete** if embedded in a model or attached to a universe.
+
+**Privilege**: `MDM - Source Management`
+
+**Response** (200): `true`
+
+### Universe (Deployment) Endpoints
+
+Universes connect models to repositories. "Universe" = a deployed model instance within a repository.
+
+#### Deploy Universe
+
+```
+POST /{accountID}/universe/{universeID}/deploy?repositoryId={repositoryID}
+POST /{accountID}/universe/{universeID}/deploy?version={versionID}&repositoryId={repositoryID}
+```
+
+Deploy a published model version to a repository. `version` defaults to latest if omitted.
+
+**Request Body**: Empty
+
+**Privilege**: `MDM - Model Deployment`
+
+**Response**:
+```xml
+<mdm:UniverseDeployment xmlns:mdm="http://mdm.api.platform.boomi.com/">
+    <mdm:id>deploy-789</mdm:id>
+    <mdm:universeId>model-123</mdm:universeId>
+    <mdm:universeVersion>1</mdm:universeVersion>
+    <mdm:status>PENDING</mdm:status>
+    <mdm:deployDate>2024-01-15T10:00:00Z</mdm:deployDate>
+</mdm:UniverseDeployment>
+```
+
+**Note**: `universeID` = `modelID`. The path uses singular `/universe/` not `/universes/`.
+
+#### Get Universe Deployment Status
+
+```
+GET /{accountID}/universe/{universeID}/deployments/{deploymentID}
+```
+
+Poll async deployment progress. `deploymentID` from Deploy Universe response.
+
+**Status values**: `SUCCESS`, `PENDING`, `CANCELED`
+
+**Response**: Same `<mdm:UniverseDeployment>` structure with updated status and `completionDate`.
+
+#### Get Universe Summary
+
+```
+GET /{accountID}/repositories/{repositoryID}/universes/{universeID}
+```
+
+Get record counts for a deployed universe within a repository.
+
+**Privilege**: `MDM - View Repositories`
+
+**Response**:
+```xml
+<mdm:Universe name="ComponentMapping" id="model-123">
+    <mdm:goldenRecords>150</mdm:goldenRecords>
+    <mdm:quarantinedRecords>3</mdm:quarantinedRecords>
+    <mdm:pendingBatches>0</mdm:pendingBatches>
+</mdm:Universe>
+```
+
+#### Undeploy Universe
+
+```
+DELETE /{accountID}/repositories/{repositoryID}/universe/{universeID}
+```
+
+Remove model deployment from repository. **Destroys associated data and source connections.**
+
+**Privilege**: `MDM - Model Removal`
+
+**Response** (200): `<true/>`
+
+### Other Platform API Operations
+
+These operations are available but not used by the promotion system:
+
+| Operation | Method | Endpoint |
+|-----------|--------|----------|
+| Get Source | GET | `/{accountID}/sources/{sourceID}` |
+| Update Source | PUT | `/{accountID}/sources/{sourceID}` |
+| Get Source Status | GET | `/{accountID}/sources/{sourceID}/status` |
+| Import Domain Source Config | POST | `/{accountID}/models/{modelID}/sources/import` |
+| Enable Initial Load Mode | POST | `/{accountID}/repositories/{repoID}/universes/{univID}/initialLoad/enable` |
+| Finish Initial Load | POST | `/{accountID}/repositories/{repoID}/universes/{univID}/initialLoad/finish` |
+| Query Transactions | POST | `/{accountID}/repositories/{repoID}/universes/{univID}/transactions/query` |
+| Add Staging Area | POST | `/{accountID}/repositories/{repoID}/universes/{univID}/staging` |
+| Get Staging Area Status | GET | `/{accountID}/repositories/{repoID}/universes/{univID}/staging/{stagingID}` |
+| Quarantine operations | various | `/{accountID}/repositories/{repoID}/universes/{univID}/quarantine/...` |
+
+### Common Error Responses
+
+**400 Bad Request** — Missing privileges or invalid parameters:
+```xml
+<error>
+    <message>The authenticated user does not have access rights to this functionality</message>
+</error>
+```
+
+**403 Forbidden** — Authentication failure:
+```xml
+<UserMessage id="error.user.login" type="error">
+    <Data>Incorrect user name and password combination.</Data>
+</UserMessage>
+```
 
 ## API Comparison
 
 | Aspect | Repository API | Platform API |
 |--------|---------------|--------------|
-| **Base URL** | `https://<hub-cloud-host>/mdm` | `https://api.boomi.com/mdm/api/rest/v1` |
-| **Auth** | Basic (Hub Auth Token) or JWT | Basic (user credentials) or API Token |
-| **Purpose** | Golden record operations | Admin operations (models, repos) |
-| **Response Format** | XML | XML or JSON |
-| **Use Cases** | Data sync, query, UPSERT | Model deployment, repository management |
-| **Privileges** | MDM privileges (Batch, Stewardship, etc.) | API Access + operation-specific privileges |
+| **Base URL** | `https://<hub-cloud-host>/mdm` | `https://api.boomi.com/mdm/api/rest/v1/{accountID}` |
+| **Auth** | Basic (Hub Auth Token) or JWT | Basic (user credentials) or `BOOMI_TOKEN` API Token |
+| **Purpose** | Golden record CRUD | Admin operations (models, repos, sources, deployments) |
+| **Response Format** | XML | XML |
+| **Resource Scope** | Repository-scoped (universes) | Account-scoped (models, sources, repos, clouds) |
+| **Use Cases** | Data sync, query, UPSERT, quarantine | Model lifecycle, repository management, deployments |
+| **Privileges** | MDM privileges (Batch, Stewardship, etc.) | API Access + operation-specific MDM privileges |
 
 ## Best Practices
 
