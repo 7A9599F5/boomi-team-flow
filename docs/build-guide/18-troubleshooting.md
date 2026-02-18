@@ -146,12 +146,12 @@ The `strip-env-config.groovy` script strips these elements by clearing their tex
 Three conditions must be met: (1) The atom must be running (check Runtime Management, Atom Status). (2) The `PROMO - Flow Service` must be deployed as a Packaged Component to the atom. (3) The atom must be a public Boomi cloud atom (not a private cloud or local atom). Private atoms cannot receive inbound Flow Service requests.
 
 **"Operation not found in Flow Service"**
-Each FSS Operation must be linked in the Message Actions tab of the `PROMO - Flow Service` component. Verify all 14 operations are listed: `PROMO - FSS Op - GetDevAccounts`, `PROMO - FSS Op - ListDevPackages`, `PROMO - FSS Op - ResolveDependencies`, `PROMO - FSS Op - ExecutePromotion`, `PROMO - FSS Op - PackageAndDeploy`, `PROMO - FSS Op - QueryStatus`, `PROMO - FSS Op - ManageMappings`, `PROMO - FSS Op - QueryPeerReviewQueue`, `PROMO - FSS Op - SubmitPeerReview`, `PROMO - FSS Op - ListIntegrationPacks`, `PROMO - FSS Op - GenerateComponentDiff`, `PROMO - FSS Op - QueryTestDeployments`, `PROMO - FSS Op - CancelTestDeployment`, `PROMO - FSS Op - WithdrawPromotion`. If an operation is missing from the list, add it, re-save, re-package, and re-deploy.
+Each FSS Operation must be linked in the Message Actions tab of the `PROMO - Flow Service` component. Verify all 20 operations are listed: `PROMO - FSS Op - GetDevAccounts`, `PROMO - FSS Op - ListDevPackages`, `PROMO - FSS Op - ResolveDependencies`, `PROMO - FSS Op - ExecutePromotion`, `PROMO - FSS Op - PackageAndDeploy`, `PROMO - FSS Op - QueryStatus`, `PROMO - FSS Op - ManageMappings`, `PROMO - FSS Op - QueryPeerReviewQueue`, `PROMO - FSS Op - SubmitPeerReview`, `PROMO - FSS Op - ListIntegrationPacks`, `PROMO - FSS Op - GenerateComponentDiff`, `PROMO - FSS Op - QueryTestDeployments`, `PROMO - FSS Op - CancelTestDeployment`, `PROMO - FSS Op - WithdrawPromotion`, `PROMO - FSS Op - ListClientAccounts`, `PROMO - FSS Op - GetExtensions`, `PROMO - FSS Op - UpdateExtensions`, `PROMO - FSS Op - CopyExtensionsTestToProd`, `PROMO - FSS Op - UpdateMapExtension`, `PROMO - FSS Op - CheckReleaseStatus`. If an operation is missing from the list, add it, re-save, re-package, and re-deploy.
 
 **"Configuration value not set"**
 The `primaryAccountId` configuration value must be set after deployment via component configuration (Manage, Deployed Components, select the Flow Service, Configuration tab). This value is NOT set at build time -- it is set per deployment. If this value is empty, all HTTP operations using `{1}` in their URL will fail.
 
-**Diagnostic:** Check Runtime Management, Listeners tab. All 14 processes should appear as active listeners. If fewer than 14 appear, verify each FSS Operation is correctly linked and the deployment is current.
+**Diagnostic:** Check Runtime Management, Listeners tab. All 20 processes should appear as active listeners. If fewer than 20 appear, verify each FSS Operation is correctly linked and the deployment is current.
 
 ---
 
@@ -160,8 +160,8 @@ The `primaryAccountId` configuration value must be set after deployment via comp
 **"Retrieve Connector Configuration Data fails"**
 Verify all of the following: (1) The atom is running. (2) The `PROMO - Flow Service` is deployed to the atom. (3) The Path to Service is exactly `/fs/PromotionService` (case-sensitive, no trailing slash). (4) Basic Auth credentials match the Shared Web Server User Management settings on the atom. If any of these are wrong, the retrieval will fail silently or return an error.
 
-**"Flow Types not generated (fewer than 14)"**
-After a successful "Retrieve Connector Configuration Data," Flow should auto-generate 28 types (2 per message action: request and response). If fewer than 28 appear, the Flow Service may have fewer than 14 message actions linked. Fix the Flow Service (Phase 4), re-deploy, then re-retrieve connector configuration data in Flow.
+**"Flow Types not generated (fewer than 40)"**
+After a successful "Retrieve Connector Configuration Data," Flow should auto-generate 40 types (2 per message action: request and response). If fewer than 40 appear, the Flow Service may have fewer than 20 message actions linked. Fix the Flow Service (Phase 4), re-deploy, then re-retrieve connector configuration data in Flow.
 
 **"Message step returns empty response"**
 Check the Flow value bindings on the Message step. Both input values (request type) and output values (response type) must be bound. The connector action name must match the message action name exactly (e.g., `executePromotion`, not `ExecutePromotion`). Verify the Flow Value type matches the auto-generated type name (e.g., `executePromotion REQUEST - executePromotionRequest`).
@@ -207,6 +207,9 @@ Process E4 queries PromotionLog for `targetEnvironment = "TEST"` AND `status = "
 
 **"Hotfix deployment rejected — missing justification"**
 When `deploymentTarget = "PRODUCTION"` and `isHotfix = true`, the `hotfixJustification` field is required. If omitted, Process D returns `errorCode = HOTFIX_JUSTIFICATION_REQUIRED`. The Flow dashboard enforces this via a required text field on the hotfix submission page, but direct API calls may omit it. Always include a meaningful justification (up to 1000 characters).
+
+**"Unexpected deploymentTarget value (4 deployment modes)"**
+Process D supports 4 deployment modes: (1) Test deployment, (2) Production-from-test, (3) Hotfix (emergency production), and (4) Admin-assigned IP production (where the Integration Pack is selected by the admin on Page 7). If Process D returns `INVALID_DEPLOYMENT_TARGET`, verify the `deploymentTarget` field is `"TEST"` or `"PRODUCTION"` and that the correct mode flags (`isHotfix`, `testPromotionId`, `integrationPackId`) are set as expected for the mode.
 
 **"Hotfix with dependencies not present in production"**
 Emergency hotfixes bypass test deployment. If the hotfixed process references components that have never been promoted to production (no ComponentMapping records exist), the promotion will fail with `MISSING_CONNECTION_MAPPINGS` or `COMPONENT_NOT_FOUND`. Before submitting a hotfix, verify all dependencies have existing production mappings. If not, either seed the missing mappings via `manageMappings` or follow the standard test-to-production path instead.

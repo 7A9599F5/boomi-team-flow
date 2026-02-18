@@ -83,6 +83,12 @@ Invoke-RestMethod -Uri "https://api.boomi.com/partner/api/rest/v1/{accountId}/Co
 | 12 | `queryTestDeployments` | `PROMO - FSS Op - QueryTestDeployments` | `PROMO - Profile - QueryTestDeploymentsRequest` | `PROMO - Profile - QueryTestDeploymentsResponse` |
 | 13 | `cancelTestDeployment` | `PROMO - FSS Op - CancelTestDeployment` | `PROMO - Profile - CancelTestDeploymentRequest` | `PROMO - Profile - CancelTestDeploymentResponse` |
 | 14 | `withdrawPromotion` | `PROMO - FSS Op - WithdrawPromotion` | `PROMO - Profile - WithdrawPromotionRequest` | `PROMO - Profile - WithdrawPromotionResponse` |
+| 15 | `listClientAccounts` | `PROMO - FSS Op - ListClientAccounts` | `PROMO - Profile - ListClientAccountsRequest` | `PROMO - Profile - ListClientAccountsResponse` |
+| 16 | `getExtensions` | `PROMO - FSS Op - GetExtensions` | `PROMO - Profile - GetExtensionsRequest` | `PROMO - Profile - GetExtensionsResponse` |
+| 17 | `updateExtensions` | `PROMO - FSS Op - UpdateExtensions` | `PROMO - Profile - UpdateExtensionsRequest` | `PROMO - Profile - UpdateExtensionsResponse` |
+| 18 | `copyExtensionsTestToProd` | `PROMO - FSS Op - CopyExtensionsTestToProd` | `PROMO - Profile - CopyExtensionsTestToProdRequest` | `PROMO - Profile - CopyExtensionsTestToProdResponse` |
+| 19 | `updateMapExtension` | `PROMO - FSS Op - UpdateMapExtension` | `PROMO - Profile - UpdateMapExtensionRequest` | `PROMO - Profile - UpdateMapExtensionResponse` |
+| 20 | `checkReleaseStatus` | `PROMO - FSS Op - CheckReleaseStatus` | `PROMO - Profile - CheckReleaseStatusRequest` | `PROMO - Profile - CheckReleaseStatusResponse` |
 
 5. Open the **Configuration Values** tab. Add a configuration value:
    - **Name**: `primaryAccountId`

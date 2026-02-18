@@ -62,7 +62,7 @@ Step 3:  DataHub Models (5) -> Publish -> Deploy
 Step 4:  Folder Structure
 Step 5:  JSON Profiles (40)
 Step 6:  HTTP Client Connection
-Step 7:  HTTP Client Operations (27)
+Step 7:  HTTP Client Operations (28)
 Step 8:  DataHub Connection
 Step 9:  DataHub Operations (10)
 Step 10: FSS Operations (20)
@@ -381,11 +381,11 @@ Invoke-RestMethod -Uri "https://api.boomi.com/partner/api/rest/v1/$env:BOOMI_ACC
 
 ---
 
-#### Step 7 -- Create 27 HTTP Client Operations (Batch)
+#### Step 7 -- Create 28 HTTP Client Operations (Batch)
 
 Reference: [Phase 2a: HTTP Client Setup](02-http-client-setup.md), Step 2.2
 
-Each operation is a `connector-action` type component with subType `http`. All 27 operations use the `PROMO - Partner API Connection` from Step 6.
+Each operation is a `connector-action` type component with subType `http`. All 28 operations use the `PROMO - Partner API Connection` from Step 6.
 
 **Template (single operation):**
 
@@ -412,7 +412,7 @@ Invoke-RestMethod -Uri "https://api.boomi.com/partner/api/rest/v1/$env:BOOMI_ACC
   -Method POST -Headers $BoomiHeadersXml -Body $opXml
 ```
 
-**Complete HTTP Client Operation Inventory (27 operations):**
+**Complete HTTP Client Operation Inventory (28 operations):**
 
 | # | Component Name | Method | Request URL | Content-Type |
 |---|---------------|--------|-------------|-------------|
@@ -435,14 +435,15 @@ Invoke-RestMethod -Uri "https://api.boomi.com/partner/api/rest/v1/$env:BOOMI_ACC
 | 17 | `PROMO - HTTP Op - POST Add To IntegrationPack` | POST | `/partner/api/rest/v1/{1}/IntegrationPack/{2}/PackagedComponent/{3}` | `application/json` |
 | 18 | `PROMO - HTTP Op - POST ReleaseIntegrationPack` | POST | `/partner/api/rest/v1/{1}/ReleaseIntegrationPack` | `application/json` |
 | 19 | `PROMO - HTTP Op - GET MergeRequest` | GET | `/partner/api/rest/v1/{1}/MergeRequest/{2}` | `application/json` |
-| 20 | `PROMO - HTTP Op - QUERY Account` | POST | `/partner/api/rest/v1/{1}/Account/query` | `application/json` |
-| 21 | `PROMO - HTTP Op - QUERY Environment` | POST | `/partner/api/rest/v1/{1}/Environment/query` | `application/json` |
-| 22 | `PROMO - HTTP Op - GET EnvironmentExtensions` | GET | `/partner/api/rest/v1/{1}/EnvironmentExtensions/{2}` | `application/json` |
-| 23 | `PROMO - HTTP Op - UPDATE EnvironmentExtensions` | POST | `/partner/api/rest/v1/{1}/EnvironmentExtensions/{2}/update` | `application/json` |
-| 24 | `PROMO - HTTP Op - QUERY EnvironmentMapExtensionsSummary` | POST | `/partner/api/rest/v1/{1}/EnvironmentMapExtensions/{2}/query` | `application/json` |
-| 25 | `PROMO - HTTP Op - GET EnvironmentMapExtension` | GET | `/partner/api/rest/v1/{1}/EnvironmentMapExtension/{2}` | `application/json` |
-| 26 | `PROMO - HTTP Op - UPDATE EnvironmentMapExtension` | POST | `/partner/api/rest/v1/{1}/EnvironmentMapExtension/{2}/update` | `application/json` |
-| 27 | `PROMO - HTTP Op - QUERY ComponentReference` | POST | `/partner/api/rest/v1/{1}/ComponentReference/query` | `application/json` |
+| 20 | `PROMO - HTTP Op - GET IntegrationPack` | GET | `/partner/api/rest/v1/{1}/IntegrationPack/{2}` | `application/json` |
+| 21 | `PROMO - HTTP Op - QUERY Account` | POST | `/partner/api/rest/v1/{1}/Account/query` | `application/json` |
+| 22 | `PROMO - HTTP Op - QUERY Environment` | POST | `/partner/api/rest/v1/{1}/Environment/query` | `application/json` |
+| 23 | `PROMO - HTTP Op - GET EnvironmentExtensions` | GET | `/partner/api/rest/v1/{1}/EnvironmentExtensions/{2}` | `application/json` |
+| 24 | `PROMO - HTTP Op - UPDATE EnvironmentExtensions` | POST | `/partner/api/rest/v1/{1}/EnvironmentExtensions/{2}/update` | `application/json` |
+| 25 | `PROMO - HTTP Op - QUERY EnvironmentMapExtensionsSummary` | POST | `/partner/api/rest/v1/{1}/EnvironmentMapExtensions/{2}/query` | `application/json` |
+| 26 | `PROMO - HTTP Op - GET EnvironmentMapExtension` | GET | `/partner/api/rest/v1/{1}/EnvironmentMapExtension/{2}` | `application/json` |
+| 27 | `PROMO - HTTP Op - UPDATE EnvironmentMapExtension` | POST | `/partner/api/rest/v1/{1}/EnvironmentMapExtension/{2}/update` | `application/json` |
+| 28 | `PROMO - HTTP Op - QUERY ComponentReference` | POST | `/partner/api/rest/v1/{1}/ComponentReference/query` | `application/json` |
 
 > **Recommended workflow:** Create operation #1 (`GET Component`) manually in the UI, then export via `GET /Component/{id}` to capture the internal XML. Use that as a template, modifying the name, method, URL, and headers for each subsequent operation. The internal XML structure for connector-action components is not publicly documented, making the export-first approach essential.
 
@@ -897,6 +898,7 @@ OPERATIONS=(
   "PROMO - HTTP Op - POST Add To IntegrationPack|POST|/partner/api/rest/v1/{1}/IntegrationPack/{2}/PackagedComponent/{3}|application/json"
   "PROMO - HTTP Op - POST ReleaseIntegrationPack|POST|/partner/api/rest/v1/{1}/ReleaseIntegrationPack|application/json"
   "PROMO - HTTP Op - GET MergeRequest|GET|/partner/api/rest/v1/{1}/MergeRequest/{2}|application/json"
+  "PROMO - HTTP Op - GET IntegrationPack|GET|/partner/api/rest/v1/{1}/IntegrationPack/{2}|application/json"
 )
 
 TEMPLATE_FILE="operation-template.xml"
@@ -935,7 +937,7 @@ $operations = @(
     @{ Name = "PROMO - HTTP Op - GET Component"; Method = "GET"; Url = "/partner/api/rest/v1/{1}/Component/{2}"; ContentType = "application/xml" }
     @{ Name = "PROMO - HTTP Op - POST Component Create"; Method = "POST"; Url = "/partner/api/rest/v1/{1}/Component~{2}"; ContentType = "application/xml" }
     @{ Name = "PROMO - HTTP Op - POST Component Update"; Method = "POST"; Url = "/partner/api/rest/v1/{1}/Component/{2}~{3}"; ContentType = "application/xml" }
-    # ... (add all 19 operations)
+    # ... (add all 28 operations)
 )
 
 $templateXml = Get-Content -Raw "operation-template.xml"
@@ -1134,7 +1136,7 @@ Invoke-RestMethod -Uri "https://api.boomi.com/partner/api/rest/v1/$env:BOOMI_ACC
   -Method POST -Headers $BoomiHeaders -Body $queryBody
 ```
 
-Verify `numberOfResults` equals **57** (27 HTTP Client + 10 DataHub + 20 FSS operations).
+Verify `numberOfResults` equals **58** (28 HTTP Client + 10 DataHub + 20 FSS operations).
 
 #### 4. Verify Profiles
 
@@ -1277,13 +1279,13 @@ A successful `getDevAccounts` response with `"success": true` confirms the entir
 | DataHub Models | 5 | Query each model for 200 response |
 | DataHub Sources | 3 | Check via DataHub UI |
 | Connections | 2 | GET Component for each ID |
-| HTTP Client Operations | 27 | STARTS_WITH "PROMO - HTTP Op" |
+| HTTP Client Operations | 28 | STARTS_WITH "PROMO - HTTP Op" |
 | DataHub Operations | 10 | STARTS_WITH "PROMO - DH Op" |
 | FSS Operations | 20 | STARTS_WITH "PROMO - FSS Op" |
 | JSON Profiles | 40 | STARTS_WITH "PROMO - Profile" |
 | Integration Processes | 19 | type = "process", STARTS_WITH "PROMO - " |
 | Flow Service | 1 | name = "PROMO - Flow Service" |
-| **Total Components** | **128** | |
+| **Total Components** | **129** | |
 
 ---
 

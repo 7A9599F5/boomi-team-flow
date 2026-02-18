@@ -11,7 +11,7 @@
      - **Username**: the shared web server user (from **Shared Web Server User Management** in AtomSphere)
      - **Password**: the API token for that user
 4. Click **"Retrieve Connector Configuration Data"**. Flow contacts the deployed Flow Service and auto-discovers all 20 message actions. Wait for the operation to complete.
-5. Verify the auto-generated Flow Types. You should see exactly 38 types (one request and one response for each action):
+5. Verify the auto-generated Flow Types. You should see exactly 40 types (one request and one response for each action):
    1. `getDevAccounts REQUEST - getDevAccountsRequest`
    2. `getDevAccounts RESPONSE - getDevAccountsResponse`
    3. `listDevPackages REQUEST - listDevPackagesRequest`
@@ -50,10 +50,12 @@
    36. `copyExtensionsTestToProd RESPONSE - copyExtensionsTestToProdResponse`
    37. `updateMapExtension REQUEST - updateMapExtensionRequest`
    38. `updateMapExtension RESPONSE - updateMapExtensionResponse`
+   39. `checkReleaseStatus REQUEST - checkReleaseStatusRequest`
+   40. `checkReleaseStatus RESPONSE - checkReleaseStatusResponse`
 6. Open the **Configuration Values** section of the connector. Set `primaryAccountId` to your primary Boomi account ID.
 7. Click **Install**, then **Save**.
 
-**Verify:** Open the connector and confirm all 38 types appear under **Types**. If any are missing, click "Retrieve Connector Configuration Data" again and check that the Flow Service is deployed and all 20 listeners are running.
+**Verify:** Open the connector and confirm all 40 types appear under **Types**. If any are missing, click "Retrieve Connector Configuration Data" again and check that the Flow Service is deployed and all 20 listeners are running.
 
 ### Step 5.2 -- Create Flow Application
 
@@ -158,38 +160,35 @@ Displays results after `executePromotion` completes. The Flow Service returns wa
 
 Reference: `/flow/page-layouts/page4-deployment-submission.md` for full UI specification.
 
-The developer fills out deployment details and submits for peer review. This page marks the transition between the Developer and Peer Review swimlanes — the first step of the 2-layer approval workflow.
+The developer fills out deployment details and submits for peer review or triggers a direct test deployment. This page marks the transition between the Developer and Peer Review swimlanes for production paths. For test deployments it stays in the Developer swimlane.
 
 **Mode detection on page load:**
 
 On page load, detect the deployment mode from Flow values:
-- **Mode 1 — Test** (`targetEnvironment = "TEST"`, `testPromotionId` empty): Direct test deployment with automated validation, no manual approval gates
-- **Mode 2 — Production from Test** (`targetEnvironment = "PRODUCTION"`, `testPromotionId` non-empty): Production deployment of a previously tested package
-- **Mode 3 — Hotfix** (`targetEnvironment = "PRODUCTION"`, `isHotfix = "true"`): Emergency production deployment bypassing test
+- **Mode 1 — Test** (`targetEnvironment = "TEST"`, `testPromotionId` empty): Direct test deployment with automated validation, no manual approval gates. `packageAndDeploy` auto-detects the Integration Pack from the branch.
+- **Mode 2 — Production from Test** (`targetEnvironment = "PRODUCTION"`, `testPromotionId` non-empty): Production deployment of a previously tested package. IP selection happens on Page 7 (Admin Approval Queue) during the admin review step.
+- **Mode 3 — Hotfix** (`targetEnvironment = "PRODUCTION"`, `isHotfix = "true"`): Emergency production deployment. IP selection also handled on Page 7.
+- **Mode 4 — Admin-assigned IP** (`targetEnvironment = "PRODUCTION"`, `integrationPackId` provided by admin on Page 7): Admin has already chosen the IP; this mode submits with the pre-assigned pack.
 
 **Shared form components (all modes):**
 
 1. **Package Version** text input: Pre-populated from `selectedPackage.packageVersion`. Required.
-2. **Integration Pack Selector** combobox: Options include "Create New Integration Pack" (special value) and existing packs. On "Create New" selection, show conditional fields below. The `listIntegrationPacks` call includes `packPurpose` = `targetEnvironment` to filter packs by environment.
-3. **New Pack Name** text input (conditional): Shown when "Create New" is selected. Required when visible.
-4. **New Pack Description** textarea (conditional): Shown when "Create New" is selected. Optional.
-5. **Target Account Group** combobox: Populated from available account groups. Required.
-6. **Deployment Notes** textarea: Optional, max 500 characters.
+2. **Deployment Notes** textarea: Optional, max 500 characters.
 
 **Mode 1 — Test deployment behavior:**
 
-7a. **Test Summary Panel**: Header reads "Deploy to Test Environment". Brief instructions: "Components will be deployed to the test environment. The promotion branch is preserved for future production review."
-7b. **"Deploy to Test"** button (primary):
+3a. **Test Summary Panel**: Header reads "Deploy to Test Environment". Brief instructions: "Components will be deployed to the test environment for automated validation. The promotion branch is preserved for future production review."
+3b. **"Deploy to Test"** button (primary):
    - Validates all required fields
-   - Calls `packageAndDeploy` directly with `deploymentTarget = "TEST"`
+   - Calls `packageAndDeploy` directly with `deploymentTarget = "TEST"` — process auto-detects the Integration Pack
    - Shows inline deployment results (no swimlane transition)
    - On success: Sends test deployment email to submitter, shows results with link to Page 9 (Production Readiness)
    - Stays in Developer swimlane — automated validation only, no manual approval gates for test deployments
 
 **Mode 2 — Production from test behavior:**
 
-7c. **Test Deployment Summary Panel**: Shows test deployment details (test date, test Integration Pack, branch info, component counts) from the preceding test deployment
-7d. **"Submit for Production Deployment"** button (primary):
+3c. **Test Deployment Summary Panel**: Shows test deployment details (test date, branch info, component counts) from the preceding test deployment
+3d. **"Submit for Production Deployment"** button (primary):
    - Validates all required fields
    - Builds deployment request with `deploymentTarget = "PRODUCTION"`, `testPromotionId`, `testIntegrationPackId`, `testIntegrationPackName`
    - Sends email notification for peer review (subject: "Peer Review Needed: {processName} v{packageVersion}")
@@ -198,15 +197,15 @@ On page load, detect the deployment mode from Flow values:
 
 **Mode 3 — Hotfix behavior:**
 
-7e. **Hotfix Warning Panel**: Prominent warning banner with hotfix justification displayed. Header: "Emergency Hotfix — Production Deployment"
-7f. **"Submit Hotfix for Peer Review"** button (warning/amber):
+3e. **Hotfix Warning Panel**: Prominent warning banner with hotfix justification displayed. Header: "Emergency Hotfix — Production Deployment"
+3f. **"Submit Hotfix for Peer Review"** button (warning/amber):
    - Validates all required fields
    - Builds deployment request with `deploymentTarget = "PRODUCTION"`, `isHotfix = "true"`, `hotfixJustification`
    - Sends emergency hotfix email notification (subject includes "EMERGENCY HOTFIX")
    - Transitions to Peer Review swimlane
    - Developer sees confirmation message with Promotion ID
 
-8. **"Cancel"** button: Navigate back to Page 3 (or Page 9 if coming from production readiness).
+4. **"Cancel"** button: Navigate back to Page 3 (or Page 9 if coming from production readiness).
 
 #### Page 9: Production Readiness Queue (Developer Swimlane)
 
