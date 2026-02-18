@@ -25,10 +25,13 @@ class BoomiConfig(BaseModel):
 
     @property
     def is_complete(self) -> bool:
-        """Check if all required fields are populated."""
+        """Check if all required input fields are populated.
+
+        Note: boomi_repo_id is excluded — it is produced by Step 1.0
+        (CreateRepo), not a user input.
+        """
         return all([
             self.boomi_account_id,
-            self.boomi_repo_id,
             self.target_environment_id,
             self.boomi_user,
             self.boomi_token,
@@ -58,10 +61,12 @@ _ENV_MAP: dict[str, str] = {
     "BOOMI_ENVIRONMENT": "target_environment_id",
 }
 
-# Fields that should be prompted interactively (with labels)
+# Fields that should be prompted interactively (with labels).
+# Note: boomi_repo_id is intentionally excluded — it is produced by Step 1.0
+# (CreateRepo), not a user input.  Users with a pre-existing repo can set the
+# BOOMI_REPO env var to skip repository creation.
 _INTERACTIVE_FIELDS: list[tuple[str, str, bool]] = [
     ("boomi_account_id", "Boomi Account ID", False),
-    ("boomi_repo_id", "Boomi Repository ID", False),
     ("target_environment_id", "Target Environment ID", False),
     ("boomi_user", "Boomi API Username", False),
     ("boomi_token", "Boomi API Token", True),

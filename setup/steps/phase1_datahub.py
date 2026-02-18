@@ -47,6 +47,9 @@ class CreateRepo(BaseStep):
                 ui.print_error("No repository ID returned from API")
                 return StepStatus.FAILED
             state.update_config({"boomi_repo_id": repo_id})
+            # Update the live config object so DataHubApi._repo_base
+            # picks up the new repo_id for subsequent steps (1.1+).
+            self.config.boomi_repo_id = repo_id
             ui.print_success(f"Created repository 'PromotionHub' (ID: {repo_id})")
             return StepStatus.COMPLETED
         except BoomiApiError as exc:

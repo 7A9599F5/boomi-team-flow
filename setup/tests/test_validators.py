@@ -184,13 +184,13 @@ class TestValidateHttpOpsCount:
 
 class TestValidateTotalComponents:
     def test_validate_total_components_success(self) -> None:
-        """Count returns 124, success."""
+        """Count returns 133, success."""
         mock_platform = MagicMock()
-        mock_platform.count_components_by_prefix.return_value = 124
+        mock_platform.count_components_by_prefix.return_value = 133
 
         success, msg = validate_total_components(mock_platform, MagicMock())
         assert success is True
-        assert "124" in msg
+        assert "133" in msg
 
     def test_validate_total_components_wrong(self) -> None:
         """Count returns 100, expect failure."""

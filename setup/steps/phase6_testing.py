@@ -33,15 +33,15 @@ TEST_SCENARIOS = [
 EXPECTED_COUNTS = {
     "models": 5,
     "connections": 2,
-    "http_operations": 27,
+    "http_operations": 28,
     "dh_operations": 10,
-    "profiles": 38,
-    "fss_operations": 19,
-    "processes": 18,
-    "scripts": 10,
+    "profiles": 42,
+    "fss_operations": 21,
+    "processes": 20,
+    "scripts": 11,
 }
 
-EXPECTED_TOTAL = 124
+EXPECTED_TOTAL = 133
 
 
 # ---- Step 6.0: SmokeTest --------------------------------------------------

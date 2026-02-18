@@ -145,8 +145,8 @@ def validate_flow_service_deployed(
 def validate_total_components(
     platform_api: Any, state: Any
 ) -> tuple[bool, str]:
-    """Count all components matching 'PROMO -' prefix, expect 124."""
+    """Count all components matching 'PROMO -' prefix, expect 133."""
     count = platform_api.count_components_by_prefix("PROMO -")
-    if count != 124:
-        return False, f"Found {count} total PROMO components, expected 124"
-    return True, "All 124 PROMO components found"
+    if count != 133:
+        return False, f"Found {count} total PROMO components, expected 133"
+    return True, "All 133 PROMO components found"
