@@ -154,16 +154,12 @@ class PlatformApi:
         url = f"{self._base}/PackagedComponent/query"
         return self._client.post(url, data=query_xml, content_type="application/xml")
 
-    # -- Deployment operations --
+    # -- Release status operations --
 
-    def deploy_package(self, package_id: str, environment_id: str) -> dict | str:
-        """POST /DeployedPackage."""
-        url = f"{self._base}/DeployedPackage"
-        body = json.dumps({
-            "packageId": package_id,
-            "environmentId": environment_id,
-        })
-        return self._client.post(url, data=body)
+    def get_release_status(self, release_id: str) -> dict | str:
+        """GET /ReleaseIntegrationPackStatus/{id}."""
+        url = f"{self._base}/ReleaseIntegrationPackStatus/{release_id}"
+        return self._client.get(url)
 
     # -- Integration Pack operations --
 

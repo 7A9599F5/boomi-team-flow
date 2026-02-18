@@ -18,7 +18,8 @@ HTTP_OPERATIONS: list[tuple[str, str, str]] = [
     ("PROMO - HTTP Op - GET ComponentMetadata", "GET", "/partner/api/rest/v1/{1}/ComponentMetadata/{2}"),
     ("PROMO - HTTP Op - QUERY PackagedComponent", "POST", "/partner/api/rest/v1/{1}/PackagedComponent/query"),
     ("PROMO - HTTP Op - POST PackagedComponent", "POST", "/partner/api/rest/v1/{1}/PackagedComponent"),
-    ("PROMO - HTTP Op - POST DeployedPackage", "POST", "/partner/api/rest/v1/{1}/DeployedPackage"),
+    ("PROMO - HTTP Op - GET ReleaseIntegrationPackStatus", "GET", "/partner/api/rest/v1/{1}/ReleaseIntegrationPackStatus/{2}"),
+    ("PROMO - HTTP Op - GET IntegrationPack", "GET", "/partner/api/rest/v1/{1}/IntegrationPack/{2}"),  # Deployment flow redesign — query IP state for multi-package safety
     ("PROMO - HTTP Op - POST IntegrationPack", "POST", "/partner/api/rest/v1/{1}/IntegrationPack"),
     ("PROMO - HTTP Op - POST Branch", "POST", "/partner/api/rest/v1/{1}/Branch"),
     ("PROMO - HTTP Op - QUERY Branch", "POST", "/partner/api/rest/v1/{1}/Branch/query"),
