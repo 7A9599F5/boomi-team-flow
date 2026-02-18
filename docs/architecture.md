@@ -19,7 +19,7 @@ graph TD
     end
 
     subgraph fss["Flow Service (Message Actions)"]
-        msgActions["19 Message Actions\ngetDevAccounts / listDevPackages\nresolveDependencies / executePromotion\npackageAndDeploy / queryStatus\nqueryPeerReviewQueue / submitPeerReview\nqueryTestDeployments / withdrawPromotion\nmanageMappings / generateComponentDiff\nlistIntegrationPacks / listClientAccounts\ngetExtensions / updateExtensions\ncopyExtensionsTestToProd / updateMapExtension"]
+        msgActions["20 Message Actions\ngetDevAccounts / listDevPackages\nresolveDependencies / executePromotion\npackageAndDeploy / queryStatus\nqueryPeerReviewQueue / submitPeerReview\nqueryTestDeployments / withdrawPromotion\nmanageMappings / generateComponentDiff\nlistIntegrationPacks / listClientAccounts\ngetExtensions / updateExtensions\ncopyExtensionsTestToProd / updateMapExtension\ncheckReleaseStatus"]
     end
 
     subgraph engine["Integration Engine (Public Boomi Cloud Atom)"]
@@ -55,13 +55,15 @@ Peer review catches process logic and configuration issues that automated checks
 
 ### Why Boomi Branching for Promotion
 
-Components are promoted to a temporary branch (not main) so reviewers can see what actually changed via side-by-side XML diff. The branch acts as a staging area:
-- **Process C** creates a branch `promo-{promotionId}` and promotes components there via tilde syntax (`Component/{id}~{branchId}`)
-- **Process G** fetches both `Component/{id}~{branchId}` (branch) and `Component/{id}` (main) for diff comparison
-- **Admin approval** merges the branch to main (OVERRIDE strategy), then packages from main
-- **Rejection or denial** simply deletes the branch — main is never touched
+Components are promoted to a temporary branch (not main) so reviewers can see what actually changed via side-by-side XML diff. The branch lifecycle differs by deployment mode:
 
-This eliminates the risk of polluting main with unapproved changes and enables true code review before merge.
+- **Test mode (Mode 1):** Process C creates branch `promo-{promotionId}` and promotes components there. Process D packages **directly from the branch** using the `branchName` field on `POST /PackagedComponent`, then **deletes the branch immediately** after packaging. Main is never touched for test deployments.
+- **Production mode (Mode 2):** Process D creates a **new branch from the test PackagedComponent** (using `packageId` on `POST /Branch`), merges that branch to main (OVERRIDE), packages from main, then deletes the branch. This is the first (and only) time main is updated.
+- **Hotfix mode (Mode 3):** Process C creates the branch, Process D merges to main (OVERRIDE), packages from main, dual-releases to prod then test, then deletes the branch.
+- **Process G** fetches both `Component/{id}~{branchId}` (branch) and `Component/{id}` (main) for diff comparison during review.
+- **Rejection or denial** simply deletes the branch — main is never touched.
+
+**Key invariant:** Main branch is protected during test deployments. Only admin-approved production deployments (Mode 2) and hotfixes (Mode 3) ever merge to main.
 
 ### Why OVERRIDE Merge Strategy
 
@@ -70,15 +72,27 @@ The `OVERRIDE` strategy with `priorityBranch` set to the promotion branch ensure
 - Fully programmatic via API (no Boomi UI interaction required)
 - Safe because Process C is the sole writer to each promotion branch
 
+### Why Admin Integration Pack Ownership
+
+Integration Pack selection is an admin-only function, managed from the Admin Approval Queue (Page 7). The system enforces this for two reasons:
+
+- **Returning packages:** For a `processName` + `targetEnvironment` combination seen before, the system auto-detects the correct Integration Pack from PromotionLog history and pre-fills the selection. Admins confirm or override.
+- **Brand-new packages:** When no history exists, the PromotionLog enters `PENDING_PACK_ASSIGNMENT` status, signaling that admin action is needed before deployment can proceed.
+
+This prevents developers from accidentally creating duplicate Integration Packs or deploying to the wrong pack. Admins see a multi-package view when selecting an existing IP to avoid accidentally dropping packages from a release — a risk unique to the Boomi Integration Pack model where a single release covers all attached packages.
+
 ### 20-Branch Limit Management
 
-Boomi enforces a hard limit of 20 branches per account. The system manages this by:
+Boomi enforces a hard limit of 20 branches per account. All branches are now **short-lived** in every mode, which is a significant improvement over the previous design:
+
+- **Test branches:** Created by Process C, deleted by Process D immediately after packaging from the branch (minutes — not days or weeks)
+- **Production branches:** Created and deleted entirely within Process D prod mode (minutes)
+- **Hotfix branches:** Created by Process C, deleted by Process D after dual-release (minutes to hours)
 - Checking branch count before creation (Process C fails with `BRANCH_LIMIT_REACHED` if >= 15)
-- Keeping branches short-lived for hotfixes (hours to days); longer-lived for test deployments (potentially days to weeks)
-- For test deployments, branches persist through the test→production lifecycle (potentially days or weeks), increasing branch slot pressure
-- Stale test deployment warning: branches older than 30 days trigger UI warnings on Page 9
-- Deleting branches on ALL terminal paths (approve, reject, deny)
+- Deleting branches on ALL terminal paths (approve, reject, deny, withdrawal)
 - Tracking `branchId` in PromotionLog (set to null after cleanup)
+
+This short-lived branch strategy dramatically reduces branch slot pressure compared to the previous design where test branches persisted through the test→production lifecycle. The branch age column on Page 9 remains useful for deployment age tracking even though stale branch risk is substantially lower.
 
 ### Why Two-Axis SSO Groups
 
@@ -287,10 +301,10 @@ The system supports three deployment paths to balance velocity with safety:
 
 The recommended path for all non-emergency changes:
 
-1. **Dev → Test (automated validation, no manual gates):** Developer promotes components (Process C), then deploys directly to a Test Integration Pack (Process D, TEST mode). Branch merges to main for test packaging but is preserved for future production diffing.
+1. **Dev → Test (automated validation, no manual gates):** Developer promotes components (Process C), then deploys directly to a Test Integration Pack (Process D, TEST mode). Process D packages directly from the promotion branch, then deletes the branch immediately. Main is never touched.
 2. **Test validation:** Developer validates components in the test environment.
-3. **Test → Production (with reviews):** Developer initiates production promotion from Page 9. Since content is already on main, Process D skips the merge step. Peer review (Pages 5-6) and admin review (Page 7) gate the production deployment.
-4. **Branch cleanup:** Branch deleted after successful production deployment.
+3. **Test → Production (with reviews):** Developer initiates production promotion from Page 9. Process D creates a new branch from the test PackagedComponent, merges it to main (OVERRIDE), packages from main, then deletes the branch. Peer review (Pages 5-6) and admin review (Page 7) gate the production deployment.
+4. **Branch cleanup:** Branch deleted immediately after production packaging — not at end of lifecycle.
 
 ### Path 2: Dev → Production Emergency Hotfix
 
@@ -338,20 +352,20 @@ stateDiagram-v2
     EnvironmentDecision --> HotfixPath : HOTFIX mode
     EnvironmentDecision --> FailedDelete : any component failed
 
-    TestPath --> MergedToMainTest : merge to main\nOVERRIDE strategy
-    MergedToMainTest --> PackagedTest : package\nTest Integration Pack
-    PackagedTest --> DeployedTest : deploy to Test env
-    DeployedTest --> BranchPreserved : branch kept for\nprod promotion diff
+    TestPath --> PackagedTestFromBranch : package from branch\nbranchName on POST /PackagedComponent
+    PackagedTestFromBranch --> DeployedTest : deploy to Test env
+    DeployedTest --> BranchDeletedTest : DELETE /Branch immediately\nmain never touched
 
-    BranchPreserved --> ProductionPath : promote to prod\nfrom Page 9
+    BranchDeletedTest --> ProductionPath : promote to prod\nfrom Page 9 (uses packageId)
 
-    ProductionPath --> SkipMerge : already on main
-    SkipMerge --> PackagedProd : package\nProd Integration Pack
+    ProductionPath --> NewBranchFromPackage : POST /Branch\nusing packageId
+    NewBranchFromPackage --> MergedToMainProd : merge to main\nOVERRIDE strategy
+    MergedToMainProd --> PackagedProd : package from main\nProd Integration Pack
     PackagedProd --> DeployedProd : deploy to Prod env
     DeployedProd --> BranchDeleted : DELETE /Branch
 
     HotfixPath --> MergedToMainHotfix : merge to main\nOVERRIDE strategy
-    MergedToMainHotfix --> PackagedHotfix : package
+    MergedToMainHotfix --> PackagedHotfix : package from main
     PackagedHotfix --> ReleasedHotfixProd : release to\nProd Integration Pack
     ReleasedHotfixProd --> ReleasedHotfixTest : release to\nTest Integration Pack
     ReleasedHotfixTest --> BranchDeleted : DELETE /Branch
@@ -359,6 +373,7 @@ stateDiagram-v2
     FailedDelete --> BranchDeleted : DELETE immediately\nno merge
 
     BranchDeleted --> [*]
+    BranchDeletedTest --> [*] : if not promoted to prod
 ```
 
 ### Integration Pack Strategy
@@ -371,12 +386,13 @@ Separate Integration Packs for test and production environments:
 
 ### Branch Limit Considerations
 
-With branches persisting through the test→production lifecycle (potentially days or weeks), the 20-branch Boomi limit becomes more critical:
-- Process C branch count threshold lowered from 18 to 15 for early warning
-- Page 9 surfaces branch age as a column to encourage timely production promotions
-- Branches older than 30 days trigger amber/red warnings in the UI
-- Initiator withdrawal (Process E5) frees branch slots for promotions stuck in review queues, helping manage branch pressure during high-volume periods
-- Future consideration: "Cancel Test Deployment" action to delete stale branches and roll back test Integration Pack
+All branches are now short-lived (minutes to hours), which dramatically reduces pressure on the 20-branch Boomi limit compared to the previous design where test branches persisted for days or weeks:
+- Process C branch count threshold is 15 (early warning before the 20-branch hard limit)
+- Test branches are deleted by Process D immediately after packaging — no long-lived test branches
+- Production branches are created and deleted entirely within Process D (minutes)
+- Hotfix branches are deleted by Process D after dual-release (minutes to hours)
+- Page 9 branch age column remains useful for tracking how long a deployment has been in test, even though stale branch risk is now minimal
+- Initiator withdrawal (Process E5) remains available to free branch slots for promotions stuck mid-review
 
 ### Hotfix Audit Trail
 
@@ -388,13 +404,20 @@ Emergency hotfixes are tracked for leadership review:
 
 ## Branch Lifecycle
 
+All branches are short-lived. The lifecycle differs by mode:
+
 ```mermaid
 stateDiagram-v2
     [*] --> Created : POST /Branch\npromo-{promotionId}
 
     Created --> Active : all components\npromoted successfully\nCOMPLETED
 
-    Active --> ReviewPending : submitted for\nproduction review\nPENDING_PEER_REVIEW
+    Active --> DeletedFail : any component fails\nFAILED → DELETE immediately
+
+    Active --> TestPackaged : TEST mode\npackage from branch\nbranchName on POST /PackagedComponent
+    TestPackaged --> DeletedTest : DELETE /Branch immediately\nmain never touched
+
+    Active --> ReviewPending : HOTFIX or prod path\nsubmitted for review\nPENDING_PEER_REVIEW
 
     ReviewPending --> PeerApproved : peer approves\nPEER_APPROVED
     ReviewPending --> DeletedReject : peer rejects\nPEER_REJECTED
@@ -402,22 +425,21 @@ stateDiagram-v2
 
     PeerApproved --> AdminPending : PENDING_ADMIN_REVIEW
 
-    AdminPending --> Merged : admin approves\nOVERRIDE merge to main
+    AdminPending --> MergedToMain : admin approves\nOVERRIDE merge to main
     AdminPending --> DeletedReject : admin rejects\nADMIN_REJECTED
     AdminPending --> DeletedWithdraw : initiator withdraws\nWITHDRAWN
 
-    Merged --> PackageDeployed : package and deploy\nDEPLOYED
+    MergedToMain --> PackageDeployed : package from main\nand deploy\nDEPLOYED
     PackageDeployed --> DeletedSuccess : DELETE /Branch
 
-    Created --> DeletedFail : any component fails\nFAILED → DELETE immediately
-
     DeletedFail --> [*]
+    DeletedTest --> [*]
     DeletedReject --> [*]
     DeletedWithdraw --> [*]
     DeletedSuccess --> [*]
 ```
 
-**Key invariant:** Every branch is either actively in review or has been deleted (via approval, rejection, denial, or withdrawal). No orphaned branches.
+**Key invariant:** Every branch is either actively in review or has been deleted (via test packaging, approval, rejection, denial, or withdrawal). No orphaned branches.
 
 **PromotionLog tracking:**
 - `branchId` set on creation, cleared (null) after deletion
