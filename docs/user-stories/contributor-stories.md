@@ -208,7 +208,7 @@
    - **"Deploy to Test" (default, pre-selected)** — green "(Recommended)" badge; sets `targetEnvironment="TEST"`, `isHotfix="false"`
    - **"Deploy to Production (Emergency Hotfix)"** — red "⚠ Emergency" badge; sets `targetEnvironment="PRODUCTION"`, `isHotfix="true"`
 3. If user selects the Emergency Hotfix option:
-   - A red warning banner slides in: "Emergency hotfixes bypass the test environment. This action will be logged for leadership review. Both peer review and admin review are still required."
+   - A red warning banner slides in: "Emergency hotfixes release to production first, then sync to test. This action will be logged for leadership review. Both peer review and admin review are still required."
    - A required "Hotfix Justification" textarea appears (max 1000 chars, with character counter)
    - User must provide justification text before continuing
 4. If user selects Deploy to Test (or returns to it):
@@ -237,38 +237,37 @@
 **Preconditions:**
 - User is on Page 4 in Test mode (`targetEnvironment="TEST"`)
 - Promotion was successful (all components on branch); `branchId` is present
-- Required form fields are filled: Package Version, Integration Pack (filtered to test packs), Target Account Group
+- Required form field is filled: Package Version
 
 **Flow:**
-1. Page 4 loads with the header "Deploy to Test Environment" and a blue info banner: "Components will be deployed to your Test Integration Pack. Automated validation only — no manual approval required."
-2. On page load, `listIntegrationPacks` fires with `packPurpose="TEST"` to populate the Integration Pack combobox with test packs only
-3. If a suggested pack is found (most recently used for this process in test), it is pre-selected in the combobox
-4. User fills in or confirms: Package Version, Integration Pack (select existing or create new), Target Account Group, optional Deployment Notes
-5. User clicks "Deploy to Test"
-6. Client-side validation runs; if any required field is empty, errors are shown and execution stops
-7. `packageAndDeploy` fires with `deploymentTarget="TEST"`, `isHotfix=false`, the form data, and `branchId`
-8. Process D merges the promotion branch to main (OVERRIDE), creates a PackagedComponent, creates/updates the Test Integration Pack, releases it, deploys to the test environment, and **preserves the branch** for future production review
-9. On success, inline results appear: green banner "Successfully deployed to Test Integration Pack: {testIntegrationPackName}", branch-preserved message, and navigation buttons
-10. A "Test Deployed" email notification is sent to the submitter only
-11. `status` is updated to `TEST_DEPLOYED` in PromotionLog
+1. Page 4 loads with the header "Deploy to Test Environment" and a blue info banner: "Components will be packaged from your promotion branch and deployed to a test Integration Pack. If no pack exists for this process, an admin will assign one."
+2. User fills in or confirms: Package Version, optional Deployment Notes
+3. User clicks "Deploy to Test"
+4. Client-side validation runs; if the package version field is empty, an error is shown and execution stops
+5. `packageAndDeploy` fires with `deploymentTarget="TEST"`, `isHotfix=false`, the form data, and `branchId`
+6. Process D (Mode 1) creates a PackagedComponent from the promotion branch, deletes the branch, then auto-detects an Integration Pack from PromotionLog history
+7. Two possible outcomes:
+   - **IP auto-detected:** Process D releases to the test Integration Pack. Inline green banner: "Released to Test Integration Pack: {testIntegrationPackName} v{releaseVersion}". Status updated to `TEST_DEPLOYED`.
+   - **No prior IP history:** Process D sets status to `PENDING_PACK_ASSIGNMENT`. Inline amber banner: "Package created. Pending Integration Pack assignment by admin." Admin assigns the IP via the Pack Assignment tab on Page 7.
+8. A "Test Deployed" email notification is sent to the submitter only (for `TEST_DEPLOYED` outcome)
+9. Navigation buttons: "View in Production Readiness" → Page 9, "Return to Dashboard" → Page 1
 
 **Acceptance Criteria:**
-- [ ] Integration Pack combobox is filtered to test packs only (packs with "- TEST" suffix)
-- [ ] Suggested pack is auto-selected if available from PromotionLog history
+- [ ] No Integration Pack selector is shown on Page 4 — IP assignment is handled by Process D (auto-detect) or by admin (Pack Assignment tab)
 - [ ] "Deploy to Test" button triggers `packageAndDeploy` with `deploymentTarget="TEST"` — no swimlane transition occurs
-- [ ] On success, branch is preserved (`branchPreserved=true` in response) and user is informed
+- [ ] On `TEST_DEPLOYED` success, green banner shows the test Integration Pack name and release version
+- [ ] On `PENDING_PACK_ASSIGNMENT`, amber banner informs the user that admin assignment is needed
+- [ ] Promotion branch is deleted during Process D execution (not preserved)
 - [ ] "View in Production Readiness" button navigates to Page 9
 - [ ] "Return to Dashboard" button navigates to Page 1
-- [ ] Submitter receives a "Test Deployed" email notification
+- [ ] Submitter receives a "Test Deployed" email notification (only for `TEST_DEPLOYED` outcome)
 
 **Triggered API Calls:**
-- `listIntegrationPacks` → Process J (page load)
 - `packageAndDeploy` → Process D (on submit)
 
 **Error Scenarios:**
 - `TEST_DEPLOY_FAILED`: Test environment deployment failed — red inline banner with error details and "Retry" button
-- `MERGE_FAILED`: Branch merge failed — red inline banner; user should retry or contact admin
-- `MERGE_TIMEOUT`: Merge did not complete within 60 seconds — red inline banner with timeout message
+- `PACKAGING_FAILED`: PackagedComponent creation failed — red inline banner; branch may still exist; user should retry or contact admin
 - `PROMOTION_NOT_COMPLETED`: PromotionLog status gate failed — Error Page shown
 
 ---
@@ -280,14 +279,14 @@
 **Preconditions:**
 - User is on Page 4 in Production-from-Test mode (`targetEnvironment="PRODUCTION"`, `testPromotionId` populated)
 - The promotion has `TEST_DEPLOYED` status in PromotionLog
-- `branchId` is present (preserved from the test phase)
+- The promotion branch was deleted after test packaging — Process D will recreate it from the test PackagedComponent
 
 **Flow:**
 1. Page 4 loads from Page 9 (Production Readiness) with the header "Submit for Production Deployment"
 2. A green info banner states: "This deployment was previously validated in the test environment."
 3. A read-only "Previously Tested Deployment" panel shows: test deployed date, test Integration Pack name, promotion ID, and component counts
-4. On page load, `listIntegrationPacks` fires with `packPurpose="PRODUCTION"` to populate the Integration Pack combobox with production packs only
-5. User fills in or confirms: Package Version, Integration Pack (select existing production pack or create new), Target Account Group, optional Deployment Notes
+4. An info note states: "Admin will select the production Integration Pack during approval."
+5. User fills in or confirms: Package Version, optional Deployment Notes
 6. User clicks "Submit for Peer Review"
 7. Client-side validation runs; if any required field is empty, errors are shown and execution stops
 8. A "Peer Review Needed" email is sent to the Dev + Admin distribution lists; submitter is CC'd
@@ -296,7 +295,7 @@
 11. Developer clicks "Close" to end their part of the flow
 
 **Acceptance Criteria:**
-- [ ] Integration Pack combobox shows only production packs (no "- TEST" packs)
+- [ ] No Integration Pack selector is shown — admin assigns the production IP during approval on Page 7
 - [ ] Test deployment summary panel is shown (read-only)
 - [ ] Submitting triggers a "Peer Review Needed" email notification to dev + admin groups
 - [ ] Flow pauses at the Developer-to-Peer-Review swimlane boundary
@@ -304,7 +303,6 @@
 - [ ] "Close" button ends the developer's session cleanly
 
 **Triggered API Calls:**
-- `listIntegrationPacks` → Process J (page load)
 - Flow swimlane transition (built-in Flow mechanism, no additional FSS call)
 
 **Error Scenarios:**
@@ -324,10 +322,10 @@
 
 **Flow:**
 1. Page 4 loads with the header "Submit Emergency Hotfix for Peer Review"
-2. A prominent red warning banner is displayed: "⚠ EMERGENCY HOTFIX: This deployment bypasses the test environment. Both peer review and admin review are required."
+2. A prominent red warning banner is displayed: "⚠ EMERGENCY HOTFIX: This deployment releases to production first, then syncs to test. Both peer review and admin review are required."
 3. A read-only "Emergency Hotfix Justification" panel shows the justification text entered on Page 3 (with a red left border)
-4. On page load, `listIntegrationPacks` fires with `packPurpose="PRODUCTION"`; the combobox is populated with production packs
-5. User fills in: Package Version, Integration Pack, Target Account Group, optional additional Deployment Notes
+4. An info note states: "Admin will select Integration Packs during approval." (admin selects both production IP and test IP for the dual-release)
+5. User fills in: Package Version, optional additional Deployment Notes
 6. User clicks "Submit Emergency Hotfix for Peer Review" (red/danger styled button)
 7. Form validation runs; errors shown if required fields are missing
 8. A special "⚠ EMERGENCY HOTFIX — Peer Review Needed" email is sent to the Dev + Admin distribution lists (CC: submitter), including the hotfix justification
@@ -339,11 +337,10 @@
 - [ ] The submit button is labeled "Submit Emergency Hotfix for Peer Review" with danger styling
 - [ ] Emergency hotfix email subject includes "⚠ EMERGENCY HOTFIX"
 - [ ] Email body includes the full hotfix justification text
-- [ ] `isHotfix="true"` is carried through to the `packageAndDeploy` call at the admin approval stage
+- [ ] `isHotfix="true"` is carried through to the `packageAndDeploy` call at the admin approval stage, which performs a dual-release (production first, then test sync)
 - [ ] `hotfixJustification` is logged in PromotionLog (`isHotfix="true"`, `hotfixJustification` field)
 
 **Triggered API Calls:**
-- `listIntegrationPacks` → Process J (page load)
 - Flow swimlane transition (built-in Flow mechanism)
 
 **Error Scenarios:**
@@ -364,23 +361,25 @@
 1. User navigates to Page 9 (Production Readiness) — accessible from the dashboard menu, from Page 4 after a test deployment, or from Page 1 via a "Tested Deployments" link
 2. On load, `queryTestDeployments` fires (optionally filtered by `devAccountId` or `initiatedBy`)
 3. The Production Readiness Data Grid populates with all TEST_DEPLOYED promotions not yet promoted to production, sorted by `testDeployedAt` descending (most recent first)
-4. Each row shows: Process Name, Package Version, Test Deployed timestamp, Branch Age (color-coded: green 0–14d, amber 15–30d, red > 30d), Component counts, Test Integration Pack name, Submitted By
-5. If any deployment has Branch Age > 30 days, a stale branch warning banner appears at the top of the page
+4. Each row shows: Process Name, Package Version, Test Deployed timestamp, Deployment Age (color-coded: green 0–14d, amber 15–30d, red > 30d), Component counts, Test Integration Pack name, Submitted By, Release Status
+5. If any deployment has Deployment Age > 30 days, a stale deployment warning banner appears at the top of the page: "{count} deployment(s) have been in test for over 30 days. Consider promoting to production to keep the queue current."
 6. User can click "Refresh" to re-execute `queryTestDeployments` and see the latest data
 7. User selects a row; the row highlights and an expandable detail panel appears below the grid
-8. The detail panel shows: Promotion ID (copyable), Process Name, Package Version, Submitted by, Submitted at, Test Deployed timestamp, Test Integration Pack, Branch Name (active), component counts
+8. The detail panel shows: Promotion ID (copyable), Process Name, Package Version, Submitted by, Submitted at, Test Deployed timestamp, Test Integration Pack, branch status ("Deleted — will be recreated from package for production merge"), component counts
 
 **Acceptance Criteria:**
 - [ ] Only TEST_DEPLOYED promotions that have NOT been promoted to production are shown
 - [ ] Grid is sorted by test deployment date descending by default
-- [ ] Branch Age column uses correct color coding (green/amber/red thresholds)
-- [ ] Stale branch warning appears when any entry has Branch Age > 30 days
+- [ ] Deployment Age column uses correct color coding (green/amber/red thresholds)
+- [ ] Stale deployment warning appears when any entry has Deployment Age > 30 days
+- [ ] Release Status column shows propagation status for each row (via `checkReleaseStatus` / Process P): Pending, Propagating, Complete, or Failed
 - [ ] Selecting a row reveals the full detail panel
 - [ ] Refresh button re-queries the API and updates the grid
 - [ ] Empty state message appears when no test deployments are ready
 
 **Triggered API Calls:**
 - `queryTestDeployments` → Process E4
+- `checkReleaseStatus` → Process P (per row, on page load)
 
 **Error Scenarios:**
 - `DATAHUB_ERROR`: PromotionLog query fails — Error Page shown
@@ -395,26 +394,25 @@
 **Preconditions:**
 - User is on Page 9 with a test deployment selected
 - The selected deployment is in `TEST_DEPLOYED` status
-- `branchId` is preserved from the test deployment phase
+- The promotion branch was deleted after test packaging — Process D will recreate it from the stored PackagedComponent for the production merge
 
 **Flow:**
 1. User selects a test deployment row on Page 9
-2. The detail panel expands showing test deployment info, including the preserved branch name
+2. The detail panel expands showing test deployment info: Promotion ID, process name, package version, test deployed date, test Integration Pack, branch status ("Deleted — will be recreated from package for production merge")
 3. User clicks "Promote to Production"
-4. Flow values are set: `testPromotionId`, `targetEnvironment="PRODUCTION"`, `isHotfix="false"`, `branchId`, `branchName`, `testIntegrationPackId`, `testIntegrationPackName`, plus carried-forward `promotionId`, `processName`, `packageVersion`, `componentsTotal`, `componentsCreated`, `componentsUpdated`
+4. Flow values are set: `testPromotionId`, `targetEnvironment="PRODUCTION"`, `isHotfix="false"`, `testIntegrationPackId`, `testIntegrationPackName`, plus carried-forward `promotionId`, `processName`, `packageVersion`, `componentsTotal`, `componentsCreated`, `componentsUpdated`
 5. Flow navigates to Page 4 (Deployment Submission) in Production-from-Test mode
-6. Page 4 shows the "Submit for Production Deployment" header, a test deployment summary panel, and the production pack selector
+6. Page 4 shows the "Submit for Production Deployment" header, a test deployment summary panel, and a note that admin will assign the production IP
 7. User fills in deployment details and submits for peer review (see C-08)
 
 **Acceptance Criteria:**
 - [ ] "Promote to Production" button is only enabled when a row is selected
-- [ ] All required Flow values (especially `testPromotionId`, `branchId`) are set before navigating to Page 4
+- [ ] All required Flow values (especially `testPromotionId`) are set before navigating to Page 4 — `branchId` is not available (branch was deleted after test packaging)
 - [ ] Page 4 correctly enters Production-from-Test mode (not Test mode or Hotfix mode)
 - [ ] The test deployment summary panel on Page 4 reflects the selected deployment's details
-- [ ] Integration Pack combobox on Page 4 shows only production packs (not test packs)
 
 **Triggered API Calls:**
-- None on Page 9 click; `listIntegrationPacks` and swimlane transition occur on Page 4
+- None on Page 9 click; swimlane transition occurs on Page 4
 
 **Error Scenarios:**
 - `TEST_PROMOTION_NOT_FOUND`: `testPromotionId` references a non-existent or non-TEST_DEPLOYED record — Error Page on Page 4
@@ -423,20 +421,20 @@
 
 ## C-12: Cancel a Stale Test Deployment
 
-**As a** Contributor, **I want to** cancel a stale test deployment that I no longer intend to promote to production, **so that** the associated promotion branch is cleaned up and the branch slot is freed for other promotions.
+**As a** Contributor, **I want to** cancel a stale test deployment that I no longer intend to promote to production, **so that** the PromotionLog is updated and the test deployment is removed from the Production Readiness queue.
 
 **Preconditions:**
 - User is on Page 9 with a test deployment selected
 - The selected deployment is in `TEST_DEPLOYED` status (not already cancelled or deployed)
 
 **Flow:**
-1. User selects a stale test deployment row on Page 9 (typically shown in red due to Branch Age > 30 days)
+1. User selects a stale test deployment row on Page 9 (typically shown in red due to Deployment Age > 30 days)
 2. A "Cancel Test Deployment" button is available in the footer action bar or detail panel
 3. User clicks "Cancel Test Deployment"
-4. A confirmation dialog appears: "This will cancel the test deployment for **{processName}** and delete the test branch. This action cannot be undone."
+4. A confirmation dialog appears: "This will cancel the test deployment for **{processName}**. This action cannot be undone."
 5. User confirms the cancellation
 6. `cancelTestDeployment` fires with `promotionId` from the selected deployment
-7. Process E4 validates the promotion is in `TEST_DEPLOYED` status, deletes the preserved test branch (idempotent — 404 treated as success), and updates PromotionLog to `TEST_CANCELLED`
+7. Process E4 validates the promotion is in `TEST_DEPLOYED` status and updates PromotionLog to `TEST_CANCELLED` (no branch to delete — it was already deleted after test packaging in Process D Mode 1)
 8. On success, the row is removed from the grid and a toast notification: "Test deployment cancelled successfully"
 9. On failure, an error toast is shown with `errorMessage` and the row remains in place
 
@@ -444,9 +442,7 @@
 - [ ] Cancel button is available for any selected TEST_DEPLOYED row
 - [ ] Confirmation dialog prevents accidental cancellation
 - [ ] On success, the row is removed from the grid and a success toast is shown
-- [ ] On success, the promotion branch is deleted and the branch slot is freed
-- [ ] PromotionLog status is updated to `TEST_CANCELLED`
-- [ ] If the branch was already absent (404), the cancellation still succeeds
+- [ ] On success, PromotionLog status is updated to `TEST_CANCELLED` (no branch deletion needed — branch was already deleted after test packaging)
 
 **Triggered API Calls:**
 - `cancelTestDeployment` → Process E4

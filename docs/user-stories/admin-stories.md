@@ -19,9 +19,11 @@ These user stories cover the Admin role (`ABC_BOOMI_FLOW_ADMIN`) in the Boomi De
 2. Admin authenticates via SSO — `ABC_BOOMI_FLOW_ADMIN` group membership is validated
 3. Admin navigates to Page 7 (Admin Approval Queue)
 4. System calls `queryStatus` with `status = "COMPLETED"`, `deployed = false`, `reviewStage = "PENDING_ADMIN_REVIEW"`
-5. Page loads the Approval Queue Data Grid, sorted newest first
-6. Each row shows: Submitter, Process Name, Components count, Created/Updated breakdown, Peer Reviewed By, Submitted timestamp, Environment badge, Hotfix badge (if applicable), Notes (truncated)
-7. If no items are pending, the grid shows "No pending approvals — All deployment requests have been processed."
+5. System calls `listIntegrationPacks` on page load to populate the Integration Pack selector (used in both tabs)
+6. Page loads with two tabs: "Approval Queue" (default, active) and "Pack Assignment (N)" with a count badge showing pending assignments
+7. The Approval Queue Data Grid populates under the active tab, sorted newest first
+8. Each row shows: Submitter, Process Name, Components count, Created/Updated breakdown, Peer Reviewed By, Submitted timestamp, Environment badge, Hotfix badge (if applicable), Notes (truncated)
+9. If no items are pending, the grid shows "No pending approvals — All deployment requests have been processed."
 
 **Acceptance Criteria:**
 - [ ] Page 7 is only accessible to users with `ABC_BOOMI_FLOW_ADMIN` group membership; non-admins see "Access denied. This page requires admin privileges."
@@ -30,9 +32,13 @@ These user stories cover the Admin role (`ABC_BOOMI_FLOW_ADMIN`) in the Boomi De
 - [ ] Emergency hotfix rows display a prominent red "EMERGENCY HOTFIX" badge
 - [ ] Empty state shows the "No pending approvals" message with a descriptive sub-message
 - [ ] Grid paginates at 25 rows per page when more than 25 items exist
+- [ ] Page 7 displays two tabs: "Approval Queue" (default) and "Pack Assignment (N)" with count badge
+- [ ] `listIntegrationPacks` is called on page load to pre-populate the Integration Pack selector
+- [ ] Pack Assignment tab is lazy-loaded on first switch (calls `queryStatus` with `reviewStage = "PENDING_PACK_ASSIGNMENT"`)
 
 **Triggered API Calls:**
 - `queryStatus` → Process E (with `reviewStage = "PENDING_ADMIN_REVIEW"` filter)
+- `listIntegrationPacks` → Process J (page load, for IP selector)
 
 **Error Scenarios:**
 - `queryStatus` failure: Navigate to Error Page with error message
@@ -130,26 +136,31 @@ These user stories cover the Admin role (`ABC_BOOMI_FLOW_ADMIN`) in the Boomi De
 **Preconditions:**
 - Admin has selected a promotion on Page 7 and reviewed the details
 - The promotion is not submitted by the same admin (self-approval prevention)
+- Integration Pack is selected (existing pack chosen or new pack name provided)
 - Admin Comments textarea is optionally filled
 
 **Flow:**
-1. Admin (optionally) enters comments in the "Admin Comments" textarea (max 500 characters)
-2. Admin clicks "Approve and Deploy" (green button, right-aligned in footer)
-3. Confirmation modal appears:
+1. Admin selects an Integration Pack from the IP selector in the Promotion Detail Panel:
+   - An auto-suggested pack may be pre-selected based on PromotionLog history for this process
+   - Admin can accept the suggestion, choose a different existing pack, or select "Create New Integration Pack" and provide a name
+   - For hotfix promotions, admin also selects a Test Integration Pack for the dual-release test sync
+2. Admin (optionally) enters comments in the "Admin Comments" textarea (max 500 characters)
+3. Admin clicks "Approve and Deploy" (green button, right-aligned in footer) — enabled only when IP selector is satisfied
+4. Confirmation modal appears:
    - Shows: Process name, Package version, Target Account Group, Total Components
    - For hotfix promotions: additional red warning text and a mandatory acknowledgment checkbox
-4. Admin clicks "Confirm Approval" (hotfix: must check the acknowledgment checkbox first)
-5. Modal closes; system begins the approval pipeline:
+5. Admin clicks "Confirm Approval" (hotfix: must check the acknowledgment checkbox first)
+6. Modal closes; system begins the approval pipeline:
    - Step 1: `POST /MergeRequest` with `strategy = "OVERRIDE"` and `priorityBranch = branchId`; store `mergeRequestId`
    - Step 2: `POST /MergeRequest/execute/{mergeRequestId}` with `action = "MERGE"`; poll until `stage = "MERGED"`; spinner shows "Merging branch to main..."
-   - Step 3: Message step `packageAndDeploy` runs from main (creates PackagedComponent, Integration Pack, deploys to target account group)
+   - Step 3: Message step `packageAndDeploy` runs with the admin-selected `integrationPackId` (or `createNewPack` + `newPackName`), creates PackagedComponent from main, assigns to Integration Pack, releases, and deploys to target account group
    - Step 4: `DELETE /Branch/{branchId}`; PromotionLog `branchId` set to null
-6. On success:
+7. On success:
    - Success message: "Branch merged, packaged, and deployed successfully!"
    - Deployment ID and prod package ID displayed
    - Email notification sent to submitter and peer reviewer
    - Approval queue refreshes; approved item removed; detail panel cleared
-7. "Approve and Deploy" and "Deny" buttons are enabled only when a promotion is selected
+8. "Approve and Deploy" and "Deny" buttons are enabled only when a promotion is selected
 
 **Acceptance Criteria:**
 - [ ] "Approve and Deploy" button is disabled when no promotion is selected
@@ -161,8 +172,12 @@ These user stories cover the Admin role (`ABC_BOOMI_FLOW_ADMIN`) in the Boomi De
 - [ ] Email notification is sent to submitter + peer reviewer on successful deployment
 - [ ] Approval queue refreshes after successful deployment
 - [ ] On `packageAndDeploy` failure, an error message is shown and the branch may persist for retry
+- [ ] Admin must select an Integration Pack (or provide a new pack name) before "Approve and Deploy" is enabled
+- [ ] Auto-suggested Integration Pack is pre-selected from PromotionLog history when available
+- [ ] `packageAndDeploy` receives the admin-selected `integrationPackId` (or new pack details)
 
 **Triggered API Calls:**
+- `listIntegrationPacks` → Process J (page load, pre-cached)
 - `POST /MergeRequest` (Platform API — OVERRIDE merge)
 - `POST /MergeRequest/execute/{mergeRequestId}` (Platform API — execute merge)
 - `packageAndDeploy` → Process D
@@ -257,14 +272,16 @@ These user stories cover the Admin role (`ABC_BOOMI_FLOW_ADMIN`) in the Boomi De
 **Flow:**
 1. Admin selects a hotfix promotion row — the row shows a red "EMERGENCY HOTFIX" badge
 2. The Promotion Detail Panel expands and shows Section 2b with a prominent red "EMERGENCY HOTFIX" banner containing the submitter's `hotfixJustification` text
-3. Warning text: "This deployment bypassed the test environment. Please review carefully."
-4. Admin optionally enters comments in the "Admin Comments" textarea
-5. Admin clicks "Approve and Deploy"
-6. Confirmation modal includes extra hotfix warning text: "This is an emergency hotfix that bypassed the test environment."
-7. Modal also requires checking the acknowledgment checkbox: "I acknowledge this is an emergency hotfix that bypassed testing" — "Confirm Approval" is disabled until checked
-8. Admin checks the checkbox and clicks "Confirm Approval"
-9. Standard approval pipeline executes (merge → packageAndDeploy → branch delete)
-10. PromotionLog records `isHotfix = "true"` and `hotfixJustification`
+3. Warning text: "This deployment releases to production first, then syncs to test. Please review carefully."
+4. Admin selects the production Integration Pack from the IP selector (same as A-04)
+5. Admin selects the Test Integration Pack from the secondary IP selector (for the hotfix test sync step)
+6. Admin optionally enters comments in the "Admin Comments" textarea
+7. Admin clicks "Approve and Deploy"
+8. Confirmation modal includes extra hotfix warning text: "This is an emergency hotfix that releases to production first, then syncs to test."
+9. Modal also requires checking the acknowledgment checkbox: "I acknowledge this is an emergency hotfix that bypassed testing" — "Confirm Approval" is disabled until checked
+10. Admin checks the checkbox and clicks "Confirm Approval"
+11. Standard approval pipeline executes (merge → packageAndDeploy with dual-release: production first, then test sync → branch delete)
+12. PromotionLog records `isHotfix = "true"` and `hotfixJustification`
 
 **Acceptance Criteria:**
 - [ ] The "EMERGENCY HOTFIX" banner is displayed prominently in the detail panel for hotfix promotions
@@ -273,6 +290,8 @@ These user stories cover the Admin role (`ABC_BOOMI_FLOW_ADMIN`) in the Boomi De
 - [ ] "Confirm Approval" button remains disabled until the acknowledgment checkbox is checked
 - [ ] PromotionLog preserves `isHotfix = "true"` and `hotfixJustification` for audit purposes
 - [ ] The hotfix audit trail is queryable (filter by `isHotfix = "true"`) for leadership review
+- [ ] Admin must select both a production Integration Pack and a test Integration Pack for hotfix promotions
+- [ ] Hotfix dual-release: `packageAndDeploy` deploys to production first, then syncs to test environment (non-blocking test failure)
 
 **Triggered API Calls:**
 - Same as A-04: OVERRIDE merge → `packageAndDeploy` → branch delete
@@ -638,14 +657,58 @@ These user stories cover the Admin role (`ABC_BOOMI_FLOW_ADMIN`) in the Boomi De
 
 ---
 
+### A-18: Assign Integration Pack to a Pending Promotion
+
+**As an** Admin, **I want to** assign an Integration Pack to a test-packaged promotion that has no prior IP history, **so that** the PackagedComponent is released to the correct Integration Pack and the promotion can proceed through the production workflow.
+
+**Preconditions:**
+- Admin is on Page 7, "Pack Assignment" tab
+- At least one promotion has `status = PENDING_PACK_ASSIGNMENT` (set by Process D Mode 1 when no prior IP history was found)
+- `listIntegrationPacks` data is available (loaded on page entry)
+
+**Flow:**
+1. Admin switches to the "Pack Assignment" tab on Page 7
+2. On first switch, system calls `queryStatus` with `reviewStage = "PENDING_PACK_ASSIGNMENT"` and populates the Pack Assignment Data Grid
+3. The grid shows: Process Name, Package Version, Submitted By, Submitted At, Target Environment, Components, Notes
+4. Admin selects a row; the detail panel expands showing promotion details and the IP Selector
+5. Admin selects an existing Integration Pack from the combobox (with auto-suggestion from history) or chooses "Create New Integration Pack" and provides a name
+6. Admin clicks "Assign and Release" (green button)
+7. Confirmation modal appears: "Assign Integration Pack and release this promotion?" with process name, version, and selected pack name
+8. Admin clicks "Assign and Release" in the modal
+9. `packageAndDeploy` fires with `promotionId` and admin-selected `integrationPackId` (or new pack details)
+10. Process D detects `PENDING_PACK_ASSIGNMENT` status → executes Mode 4: assigns the existing PackagedComponent to the Integration Pack, releases, and deploys to the test environment
+11. On success: "Assigned to {packName} and released successfully!" with release ID displayed
+12. Pack Assignment queue refreshes; assigned item removed; tab count badge decremented
+13. PromotionLog status updated to `TEST_DEPLOYED`
+
+**Acceptance Criteria:**
+- [ ] Pack Assignment tab shows only `PENDING_PACK_ASSIGNMENT` promotions
+- [ ] Tab count badge reflects the current number of pending assignments
+- [ ] Self-approval prevention does NOT apply to pack assignment (this is IP assignment, not promotion approval)
+- [ ] Admin must select an Integration Pack (or provide a new pack name) before "Assign and Release" is enabled
+- [ ] `packageAndDeploy` is called with the admin-selected `integrationPackId`; Process D Mode 4 handles the rest
+- [ ] On success, PromotionLog status transitions from `PENDING_PACK_ASSIGNMENT` to `TEST_DEPLOYED`
+- [ ] Pack Assignment queue refreshes after assignment; tab badge count decrements
+
+**Triggered API Calls:**
+- `queryStatus` → Process E (with `reviewStage = "PENDING_PACK_ASSIGNMENT"`, on tab switch)
+- `packageAndDeploy` → Process D Mode 4 (on assign)
+
+**Error Scenarios:**
+- `PACK_ASSIGNMENT_FAILED`: Integration Pack assignment or release failed — show error with details; admin can retry
+- `PROMOTION_NOT_FOUND`: Invalid `promotionId` — error toast
+- `INVALID_PROMOTION_STATUS`: Promotion is no longer in `PENDING_PACK_ASSIGNMENT` status — error toast; refresh queue
+
+---
+
 ## Story Index
 
 | Story ID | Title | Page | Process |
 |----------|-------|------|---------|
-| A-01 | View Pending Approval Queue | 7 | E (queryStatus) |
+| A-01 | View Pending Approval Queue (+ Pack Assignment tab) | 7 | E (queryStatus), J (listIntegrationPacks) |
 | A-02 | Review Promotion Details | 7 | — (data from A-01) |
 | A-03 | View Component XML Diff | 7 | G (generateComponentDiff) |
-| A-04 | Approve and Deploy | 7 | D (packageAndDeploy) |
+| A-04 | Approve and Deploy (with IP selection) | 7 | D (packageAndDeploy), J (listIntegrationPacks) |
 | A-05 | Deny with Reason | 7 | Branch DELETE |
 | A-06 | Self-Approval Prevention | 7 | — (Decision step) |
 | A-07 | Approve Emergency Hotfix | 7 | D (packageAndDeploy) |
@@ -659,3 +722,4 @@ These user stories cover the Admin role (`ABC_BOOMI_FLOW_ADMIN`) in the Boomi De
 | A-15 | Email: Deployment Complete Notification | 7 | D (packageAndDeploy) |
 | A-16 | Access Developer Swimlane | 1–4, 9 | Inherited contributor |
 | A-17 | Access Peer Review Swimlane | 5–6 | Inherited peer reviewer |
+| A-18 | Assign Integration Pack (Pack Assignment) | 7 | D (packageAndDeploy Mode 4) |

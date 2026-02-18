@@ -101,7 +101,7 @@
    - **Credential Warning:** Shown when any component has `configStripped = true` — lists components needing reconfiguration
    - **Source Account:** Dev account name and ID
 2. User reads through all sections to understand what changed and why
-3. If viewing a hotfix, user sees a prominent "⚠ EMERGENCY HOTFIX" red badge, justification text, and warning "This deployment bypasses the test environment. Please review carefully."
+3. If viewing a hotfix, user sees a prominent "⚠ EMERGENCY HOTFIX" red badge, justification text, and warning "This deployment releases to production first, then syncs to test. Please review carefully."
 4. If viewing a production-from-test promotion, user sees a green "Previously Tested" panel with the test deployment history
 
 **Acceptance Criteria:**
@@ -326,7 +326,7 @@
 
 ### PR-08: Review Emergency Hotfix Submissions with Justification Visibility
 
-**As a** Peer Reviewer, **I want to** see a clear emergency hotfix indicator and the submitter's justification when reviewing a hotfix promotion, **so that** I understand it bypasses the test environment and can evaluate the justification before approving.
+**As a** Peer Reviewer, **I want to** see a clear emergency hotfix indicator and the submitter's justification when reviewing a hotfix promotion, **so that** I understand it releases to production first (then syncs to test) and can evaluate the justification before approving.
 
 **Preconditions:**
 - User is on Page 5 (Peer Review Queue) or Page 6 (Peer Review Detail)
@@ -342,7 +342,7 @@
 *Detail View (Page 6):*
 1. Page 6 shows a prominent "⚠ EMERGENCY HOTFIX" red badge at the top of the Environment & Hotfix Information section
 2. Below the badge, the submitter's justification text is displayed in full
-3. A warning message reads: "This deployment bypasses the test environment. Please review carefully."
+3. A warning message reads: "This deployment releases to production first, then syncs to test. Please review carefully."
 4. The section has a red background panel with a red left border and warning icon
 5. User reads the justification and reviews the component changes carefully (including XML diff)
 6. User proceeds to approve or reject using the standard flow (PR-05 or PR-06)
@@ -352,7 +352,7 @@
 - [ ] Non-hotfix rows do not show the badge (hidden/absent)
 - [ ] Page 6 shows the EMERGENCY HOTFIX red panel when `isHotfix = "true"`
 - [ ] Full `hotfixJustification` text is displayed (not truncated) on Page 6
-- [ ] Warning text about bypassing test environment is visible
+- [ ] Warning text about dual-release deployment order (production first, then test sync) is visible
 - [ ] Red background styling is applied to the hotfix panel
 - [ ] Approve and Reject buttons function the same as standard promotions
 - [ ] Hotfix flag is preserved and echoed in the approval email to admins

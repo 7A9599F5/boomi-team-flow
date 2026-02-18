@@ -6,9 +6,9 @@
 |----------|------:|------|
 | Contributor (C-01 to C-16) | 16 | [contributor-stories.md](contributor-stories.md) |
 | Peer Reviewer (PR-01 to PR-11) | 11 | [peer-reviewer-stories.md](peer-reviewer-stories.md) |
-| Admin (A-01 to A-17) | 17 | [admin-stories.md](admin-stories.md) |
+| Admin (A-01 to A-18) | 18 | [admin-stories.md](admin-stories.md) |
 | Cross-Cutting (X-01 to X-07) | 7 | This file (below) |
-| **Total** | **51** | |
+| **Total** | **52** | |
 
 ---
 
@@ -24,10 +24,10 @@
 | C-04 | Execute promotion to create a branch | 2→3 | `executePromotion` |
 | C-05 | View component XML diff after promotion | 3 | `generateComponentDiff` |
 | C-06 | Choose a deployment target (Test / Hotfix) | 3 | — (UI state) |
-| C-07 | Deploy directly to test environment | 4 | `listIntegrationPacks`, `packageAndDeploy` |
-| C-08 | Submit for peer review (standard path) | 4 | `listIntegrationPacks` |
-| C-09 | Submit emergency hotfix for peer review | 4 | `listIntegrationPacks` |
-| C-10 | View test deployments ready for production | 9 | `queryTestDeployments` |
+| C-07 | Deploy directly to test environment | 4 | `packageAndDeploy` |
+| C-08 | Submit for peer review (standard path) | 4 | — (swimlane transition) |
+| C-09 | Submit emergency hotfix for peer review | 4 | — (swimlane transition) |
+| C-10 | View test deployments ready for production | 9 | `queryTestDeployments`, `checkReleaseStatus` |
 | C-11 | Promote a tested deployment to production | 9→4 | — (navigation) |
 | C-12 | Cancel a stale test deployment | 9 | `cancelTestDeployment` |
 | C-13 | Withdraw a pending promotion | 1 | `queryStatus`, `withdrawPromotion` |
@@ -55,10 +55,10 @@
 
 | ID | Story | Pages | Message Action(s) |
 |----|-------|-------|-------------------|
-| A-01 | View pending approval queue | 7 | `queryStatus` |
+| A-01 | View pending approval queue (+ Pack Assignment tab) | 7 | `queryStatus`, `listIntegrationPacks` |
 | A-02 | Review promotion details before approving | 7 | — (display) |
 | A-03 | View component XML diff before approving | 7 | `generateComponentDiff` |
-| A-04 | Approve and deploy a promotion | 7 | `packageAndDeploy` + Platform API merge |
+| A-04 | Approve and deploy (with IP selection) | 7 | `listIntegrationPacks`, `packageAndDeploy` + Platform API merge |
 | A-05 | Deny a promotion with reason | 7 | Platform API branch DELETE |
 | A-06 | Self-approval prevention | 7 | — (Decision step) |
 | A-07 | Approve emergency hotfix with acknowledgment | 7 | `packageAndDeploy` |
@@ -72,6 +72,7 @@
 | A-15 | Email: deployment complete notification | — | — (Flow email) |
 | A-16 | Access Developer swimlane (inherited) | 1–4, 9 | All contributor actions |
 | A-17 | Access Peer Review swimlane (inherited) | 5–6 | All peer reviewer actions |
+| A-18 | Assign Integration Pack (Pack Assignment) | 7 | `packageAndDeploy` (Mode 4) |
 
 ### Cross-Cutting Stories
 
@@ -171,9 +172,9 @@
 | Admin denial | A-05: admin denies | Branch DELETED |
 | Admin approval (standard) | A-04: admin approves | Branch MERGED to main, then DELETED |
 | Admin approval (hotfix) | A-07: admin approves hotfix | Branch MERGED to main, then DELETED |
-| Test deployment | C-07: test deploy | Branch MERGED to main, PRESERVED |
-| Production from test | A-04: admin approves prod-from-test | Branch DELETED (merge skipped) |
-| Test cancellation | C-12: cancel stale test | Branch DELETED |
+| Test deployment | C-07: test deploy | Branch DELETED after packaging (Mode 1) |
+| Production from test | A-04: admin approves prod-from-test | New branch created from packageId, MERGED to main, then DELETED |
+| Test cancellation | C-12: cancel stale test | No branch to delete (already deleted in Mode 1) |
 | Initiator withdrawal | C-13: initiator withdraws | Branch DELETED |
 | Branch limit reached | Process C pre-check | Branch NEVER CREATED |
 
@@ -184,8 +185,8 @@
 - [ ] Every terminal workflow path deletes the branch (or skips creation)
 - [ ] `DELETE /Branch/{branchId}` is idempotent — 404 is treated as success
 - [ ] `PromotionLog.branchId` is cleared after branch deletion
-- [ ] Test deployment branches persist until production promotion or cancellation
-- [ ] Page 9 shows branch age with amber (15-30d) and red (>30d) warnings
+- [ ] Test deployment branches are deleted immediately after packaging (Mode 1); production promotion recreates a branch from the PackagedComponent
+- [ ] Page 9 shows deployment age with amber (15-30d) and red (>30d) warnings
 
 **Affected Stories:** C-04, C-07, C-12, C-13, PR-06, A-04, A-05, A-07
 
@@ -322,7 +323,7 @@
 | 4 — Deployment Submission | C-07, C-08, C-09, A-16 |
 | 5 — Peer Review Queue | PR-01, PR-02, PR-07, A-17 |
 | 6 — Peer Review Detail | PR-03, PR-04, PR-05, PR-06, PR-07, PR-08, PR-11, A-17 |
-| 7 — Admin Approval Queue | A-01, A-02, A-03, A-04, A-05, A-06, A-07 |
+| 7 — Admin Approval Queue | A-01, A-02, A-03, A-04, A-05, A-06, A-07, A-18 |
 | 8 — Mapping Viewer | A-08, A-09, A-10, A-11, A-12 |
 | 9 — Production Readiness | C-10, C-11, C-12, A-16 |
 | Error Page | C-14, X-04 |
@@ -336,7 +337,7 @@
 | List Dev Packages | A | C-02 |
 | Resolve Dependencies | B | C-03 |
 | Execute Promotion | C | C-04, X-03, X-06 |
-| Package and Deploy | D | C-07, A-04, A-07, X-03 |
+| Package and Deploy | D | C-07, A-04, A-07, A-18, X-03 |
 | Query Status | E | C-13, A-01 |
 | Query Peer Review Queue | E2 | PR-01, PR-07 |
 | Submit Peer Review | E3 | PR-05, PR-06, PR-07, PR-08 |
@@ -345,7 +346,8 @@
 | Withdraw Promotion | E5 | C-13, X-03 |
 | Manage Mappings | F | A-08, A-09, A-10, A-11, A-12 |
 | Generate Component Diff | G | C-05, PR-04, A-03 |
-| List Integration Packs | J | C-07, C-08, C-09 |
+| List Integration Packs | J | A-01, A-04, A-18 |
+| Check Release Status | P | C-10 |
 
 ### Stories by Message Action
 
@@ -355,7 +357,7 @@
 | `listDevPackages` | C-02 |
 | `resolveDependencies` | C-03 |
 | `executePromotion` | C-04 |
-| `packageAndDeploy` | C-07, A-04, A-07 |
+| `packageAndDeploy` | C-07, A-04, A-07, A-18 |
 | `queryStatus` | C-13, A-01 |
 | `queryPeerReviewQueue` | PR-01, PR-07 |
 | `submitPeerReview` | PR-05, PR-06, PR-07, PR-08 |
@@ -364,4 +366,5 @@
 | `withdrawPromotion` | C-13 |
 | `manageMappings` | A-08, A-09, A-10, A-11, A-12 |
 | `generateComponentDiff` | C-05, PR-04, A-03 |
-| `listIntegrationPacks` | C-07, C-08, C-09 |
+| `listIntegrationPacks` | A-01, A-04, A-18 |
+| `checkReleaseStatus` | C-10 |
