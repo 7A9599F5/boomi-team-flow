@@ -57,10 +57,15 @@ class BoomiClient:
         url: str,
         data: Optional[str] = None,
         content_type: str = "application/json",
+        accept_xml: bool = False,
         **kwargs: Any,
     ) -> requests.Response:
         """Execute an HTTP request with rate limiting and retry."""
-        headers = {"Content-Type": content_type} if data is not None else {}
+        headers: dict[str, str] = {}
+        if data is not None:
+            headers["Content-Type"] = content_type
+        if accept_xml:
+            headers["Accept"] = "application/xml"
 
         for attempt in range(_MAX_RETRIES + 1):
             self._rate_limit()
@@ -102,7 +107,7 @@ class BoomiClient:
 
     def get(self, url: str, accept_xml: bool = False, **kwargs: Any) -> dict | str:
         """HTTP GET, returns parsed JSON dict or XML string."""
-        resp = self._request("GET", url, **kwargs)
+        resp = self._request("GET", url, accept_xml=accept_xml, **kwargs)
         return self._parse_response(resp, accept_xml=accept_xml)
 
     def post(
@@ -114,7 +119,10 @@ class BoomiClient:
         **kwargs: Any,
     ) -> dict | str:
         """HTTP POST, returns parsed JSON dict or XML string."""
-        resp = self._request("POST", url, data=data, content_type=content_type, **kwargs)
+        resp = self._request(
+            "POST", url, data=data, content_type=content_type,
+            accept_xml=accept_xml, **kwargs,
+        )
         return self._parse_response(resp, accept_xml=accept_xml)
 
     def put(
@@ -126,10 +134,13 @@ class BoomiClient:
         **kwargs: Any,
     ) -> dict | str:
         """HTTP PUT, returns parsed JSON dict or XML string."""
-        resp = self._request("PUT", url, data=data, content_type=content_type, **kwargs)
+        resp = self._request(
+            "PUT", url, data=data, content_type=content_type,
+            accept_xml=accept_xml, **kwargs,
+        )
         return self._parse_response(resp, accept_xml=accept_xml)
 
-    def delete(self, url: str, **kwargs: Any) -> dict | str:
+    def delete(self, url: str, accept_xml: bool = False, **kwargs: Any) -> dict | str:
         """HTTP DELETE, returns parsed response."""
-        resp = self._request("DELETE", url, **kwargs)
-        return self._parse_response(resp)
+        resp = self._request("DELETE", url, accept_xml=accept_xml, **kwargs)
+        return self._parse_response(resp, accept_xml=accept_xml)
