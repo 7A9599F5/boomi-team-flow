@@ -66,7 +66,7 @@ Step 7:  HTTP Client Operations (28)
 Step 8:  DataHub Connection
 Step 9:  DataHub Operations (10)
 Step 10: FSS Operations (20)
-Step 11: Integration Processes (18)
+Step 11: Integration Processes (19)
 Step 12: Flow Service
 Step 13: Package + Deploy Flow Service
 Step 14: Phase 7 DataHub Models (2) -> Publish -> Deploy
@@ -423,7 +423,7 @@ Invoke-RestMethod -Uri "https://api.boomi.com/partner/api/rest/v1/$env:BOOMI_ACC
 | 5 | `PROMO - HTTP Op - GET ComponentMetadata` | GET | `/partner/api/rest/v1/{1}/ComponentMetadata/{2}` | `application/xml` |
 | 6 | `PROMO - HTTP Op - QUERY PackagedComponent` | POST | `/partner/api/rest/v1/{1}/PackagedComponent/query` | `application/xml` |
 | 7 | `PROMO - HTTP Op - POST PackagedComponent` | POST | `/partner/api/rest/v1/{1}/PackagedComponent` | `application/json` |
-| 8 | `PROMO - HTTP Op - POST DeployedPackage` | POST | `/partner/api/rest/v1/{1}/DeployedPackage` | `application/json` |
+| 8 | `PROMO - HTTP Op - GET ReleaseIntegrationPackStatus` | GET | `/partner/api/rest/v1/{1}/ReleaseIntegrationPackStatus/{2}` | `application/json` |
 | 9 | `PROMO - HTTP Op - POST IntegrationPack` | POST | `/partner/api/rest/v1/{1}/IntegrationPack` | `application/json` |
 | 10 | `PROMO - HTTP Op - POST Branch` | POST | `/partner/api/rest/v1/{1}/Branch` | `application/json` |
 | 11 | `PROMO - HTTP Op - QUERY Branch` | POST | `/partner/api/rest/v1/{1}/Branch/query` | `application/json` |
@@ -588,10 +588,11 @@ Invoke-RestMethod -Uri "https://api.boomi.com/partner/api/rest/v1/$env:BOOMI_ACC
 | 17 | `PROMO - FSS Op - UpdateExtensions` | Process M | `updateExtensions` |
 | 18 | `PROMO - FSS Op - CopyExtensionsTestToProd` | Process N | `copyExtensionsTestToProd` |
 | 19 | `PROMO - FSS Op - UpdateMapExtension` | Process O | `updateMapExtension` |
+| 20 | `PROMO - FSS Op - CheckReleaseStatus` | Process P | `checkReleaseStatus` |
 
 ---
 
-#### Step 11 -- Create 18 Integration Processes
+#### Step 11 -- Create 19 Integration Processes
 
 Reference: Build guide files [05](05-process-f-mapping-crud.md) through [13](13-process-g-component-diff.md)
 
@@ -623,6 +624,7 @@ Reference: Build guide files [05](05-process-f-mapping-crud.md) through [13](13-
 | 16 | Update Extensions | M | [20-extension-editor.md](20-extension-editor.md) |
 | 17 | Copy Extensions Test to Prod | N | [20-extension-editor.md](20-extension-editor.md) |
 | 18 | Update Map Extension | O | [20-extension-editor.md](20-extension-editor.md) |
+| 19 | Check Release Status | P | [11-process-d-package-and-deploy.md](11-process-d-package-and-deploy.md) |
 
 **Export a completed process:**
 
@@ -886,7 +888,7 @@ OPERATIONS=(
   "PROMO - HTTP Op - GET ComponentMetadata|GET|/partner/api/rest/v1/{1}/ComponentMetadata/{2}|application/xml"
   "PROMO - HTTP Op - QUERY PackagedComponent|POST|/partner/api/rest/v1/{1}/PackagedComponent/query|application/xml"
   "PROMO - HTTP Op - POST PackagedComponent|POST|/partner/api/rest/v1/{1}/PackagedComponent|application/json"
-  "PROMO - HTTP Op - POST DeployedPackage|POST|/partner/api/rest/v1/{1}/DeployedPackage|application/json"
+  "PROMO - HTTP Op - GET ReleaseIntegrationPackStatus|GET|/partner/api/rest/v1/{1}/ReleaseIntegrationPackStatus/{2}|application/json"
   "PROMO - HTTP Op - POST IntegrationPack|POST|/partner/api/rest/v1/{1}/IntegrationPack|application/json"
   "PROMO - HTTP Op - POST Branch|POST|/partner/api/rest/v1/{1}/Branch|application/json"
   "PROMO - HTTP Op - QUERY Branch|POST|/partner/api/rest/v1/{1}/Branch/query|application/json"

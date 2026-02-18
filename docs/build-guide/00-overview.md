@@ -41,7 +41,7 @@ The system comprises **129 components** across 7 phases:
 |-------|----------|-------|------------|
 | 1 | DataHub Models | 3 | ComponentMapping, DevAccountAccess, PromotionLog (37 fields incl. peer/admin review, branching, multi-environment, withdrawal) |
 | 2 | Connections | 2 | HTTP Client (Partner API), DataHub |
-| 2 | HTTP Client Operations | 20 | GET/POST/QUERY for Component, Reference, Metadata, Package, Deploy, IntegrationPack (create, query, get); Branch (create, query, get, delete), MergeRequest (create, execute, get); Add To IntegrationPack, ReleaseIntegrationPack |
+| 2 | HTTP Client Operations | 20 | GET/POST/QUERY for Component, Reference, Metadata, PackagedComponent; GET ReleaseIntegrationPackStatus; IntegrationPack (create, query, get); Branch (create, query, get, delete); MergeRequest (create, execute, get); Add To IntegrationPack, ReleaseIntegrationPack |
 | 2 | DataHub Operations | 6 | Query + Update for each of 3 models |
 | 3 | JSON Profiles | 30 | Request + Response for each of 15 message actions (incl. checkReleaseStatus) |
 | 3 | Integration Processes | 14 | A0, A, B, C, D, E, E2, E3, E4, E5, F, G, J, P |

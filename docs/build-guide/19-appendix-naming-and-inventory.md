@@ -66,7 +66,7 @@ Phase 2 -- DataHub Operations (6):
 [ ] 30. PROMO - DH Op - Query PromotionLog
 [ ] 31. PROMO - DH Op - Update PromotionLog
 
-Phase 3 -- JSON Profiles (28):
+Phase 3 -- JSON Profiles (30):
 [ ] 32. PROMO - Profile - GetDevAccountsRequest
 [ ] 33. PROMO - Profile - GetDevAccountsResponse
 [ ] 34. PROMO - Profile - ListDevPackagesRequest
@@ -95,92 +95,96 @@ Phase 3 -- JSON Profiles (28):
 [ ] 57. PROMO - Profile - CancelTestDeploymentResponse
 [ ] 58. PROMO - Profile - WithdrawPromotionRequest
 [ ] 59. PROMO - Profile - WithdrawPromotionResponse
+[ ] 60. PROMO - Profile - CheckReleaseStatusRequest
+[ ] 61. PROMO - Profile - CheckReleaseStatusResponse
 
-Phase 3 -- Integration Processes (13):
-[ ] 60. PROMO - Get Dev Accounts
-[ ] 61. PROMO - List Dev Packages
-[ ] 62. PROMO - Resolve Dependencies
-[ ] 63. PROMO - Execute Promotion
-[ ] 64. PROMO - Package and Deploy
-[ ] 65. PROMO - Query Status
-[ ] 66. PROMO - Mapping CRUD
-[ ] 67. PROMO - Query Peer Review Queue
-[ ] 68. PROMO - Submit Peer Review
-[ ] 69. PROMO - List Integration Packs
-[ ] 70. PROMO - Generate Component Diff
-[ ] 71. PROMO - Query Test Deployments
-[ ] 72. PROMO - Withdraw Promotion
+Phase 3 -- Integration Processes (14):
+[ ] 62. PROMO - Get Dev Accounts
+[ ] 63. PROMO - List Dev Packages
+[ ] 64. PROMO - Resolve Dependencies
+[ ] 65. PROMO - Execute Promotion
+[ ] 66. PROMO - Package and Deploy
+[ ] 67. PROMO - Query Status
+[ ] 68. PROMO - Mapping CRUD
+[ ] 69. PROMO - Query Peer Review Queue
+[ ] 70. PROMO - Submit Peer Review
+[ ] 71. PROMO - List Integration Packs
+[ ] 72. PROMO - Generate Component Diff
+[ ] 73. PROMO - Query Test Deployments
+[ ] 74. PROMO - Withdraw Promotion
+[ ] 75. PROMO - Check Release Status
 
-Phase 4 -- FSS Operations + Flow Service (15):
-[ ] 73. PROMO - FSS Op - GetDevAccounts
-[ ] 74. PROMO - FSS Op - ListDevPackages
-[ ] 75. PROMO - FSS Op - ResolveDependencies
-[ ] 76. PROMO - FSS Op - ExecutePromotion
-[ ] 77. PROMO - FSS Op - PackageAndDeploy
-[ ] 78. PROMO - FSS Op - QueryStatus
-[ ] 79. PROMO - FSS Op - ManageMappings
-[ ] 80. PROMO - FSS Op - QueryPeerReviewQueue
-[ ] 81. PROMO - FSS Op - SubmitPeerReview
-[ ] 82. PROMO - FSS Op - ListIntegrationPacks
-[ ] 83. PROMO - FSS Op - GenerateComponentDiff
-[ ] 84. PROMO - FSS Op - QueryTestDeployments
-[ ] 85. PROMO - FSS Op - CancelTestDeployment
-[ ] 86. PROMO - FSS Op - WithdrawPromotion
-[ ] 87. PROMO - Flow Service
+Phase 4 -- FSS Operations + Flow Service (16):
+[ ] 76. PROMO - FSS Op - GetDevAccounts
+[ ] 77. PROMO - FSS Op - ListDevPackages
+[ ] 78. PROMO - FSS Op - ResolveDependencies
+[ ] 79. PROMO - FSS Op - ExecutePromotion
+[ ] 80. PROMO - FSS Op - PackageAndDeploy
+[ ] 81. PROMO - FSS Op - QueryStatus
+[ ] 82. PROMO - FSS Op - ManageMappings
+[ ] 83. PROMO - FSS Op - QueryPeerReviewQueue
+[ ] 84. PROMO - FSS Op - SubmitPeerReview
+[ ] 85. PROMO - FSS Op - ListIntegrationPacks
+[ ] 86. PROMO - FSS Op - GenerateComponentDiff
+[ ] 87. PROMO - FSS Op - QueryTestDeployments
+[ ] 88. PROMO - FSS Op - CancelTestDeployment
+[ ] 89. PROMO - FSS Op - WithdrawPromotion
+[ ] 90. PROMO - FSS Op - CheckReleaseStatus
+[ ] 91. PROMO - Flow Service
 
 Phase 5 -- Flow Dashboard (3):
-[ ] 88. XmlDiffViewer (Custom Component)
-[ ] 89. Promotion Service Connector
-[ ] 90. Promotion Dashboard
+[ ] 92. XmlDiffViewer (Custom Component)
+[ ] 93. Promotion Service Connector
+[ ] 94. Promotion Dashboard
 
 Phase 7 -- DataHub Models (+2):
-[ ] 91. ExtensionAccessMapping
-[ ] 92. ClientAccountConfig
+[ ] 95. ExtensionAccessMapping
+[ ] 96. ClientAccountConfig
 
 Phase 7 -- HTTP Client Operations (+8):
-[ ] 93.  PROMO - HTTP Op - QUERY Account
-[ ] 94.  PROMO - HTTP Op - QUERY Environment
-[ ] 95.  PROMO - HTTP Op - GET EnvironmentExtensions
-[ ] 96.  PROMO - HTTP Op - UPDATE EnvironmentExtensions
-[ ] 97.  PROMO - HTTP Op - QUERY EnvironmentMapExtensionsSummary
-[ ] 98.  PROMO - HTTP Op - GET EnvironmentMapExtension
-[ ] 99.  PROMO - HTTP Op - UPDATE EnvironmentMapExtension
-[ ] 100. PROMO - HTTP Op - QUERY ComponentReference
+[ ] 97.  PROMO - HTTP Op - QUERY Account
+[ ] 98.  PROMO - HTTP Op - QUERY Environment
+[ ] 99.  PROMO - HTTP Op - GET EnvironmentExtensions
+[ ] 100. PROMO - HTTP Op - UPDATE EnvironmentExtensions
+[ ] 101. PROMO - HTTP Op - QUERY EnvironmentMapExtensionsSummary
+[ ] 102. PROMO - HTTP Op - GET EnvironmentMapExtension
+[ ] 103. PROMO - HTTP Op - UPDATE EnvironmentMapExtension
+[ ] 104. PROMO - HTTP Op - QUERY ComponentReference
 
 Phase 7 -- DataHub Operations (+4):
-[ ] 101. PROMO - DH Op - Query ExtensionAccessMapping
-[ ] 102. PROMO - DH Op - Upsert ExtensionAccessMapping
-[ ] 103. PROMO - DH Op - Query ClientAccountConfig
-[ ] 104. PROMO - DH Op - Upsert ClientAccountConfig
+[ ] 105. PROMO - DH Op - Query ExtensionAccessMapping
+[ ] 106. PROMO - DH Op - Upsert ExtensionAccessMapping
+[ ] 107. PROMO - DH Op - Query ClientAccountConfig
+[ ] 108. PROMO - DH Op - Upsert ClientAccountConfig
 
 Phase 7 -- JSON Profiles (+10):
-[ ] 105. PROMO - Profile - ListClientAccountsRequest
-[ ] 106. PROMO - Profile - ListClientAccountsResponse
-[ ] 107. PROMO - Profile - GetExtensionsRequest
-[ ] 108. PROMO - Profile - GetExtensionsResponse
-[ ] 109. PROMO - Profile - UpdateExtensionsRequest
-[ ] 110. PROMO - Profile - UpdateExtensionsResponse
-[ ] 111. PROMO - Profile - CopyExtensionsTestToProdRequest
-[ ] 112. PROMO - Profile - CopyExtensionsTestToProdResponse
-[ ] 113. PROMO - Profile - UpdateMapExtensionRequest
-[ ] 114. PROMO - Profile - UpdateMapExtensionResponse
+[ ] 109. PROMO - Profile - ListClientAccountsRequest
+[ ] 110. PROMO - Profile - ListClientAccountsResponse
+[ ] 111. PROMO - Profile - GetExtensionsRequest
+[ ] 112. PROMO - Profile - GetExtensionsResponse
+[ ] 113. PROMO - Profile - UpdateExtensionsRequest
+[ ] 114. PROMO - Profile - UpdateExtensionsResponse
+[ ] 115. PROMO - Profile - CopyExtensionsTestToProdRequest
+[ ] 116. PROMO - Profile - CopyExtensionsTestToProdResponse
+[ ] 117. PROMO - Profile - UpdateMapExtensionRequest
+[ ] 118. PROMO - Profile - UpdateMapExtensionResponse
 
 Phase 7 -- Integration Processes (+5):
-[ ] 115. PROMO - List Client Accounts
-[ ] 116. PROMO - Get Extensions
-[ ] 117. PROMO - Update Extensions
-[ ] 118. PROMO - Copy Extensions Test to Prod
-[ ] 119. PROMO - Update Map Extension
+[ ] 119. PROMO - List Client Accounts
+[ ] 120. PROMO - Get Extensions
+[ ] 121. PROMO - Update Extensions
+[ ] 122. PROMO - Copy Extensions Test to Prod
+[ ] 123. PROMO - Update Map Extension
 
 Phase 7 -- FSS Operations (+5):
-[ ] 120. PROMO - FSS Op - ListClientAccounts
-[ ] 121. PROMO - FSS Op - GetExtensions
-[ ] 122. PROMO - FSS Op - UpdateExtensions
-[ ] 123. PROMO - FSS Op - CopyExtensionsTestToProd
-[ ] 124. PROMO - FSS Op - UpdateMapExtension
+[ ] 124. PROMO - FSS Op - ListClientAccounts
+[ ] 125. PROMO - FSS Op - GetExtensions
+[ ] 126. PROMO - FSS Op - UpdateExtensions
+[ ] 127. PROMO - FSS Op - CopyExtensionsTestToProd
+[ ] 128. PROMO - FSS Op - UpdateMapExtension
 
 Phase 7 -- Custom Component (+1):
-[ ] 125. ExtensionEditor
+[ ] 129. ExtensionEditor
 ```
 
 ---
