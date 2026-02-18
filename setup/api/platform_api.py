@@ -31,17 +31,17 @@ class PlatformApi:
         url = f"{self._base}/Component/{component_id}"
         if account_id and account_id != self._config.boomi_account_id:
             url += f"?overrideAccount={account_id}"
-        return self._client.get(url)
+        return self._client.get(url, accept_xml=True)
 
     def create_component(self, xml_body: str) -> dict | str:
         """POST /Component with XML body."""
         url = f"{self._base}/Component"
-        return self._client.post(url, data=xml_body, content_type="application/xml")
+        return self._client.post(url, data=xml_body, content_type="application/xml", accept_xml=True)
 
     def query_components(self, query_filter: str) -> dict | str:
         """POST /Component/query with XML filter body."""
         url = f"{self._base}/Component/query"
-        return self._client.post(url, data=query_filter, content_type="application/xml")
+        return self._client.post(url, data=query_filter, content_type="application/xml", accept_xml=True)
 
     # -- Folder operations --
 
@@ -70,7 +70,7 @@ class PlatformApi:
         """Poll GET /Branch/{id} until ready=true."""
         for attempt in range(max_retries):
             result = self.get_branch(branch_id)
-            if isinstance(result, dict) and result.get("ready") is True:
+            if isinstance(result, dict) and result.get("ready") == "true":
                 logger.info("Branch %s is ready", branch_id)
                 return result
             logger.debug(
@@ -95,17 +95,22 @@ class PlatformApi:
     # -- Merge operations --
 
     def create_merge_request(
-        self, branch_id: str, strategy: str = "OVERRIDE"
+        self, branch_id: str, main_branch_id: str, strategy: str = "OVERRIDE"
     ) -> dict | str:
         """POST /MergeRequest."""
         url = f"{self._base}/MergeRequest"
-        body = json.dumps({"branchId": branch_id, "strategy": strategy})
+        body = json.dumps({
+            "sourceBranchId": branch_id,
+            "destinationBranchId": main_branch_id,
+            "priorityBranch": branch_id,
+            "strategy": strategy,
+        })
         return self._client.post(url, data=body)
 
     def execute_merge(self, merge_request_id: str) -> dict | str:
-        """POST /MergeRequest/execute/{id}."""
-        url = f"{self._base}/MergeRequest/execute/{merge_request_id}"
-        return self._client.post(url, data="{}")
+        """POST /MergeRequest/{id}/execute."""
+        url = f"{self._base}/MergeRequest/{merge_request_id}/execute"
+        return self._client.post(url, data=json.dumps({"mergeRequestAction": "MERGE"}))
 
     def get_merge_request(self, merge_request_id: str) -> dict | str:
         """GET /MergeRequest/{id}."""
@@ -120,7 +125,7 @@ class PlatformApi:
         for attempt in range(max_retries):
             result = self.get_merge_request(merge_request_id)
             if isinstance(result, dict):
-                status = result.get("status", "")
+                status = result.get("stage", "")
                 if status in terminal_statuses:
                     logger.info("Merge %s reached status: %s", merge_request_id, status)
                     return result
@@ -166,25 +171,40 @@ class PlatformApi:
     def create_integration_pack(self, name: str, description: str) -> dict | str:
         """POST /IntegrationPack."""
         url = f"{self._base}/IntegrationPack"
-        body = json.dumps({"name": name, "description": description})
-        return self._client.post(url, data=body)
+        body = json.dumps({
+            "name": name,
+            "description": description,
+            "installationType": "SINGLE",
+        })
+        result = self._client.post(url, data=body)
+        if isinstance(result, dict):
+            result_id = result.get("id", "")
+            if result_id:
+                result["id"] = result_id
+        return result
 
     def add_to_integration_pack(self, pack_id: str, package_id: str) -> dict | str:
         """POST /IntegrationPack/{packId}/PackagedComponent/{packageId}."""
         url = f"{self._base}/IntegrationPack/{pack_id}/PackagedComponent/{package_id}"
-        return self._client.post(url, data="{}")
+        return self._client.post(url, data=None)
 
     def release_integration_pack(
-        self, pack_id: str, version: str, notes: str
+        self, pack_id: str, components: list[dict], schedule: str = "IMMEDIATELY"
     ) -> dict | str:
         """POST /ReleaseIntegrationPack."""
         url = f"{self._base}/ReleaseIntegrationPack"
-        body = json.dumps({
-            "integrationPackId": pack_id,
-            "releaseVersion": version,
-            "notes": notes,
-        })
-        return self._client.post(url, data=body)
+        comp_elements = "\n".join(
+            f'      <bns:ReleasePackagedComponent componentId="{c["componentId"]}" version="{c["version"]}"/>'
+            for c in components
+        )
+        body = (
+            f'<bns:ReleaseIntegrationPack xmlns:bns="http://api.platform.boomi.com/"'
+            f' id="{pack_id}" releaseSchedule="{schedule}">\n'
+            f'  <bns:ReleasePackagedComponents>\n{comp_elements}\n'
+            f'  </bns:ReleasePackagedComponents>\n'
+            f'</bns:ReleaseIntegrationPack>'
+        )
+        return self._client.post(url, data=body, content_type="application/xml", accept_xml=True)
 
     # -- Utility --
 
@@ -193,14 +213,34 @@ class PlatformApi:
         query_xml = (
             '<?xml version="1.0" encoding="UTF-8"?>'
             "<QueryFilter>"
-            "<expression>"
-            '<argument>name</argument>'
-            "<operator>STARTS_WITH</operator>"
-            f"<value>{prefix}</value>"
+            '<expression operator="STARTS_WITH" property="name"'
+            ' xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"'
+            ' xsi:type="SimpleExpression">'
+            f"<argument>{prefix}</argument>"
             "</expression>"
             "</QueryFilter>"
         )
         result = self.query_components(query_xml)
-        if isinstance(result, dict):
-            return result.get("numberOfResults", 0)
+        if isinstance(result, str):
+            import re
+            match = re.search(r'numberOfResults="(\d+)"', result)
+            if match:
+                return int(match.group(1))
         return 0
+
+    @staticmethod
+    def parse_component_id(xml_response: str) -> str:
+        """Extract componentId attribute from Component API XML response."""
+        import re
+        if isinstance(xml_response, str):
+            match = re.search(r'componentId="([^"]+)"', xml_response)
+            return match.group(1) if match else ""
+        if isinstance(xml_response, dict):
+            return xml_response.get("componentId", xml_response.get("id", ""))
+        return ""
+
+    def deploy_flow_service(self, package_id: str, env_id: str) -> dict | str:
+        """POST /DeployedPackage — deploy to publisher's own environment."""
+        url = f"{self._base}/DeployedPackage"
+        body = json.dumps({"packageId": package_id, "environmentId": env_id})
+        return self._client.post(url, data=body)

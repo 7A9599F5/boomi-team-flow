@@ -24,7 +24,7 @@ HTTP_OPERATIONS: list[tuple[str, str, str]] = [
     ("PROMO - HTTP Op - POST Branch", "POST", "/partner/api/rest/v1/{1}/Branch"),
     ("PROMO - HTTP Op - QUERY Branch", "POST", "/partner/api/rest/v1/{1}/Branch/query"),
     ("PROMO - HTTP Op - POST MergeRequest", "POST", "/partner/api/rest/v1/{1}/MergeRequest"),
-    ("PROMO - HTTP Op - POST MergeRequest Execute", "POST", "/partner/api/rest/v1/{1}/MergeRequest/execute/{2}"),
+    ("PROMO - HTTP Op - POST MergeRequest Execute", "POST", "/partner/api/rest/v1/{1}/MergeRequest/{2}/execute"),
     ("PROMO - HTTP Op - GET Branch", "GET", "/partner/api/rest/v1/{1}/Branch/{2}"),
     ("PROMO - HTTP Op - DELETE Branch", "DELETE", "/partner/api/rest/v1/{1}/Branch/{2}"),
     ("PROMO - HTTP Op - QUERY IntegrationPack", "POST", "/partner/api/rest/v1/{1}/IntegrationPack/query"),

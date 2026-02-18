@@ -185,11 +185,7 @@ class CreateProfiles(BaseStep):
             try:
                 profile_xml = generate_profile_xml(schema, display_name, "PROMO/Profiles")
                 result = self.platform_api.create_component(profile_xml)
-                comp_id = (
-                    result.get("componentId", result.get("@id", ""))
-                    if isinstance(result, dict)
-                    else str(result)
-                )
+                comp_id = self.platform_api.parse_component_id(result)
                 if comp_id:
                     state.store_component_id("profiles", stem, comp_id)
                     state.mark_step_item_complete(self.step_id, stem)
@@ -255,11 +251,7 @@ class CreateScripts(BaseStep):
                     groovy_content, component_name, "Promoted/Scripts"
                 )
                 result = self.platform_api.create_component(script_xml)
-                comp_id = (
-                    result.get("componentId", result.get("@id", ""))
-                    if isinstance(result, dict)
-                    else str(result)
-                )
+                comp_id = self.platform_api.parse_component_id(result)
                 if comp_id:
                     state.store_component_id("scripts", stem, comp_id)
                     state.mark_step_item_complete(self.step_id, stem)
@@ -330,6 +322,68 @@ class DiscoverFssTemplate(BaseStep):
         return StepStatus.COMPLETED
 
 
+# ---------------------------------------------------------------------------
+# FSS Operation XML builder — uses the captured template XML as a base
+# ---------------------------------------------------------------------------
+
+def _build_fss_op_xml(
+    template_xml: str,
+    display_name: str,
+    req_profile_id: str | None,
+    resp_profile_id: str | None,
+) -> str:
+    """Build FSS operation XML for a new connector-action component.
+
+    Uses the captured template XML from DiscoverFssTemplate (Step 3.2) as a
+    structural base so that the bns: namespace, folderFullPath, and all
+    required attributes are present. Replaces only the component name,
+    componentId (removed so API assigns a new one), and profile IDs.
+
+    Falls back to a minimal correct inline XML if regex substitution cannot
+    locate the expected attributes in the template.
+    """
+    import re
+
+    # Strip the existing componentId so the API creates a brand-new component.
+    xml = re.sub(r'\s*componentId="[^"]*"', "", template_xml)
+
+    # Replace the component name attribute.
+    xml = re.sub(r'(?<=\bname=")[^"]*', display_name, xml, count=1)
+
+    # Replace requestProfileId content.
+    req_val = req_profile_id or ""
+    xml = re.sub(
+        r"(<(?:bns:)?requestProfileId>)[^<]*(</(?:bns:)?requestProfileId>)",
+        rf"\g<1>{req_val}\g<2>",
+        xml,
+    )
+
+    # Replace responseProfileId content.
+    resp_val = resp_profile_id or ""
+    xml = re.sub(
+        r"(<(?:bns:)?responseProfileId>)[^<]*(</(?:bns:)?responseProfileId>)",
+        rf"\g<1>{resp_val}\g<2>",
+        xml,
+    )
+
+    # Sanity check: if the result still contains the template's original name
+    # or the bns: namespace is absent, fall back to a known-good inline XML.
+    if 'xmlns:bns="http://api.platform.boomi.com/"' not in xml:
+        # Fallback: build minimal correct namespaced XML directly.
+        xml = (
+            f'<bns:Component xmlns:bns="http://api.platform.boomi.com/"'
+            f' name="{display_name}"'
+            f' type="connector-action" subType="flowserviceserver">'
+            f"<bns:object>"
+            f"<requestProfileId>{req_val}</requestProfileId>"
+            f"<responseProfileId>{resp_val}</responseProfileId>"
+            f"</bns:object>"
+            f"</bns:Component>"
+        )
+
+    return xml
+
+
 # ---- Step 3.3: CreateFssOps -----------------------------------------------
 
 class CreateFssOps(BaseStep):
@@ -388,20 +442,15 @@ class CreateFssOps(BaseStep):
                 continue
 
             try:
-                result = self.platform_api.create_component(
-                    f'<Component name="{display_name}" type="connector-action"'
-                    f' subType="flowserviceserver">'
-                    f"<object>"
-                    f'<requestProfileId>{req_profile_id or ""}</requestProfileId>'
-                    f'<responseProfileId>{resp_profile_id or ""}</responseProfileId>'
-                    f"</object>"
-                    f"</Component>"
+                # Build FSS operation XML using the captured template as the
+                # structural basis, replacing name and profile IDs. This
+                # ensures the bns: namespace, folderFullPath, and all required
+                # attributes are present exactly as the API expects them.
+                fss_xml = _build_fss_op_xml(
+                    template_xml, display_name, req_profile_id, resp_profile_id
                 )
-                comp_id = (
-                    result.get("componentId", result.get("@id", ""))
-                    if isinstance(result, dict)
-                    else str(result)
-                )
+                result = self.platform_api.create_component(fss_xml)
+                comp_id = self.platform_api.parse_component_id(result)
                 if comp_id:
                     state.store_component_id("fss_operations", action_key, comp_id)
                     state.mark_step_item_complete(self.step_id, action_key)
