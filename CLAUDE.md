@@ -72,7 +72,7 @@ docs/
 ## Key Files to Start With
 
 1. `docs/architecture.md` — system design and key decisions
-2. `docs/build-guide/index.md` — the implementation playbook (6 phases, 26 focused files)
+2. `docs/build-guide/index.md` — the implementation playbook (7 phases, 26 focused files)
 3. `integration/flow-service/flow-service-spec.md` — complete API contract for all 19 message actions
 4. `flow/flow-structure.md` — dashboard navigation, Flow values, swimlanes
 
