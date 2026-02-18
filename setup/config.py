@@ -22,6 +22,19 @@ class BoomiConfig(BaseModel):
     )
     boomi_user: str = Field(default="", description="Boomi API username")
     boomi_token: str = Field(default="", description="Boomi API token")
+    # DataHub Repository API fields — populated during setup
+    hub_cloud_url: str = Field(
+        default="",
+        description="Hub cloud base URL for Repository API (e.g. https://c01-usa-east.hub.boomi.com)",
+    )
+    hub_auth_token: str = Field(
+        default="",
+        description="DataHub auth token for Repository API Basic Auth ({accountId}:{token})",
+    )
+    universe_ids: dict = Field(
+        default_factory=dict,
+        description="Mapping of model_name -> universe_id (model UUID) for record operations",
+    )
 
     @property
     def is_complete(self) -> bool:
@@ -49,6 +62,8 @@ class BoomiConfig(BaseModel):
             "boomi_repo_id": self.boomi_repo_id,
             "cloud_base_url": self.cloud_base_url,
             "fss_environment_id": self.fss_environment_id,
+            "hub_cloud_url": self.hub_cloud_url,
+            "universe_ids": self.universe_ids,
         }
 
 
@@ -86,10 +101,20 @@ def load_config(
 
     # Layer 1: Load non-credential fields from state file
     if existing_state_config:
-        for key in ("boomi_account_id", "boomi_repo_id", "cloud_base_url", "fss_environment_id"):
+        for key in (
+            "boomi_account_id", "boomi_repo_id", "cloud_base_url", "fss_environment_id",
+            "hub_cloud_url", "datahub_token",
+        ):
             val = existing_state_config.get(key, "")
             if val:
                 values[key] = val
+        # hub_auth_token is stored in state as datahub_token; map it to hub_auth_token
+        if "datahub_token" in values:
+            values["hub_auth_token"] = values.pop("datahub_token")
+        # universe_ids is a dict, handle separately
+        uid_val = existing_state_config.get("universe_ids")
+        if uid_val and isinstance(uid_val, dict):
+            values["universe_ids"] = uid_val
 
     # Layer 2: Override with env vars (including credentials)
     for env_var, field_name in _ENV_MAP.items():
