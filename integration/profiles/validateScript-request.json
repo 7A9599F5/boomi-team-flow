@@ -1,0 +1,10 @@
+{
+  "clientAccountId": "string",
+  "environmentId": "string",
+  "mapExtensionId": "string",
+  "functionName": "string",
+  "scriptContent": "string",
+  "language": "string",
+  "userSsoGroups": ["string"],
+  "userEmail": "string"
+}
