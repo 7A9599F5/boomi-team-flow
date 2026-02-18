@@ -170,28 +170,38 @@ else → effectiveTier = "READONLY" (no dashboard access — should not reach th
 **Response Profile**: `PROMO - Profile - PackageAndDeployResponse`
 **Service Type**: Message Action
 
-**Description**: Creates a shareable PackagedComponent, optionally creates/updates an Integration Pack, releases it, and deploys to specified target environments. Before executing, Process D validates the PromotionLog status is `COMPLETED` or `TEST_DEPLOYED` — returns `PROMOTION_NOT_COMPLETED` if the promotion hasn't reached a valid state for packaging. This gate prevents merging incomplete or unapproved branches to main. Supports 3 deployment modes: TEST (merge branch, package, deploy to test pack, preserve branch), PRODUCTION from test (skip merge — content already on main, package, deploy to prod pack, delete branch), and PRODUCTION hotfix (merge branch, package, deploy to prod pack, delete branch).
+**Description**: Creates a shareable PackagedComponent, adds it to an admin-owned Integration Pack, releases it. Before executing, Process D validates the PromotionLog status is `COMPLETED`, `TEST_DEPLOYED`, `ADMIN_APPROVED`, or `PENDING_PACK_ASSIGNMENT` — returns `PROMOTION_NOT_COMPLETED` otherwise. This gate prevents merging incomplete or unapproved branches to main. Supports 4 deployment modes:
+- **Mode 1 — TEST**: Package from branch (`branchName` field on POST /PackagedComponent — main is NOT touched), delete branch immediately. Auto-detect test IP from PromotionLog history; if no prior IP found, set status to `PENDING_PACK_ASSIGNMENT` and return `needsPackAssignment=true`.
+- **Mode 2 — PRODUCTION from test**: Create a new branch from the test PackagedComponent (`packageId` on POST /Branch), merge that branch to main (first time main is touched), package from main, release to admin-selected prod IP, delete branch.
+- **Mode 3 — HOTFIX**: Merge promotion branch to main, package from main, release to admin-selected prod IP, release to admin-selected test IP (non-blocking failure), delete branch.
+- **Mode 4 — PACK_ASSIGNMENT**: Resume from `PENDING_PACK_ASSIGNMENT` — retrieve existing `prodPackageId` from PromotionLog, add to admin-selected IP, release. No branch operations (branch was deleted in Mode 1).
 
 **Request Fields**:
-- `prodComponentId` (string, required - root process component)
-- `packageVersion` (string, required)
-- `deploymentNotes` (string)
-- `createNewPack` (boolean)
-- `newPackName` (string, conditional - required if createNewPack=true)
-- `newPackDescription` (string, conditional)
-- `existingPackId` (string, conditional - required if createNewPack=false)
-- `devAccountId` (string, required) — Source dev account ID
-- `devPackageId` (string, required) — Source dev package ID
-- `devPackageCreator` (string) — Boomi user who created the dev package
-- `devPackageVersion` (string) — Version of the dev package
+
+*Process-derived (set by upstream steps, not user-supplied):*
+- `prodComponentId` (string, required) — root process component in primary account
+- `branchId` (string, required) — promotion branch ID from Process C
 - `deploymentTarget` (string, required: "TEST" | "PRODUCTION") — determines the deployment mode
 - `isHotfix` (boolean, default false) — flags emergency production bypass
 - `hotfixJustification` (string, conditional — required when isHotfix=true) — justification text (up to 1000 characters)
 - `testPromotionId` (string, optional) — populated when deploying from a completed test deployment; links back to the TEST PromotionLog record
-- `testIntegrationPackId` (string, optional) — for test deployments, the target test Integration Pack ID
-- `testIntegrationPackName` (string, optional) — for test deployments, the target test Integration Pack name
-- `hotfixTestPackId` (string, optional) — Test Integration Pack ID for hotfix test release
-- `hotfixCreateNewTestPack` (boolean, optional) — create new test pack for hotfix
+
+*Developer-supplied (from Page 4):*
+- `promotionId` (string, required) — promotion run ID for PromotionLog updates
+- `packageVersion` (string, required) — version label (e.g., "1.2.0")
+- `deploymentNotes` (string) — notes for the PackagedComponent
+- `devAccountId` (string) — source dev account ID (for audit)
+- `devPackageId` (string) — source dev package ID (for audit)
+- `devPackageCreator` (string) — Boomi user who created the dev package
+- `devPackageVersion` (string) — version of the dev package
+
+*Admin-supplied (from Page 7 — IP assignment fields):*
+- `integrationPackId` (string, conditional) — existing Integration Pack ID (used when createNewPack=false)
+- `createNewPack` (boolean) — true to create a new Integration Pack
+- `newPackName` (string, conditional — required if createNewPack=true) — name for new pack
+- `newPackDescription` (string, conditional) — description for new pack
+- `hotfixTestPackId` (string, optional) — Test Integration Pack ID for hotfix test release (Mode 3)
+- `hotfixCreateNewTestPack` (boolean, optional) — create new test pack for hotfix (Mode 3)
 - `hotfixNewTestPackName` (string, conditional) — name for new test pack
 - `hotfixNewTestPackDescription` (string, conditional) — description for new test pack
 
@@ -200,6 +210,7 @@ else → effectiveTier = "READONLY" (no dashboard access — should not reach th
 - `packageId` (string)
 - `prodPackageId` (string) — Package ID of the created prod PackagedComponent
 - `integrationPackId` (string)
+- `integrationPackName` (string) — name of the Integration Pack
 - `releaseId` (string) — ReleaseIntegrationPack response ID for status polling
 - `releaseVersion` (string) — released pack version
 - `testIntegrationPackId` (string, optional) — Test Integration Pack ID (hotfix mode)
@@ -207,46 +218,54 @@ else → effectiveTier = "READONLY" (no dashboard access — should not reach th
 - `testReleaseId` (string, optional) — Test release ID (hotfix mode)
 - `testReleaseVersion` (string, optional) — Test release version (hotfix mode)
 - `deploymentTarget` (string) — echoed from request
-- `branchPreserved` (boolean) — true when branch is kept alive (test deployments only)
+- `branchPreserved` (boolean) — always `false`; all modes delete the promotion branch
 - `isHotfix` (boolean) — echoed from request
+- `needsPackAssignment` (boolean) — `true` when Mode 1 auto-detect found no Integration Pack; status is set to `PENDING_PACK_ASSIGNMENT` and admin must assign an IP via Mode 4
+- `autoDetectedPackId` (string, optional) — the auto-detected Integration Pack ID (for audit/logging); empty string if not found
 - `errorCode` (string, optional)
 - `errorMessage` (string, optional)
 
 #### Admin Self-Approval Prevention (MUST implement)
 
-Process D MUST validate that the admin submitting the deployment is not the same user who initiated the promotion. Reject with error code `SELF_APPROVAL_NOT_ALLOWED` if `adminEmail.toLowerCase() == initiatedBy.toLowerCase()`. This enforces the independence of the 2-layer approval workflow and prevents any single user from promoting and deploying their own code.
+Process D MUST validate that the admin submitting the deployment is not the same user who initiated the promotion (Modes 2 and 3 only). Reject with error code `SELF_APPROVAL_NOT_ALLOWED` if `adminEmail.toLowerCase() == initiatedBy.toLowerCase()`. This enforces the independence of the 2-layer approval workflow and prevents any single user from promoting and deploying their own code. Mode 1 (TEST) is developer-driven; Mode 4 (PACK_ASSIGNMENT) is IP assignment, not promotion approval — neither requires this check.
 
 #### Deployment Modes
 
 **Mode 1: TEST deployment** (`deploymentTarget="TEST"`):
-1. Merge branch to main (MergeRequest OVERRIDE — same as current)
-2. Create PackagedComponent from main
-3. Create/use Test Integration Pack (separate from production)
-4. Release Test Integration Pack
-5. **DO NOT delete branch** — preserve for production review diffing
-6. Update PromotionLog: `status=TEST_DEPLOYED`, `testDeployedAt=now`, `testIntegrationPackId/Name`
-7. Response: `branchPreserved=true`
+1. Package from branch using `branchName` field on POST /PackagedComponent — main is NOT touched
+2. Delete branch immediately after packaging (frees slot early regardless of IP outcome)
+3. Set `prodPackageId` in PromotionLog
+4. Auto-detect test Integration Pack from PromotionLog history (most recent TEST_DEPLOYED for same processName)
+5. **If IP found**: Add to IP (query IP state first for multi-package safety), release IP. Status → `TEST_DEPLOYED`. Response: `needsPackAssignment=false`
+6. **If IP not found**: Status → `PENDING_PACK_ASSIGNMENT`. Response: `needsPackAssignment=true`
+7. No ExtensionAccessMapping cache refresh (test environment — not needed)
 
 **Mode 2: PRODUCTION deployment from test** (`deploymentTarget="PRODUCTION"`, `testPromotionId` populated):
-1. **Skip merge** — content already on main from test deployment
-2. Create PackagedComponent from main (new version)
-3. Create/use Production Integration Pack
-4. Release Production Integration Pack
-5. **Delete branch** (the one preserved from test phase)
-6. Update PromotionLog: `status=DEPLOYED`, `integrationPackId/Name`, `prodPackageId`
-7. Response: `branchPreserved=false`
+1. Self-approval check (admin != initiator)
+2. Create new branch from test PackagedComponent: POST /Branch with `packageId` = PromotionLog's `prodPackageId`
+3. Merge new branch to main (MergeRequest OVERRIDE) — **first time main is touched**
+4. Package from main (standard — no branchName)
+5. Delete branch
+6. Add to admin-selected prod IP (query IP state first for multi-package safety), release IP
+7. ExtensionAccessMapping cache refresh
+8. Status → `DEPLOYED`. Response: `branchPreserved=false`
 
 **Mode 3: PRODUCTION hotfix** (`deploymentTarget="PRODUCTION"`, `isHotfix=true`):
-1. Merge branch to main (same as current)
-2. Create PackagedComponent
-3. Create/use Production Integration Pack
-4. Release Production Integration Pack
-5. Create/use Test Integration Pack (from `hotfixTestPackId` or new)
-6. Add PackagedComponent to Test Integration Pack
-7. Release Test Integration Pack (non-blocking — failure logged but does not fail the operation)
-8. Delete branch
-9. Update PromotionLog: `status=DEPLOYED`, `isHotfix="true"`, `hotfixJustification`, `testIntegrationPackId/Name`, `testReleaseId`
-10. Response: `branchPreserved=false`, `isHotfix=true`, `testIntegrationPackId`, `testReleaseId`
+1. Self-approval check (admin != initiator)
+2. Merge promotion branch to main (MergeRequest OVERRIDE)
+3. Package from main
+4. Add to admin-selected prod IP (query IP state first), release prod IP
+5. Add to admin-selected test IP (query IP state first), release test IP (non-blocking — failure logged, does not fail the operation)
+6. Delete branch
+7. ExtensionAccessMapping cache refresh
+8. Status → `DEPLOYED` with `isHotfix=true`. Response: `branchPreserved=false`, `testIntegrationPackId`, `testReleaseId`
+
+**Mode 4: PACK_ASSIGNMENT** (status=`PENDING_PACK_ASSIGNMENT`):
+1. No self-approval check (admin is assigning IP, not approving promotion)
+2. Retrieve `prodPackageId` from PromotionLog (PackagedComponent already created in Mode 1)
+3. Add to admin-selected IP (query IP state first for multi-package safety), release IP
+4. Status → `TEST_DEPLOYED`. Response: `needsPackAssignment=false`
+5. No branch operations (branch already deleted in Mode 1)
 
 ---
 
@@ -439,7 +458,7 @@ Process E3 MUST compare `reviewerEmail.toLowerCase()` with `initiatedBy.toLowerC
 **Response Profile**: `PROMO - Profile - ListIntegrationPacksResponse`
 **Service Type**: Message Action
 
-**Description**: Queries the primary account for existing MULTI-type Integration Packs and returns them for the pack selector on Page 4. Supports filtering by pack purpose (TEST or PRODUCTION) based on naming convention (packs with "- TEST" suffix are test packs). Optionally suggests the most recently used pack for a given process name and target environment by querying PromotionLog for the latest DEPLOYED or TEST_DEPLOYED record matching `processName`.
+**Description**: Queries the primary account for existing MULTI-type Integration Packs and returns them for the admin IP selector on Page 7 (Admin Approval Queue). Supports filtering by pack purpose (TEST or PRODUCTION) based on naming convention (packs with "- TEST" suffix are test packs). Optionally suggests the most recently used pack for a given process name and target environment by querying PromotionLog for the latest DEPLOYED or TEST_DEPLOYED record matching `processName`. Integration Pack selection is admin-driven — developers no longer interact with IP fields.
 
 **Request Fields**:
 - `suggestForProcess` (string, optional) — process name to look up suggestion for
@@ -992,7 +1011,7 @@ Decision: Check Success
 | `DEPENDENCY_CYCLE` | Circular dependency detected | Review component references |
 | `INVALID_REQUEST` | Request validation failed | Check required fields |
 | `PROMOTION_FAILED` | One or more components failed during promotion — the promotion branch has been deleted and no component mappings were written | Re-run the promotion after resolving the underlying issue |
-| `PROMOTION_NOT_COMPLETED` | Process D gate: PromotionLog status is not `COMPLETED` or `TEST_DEPLOYED` — the promotion must complete successfully and pass required reviews before packaging | Ensure the promotion has completed and passed all required reviews before attempting to package and deploy |
+| `PROMOTION_NOT_COMPLETED` | Process D gate: PromotionLog status is not one of `COMPLETED`, `TEST_DEPLOYED`, `ADMIN_APPROVED`, or `PENDING_PACK_ASSIGNMENT` — the promotion must reach a valid packaging state before proceeding | Ensure the promotion has completed and passed all required reviews before attempting to package and deploy |
 | `DEPLOYMENT_FAILED` | Environment deployment failed | Check target environment status |
 | `MISSING_CONNECTION_MAPPINGS` | One or more connection mappings not found in DataHub | Admin must seed missing mappings via Mapping Viewer |
 | `BRANCH_LIMIT_REACHED` | Too many active promotion branches (limit: 20 per account) | Wait for pending reviews to complete before starting new promotions |
@@ -1017,6 +1036,7 @@ Decision: Check Success
 | `MAP_EXTENSION_READONLY` | Map extension editing is not yet available (Phase 2 feature) | Use Test-to-Prod copy for map extensions |
 | `CLIENT_ACCOUNT_NOT_FOUND` | Client account ID not found in ClientAccountConfig | Verify the client account is registered in DataHub |
 | `RELEASE_NOT_FOUND` | The requested release type has no release ID recorded in the PromotionLog | Verify the promotion was deployed and the correct releaseType is specified |
+| `PACK_ASSIGNMENT_REQUIRED` | Mode 1 test deployment succeeded but no Integration Pack history was found for this process — admin must assign an IP via Mode 4 (PACK_ASSIGNMENT) | Admin selects an Integration Pack on Page 7 and submits via the pack assignment flow |
 
 **Error Handling Best Practices**:
 
@@ -1147,6 +1167,7 @@ The `devAccountId` parameter in several actions (listDevPackages, executePromoti
 | 1.3.0 | 2026-02-17 | Added withdrawPromotion action for initiator-driven withdrawal of pending promotions; added NOT_PROMOTION_INITIATOR error code |
 | 2.0.0 | 2026-02-17 | Extension Editor: 5 new message actions (listClientAccounts, getExtensions, updateExtensions, copyExtensionsTestToProd, updateMapExtension), 6 new error codes, total actions 14→19 |
 | 2.1.0 | 2026-02-18 | Added checkReleaseStatus action (Process P) for Integration Pack release propagation polling; added RELEASE_NOT_FOUND error code, total actions 19→20 |
+| 2.2.0 | 2026-02-18 | Redesigned packageAndDeploy: 4 modes (added Mode 4 PACK_ASSIGNMENT), main branch protection (Mode 1 packages from branch), admin IP ownership (IP fields moved to admin/Page 7), new response fields needsPackAssignment and autoDetectedPackId, branchPreserved always false; listIntegrationPacks now called from Page 7 |
 
 ---
 

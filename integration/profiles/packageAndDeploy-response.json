@@ -5,6 +5,7 @@
   "packageId": "string",
   "prodPackageId": "string",
   "integrationPackId": "string",
+  "integrationPackName": "string",
   "releaseId": "string",
   "releaseVersion": "string",
   "testIntegrationPackId": "string",
@@ -13,5 +14,7 @@
   "testReleaseVersion": "string",
   "deploymentTarget": "string",
   "branchPreserved": false,
-  "isHotfix": false
+  "isHotfix": false,
+  "needsPackAssignment": false,
+  "autoDetectedPackId": "string"
 }

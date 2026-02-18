@@ -2,7 +2,12 @@
 
 > **API Alternative:** This process can be created programmatically via `POST /Component` with `type="process"`. Due to the complexity of process canvas XML (shapes, routing, DPP mappings, script references), the recommended workflow is: (1) build the process manually following the steps below, (2) use `GET /Component/{processId}` to export the XML, (3) store the XML as a template for automated recreation. See [Appendix D: API Automation Guide](22-api-automation-guide.md) for the full workflow.
 
-This process creates a PackagedComponent from a promoted component, optionally creates or updates an Integration Pack, and releases it.
+This process creates a PackagedComponent from a promoted component, adds it to an admin-owned Integration Pack, and releases it. It supports 4 deployment modes: TEST (package from branch, auto-detect IP), PRODUCTION from test (create branch from test package, merge to main, package from main), HOTFIX (merge branch to main, release to prod then test), and PACK_ASSIGNMENT (admin resumes a PENDING_PACK_ASSIGNMENT by adding an existing PackagedComponent to an IP).
+
+**Key design principles:**
+- **Main branch protection**: Test deployments do NOT merge to main. The branch is packaged directly using the `branchName` field on POST /PackagedComponent.
+- **Admin Integration Pack ownership**: Developers supply no IP fields. IP selection is admin-driven from Page 7.
+- **Branch cleanup**: All modes delete the promotion branch (Mode 1 immediately after packaging; Modes 2/3 after release; Mode 4 has no branch — it was deleted in Mode 1).
 
 #### Profiles
 
@@ -12,29 +17,38 @@ This process creates a PackagedComponent from a promoted component, optionally c
 | `PROMO - Profile - PackageAndDeployResponse` | `/integration/profiles/packageAndDeploy-response.json` |
 
 The request JSON contains:
+
+**Process-derived (set by upstream steps, not user-supplied):**
 - `prodComponentId` (string): the promoted root process component in the primary account
-- `prodAccountId` (string): the primary account ID
-- `branchId` (string): promotion branch ID from Process C (to merge before packaging)
-- `promotionId` (string): promotion run ID (for PromotionLog updates)
-- `packageVersion` (string): version label for the package (e.g., `"1.2.0"`)
-- `integrationPackId` (string): existing Integration Pack ID (used when `createNewPack = false`)
-- `createNewPack` (boolean): `true` to create a new Integration Pack, `false` to add to existing
-- `newPackName` (string): name for new pack (required if `createNewPack = true`)
-- `newPackDescription` (string): description for new pack
+- `branchId` (string): promotion branch ID from Process C
+- `promotionId` (string): promotion run ID for PromotionLog updates
 - `deploymentTarget` (string): `"TEST"` or `"PRODUCTION"` — determines deployment mode
 - `isHotfix` (string): `"true"` / `"false"` — flags emergency production bypass
-- `hotfixJustification` (string): required when isHotfix=`"true"` (up to 1000 chars)
-- `testPromotionId` (string): for production-from-test mode, links back to the TEST promotion
-- `testIntegrationPackId` (string): Test Integration Pack ID from the test deployment
-- `testIntegrationPackName` (string): Test Integration Pack name from the test deployment
+- `hotfixJustification` (string): required when `isHotfix="true"` (up to 1000 chars)
+- `testPromotionId` (string): for production-from-test mode, ID of the originating TEST promotion
+
+**Developer-supplied (from Page 4):**
+- `packageVersion` (string): version label for the package (e.g., `"1.2.0"`)
+- `deploymentNotes` (string): notes for the PackagedComponent
+- `devAccountId` (string): source dev account ID (for audit)
+- `devPackageId` (string): source dev package ID (for audit)
+- `devPackageCreator` (string): Boomi user who created the dev package
+- `devPackageVersion` (string): version of the dev package
+
+**Admin-supplied (from Page 7 — IP assignment fields):**
+- `integrationPackId` (string): existing Integration Pack ID to add the component to
+- `createNewPack` (boolean): `true` to create a new Integration Pack
+- `newPackName` (string): name for new pack (required if `createNewPack = true`)
+- `newPackDescription` (string): description for new pack
 - `hotfixTestPackId` (string): Test Integration Pack ID for hotfix test release (Mode 3 only)
-- `hotfixCreateNewTestPack` (boolean): true to create new test pack for hotfix
-- `hotfixNewTestPackName` (string): name for new test pack (required if hotfixCreateNewTestPack=true)
+- `hotfixCreateNewTestPack` (boolean): `true` to create new test pack for hotfix (Mode 3 only)
+- `hotfixNewTestPackName` (string): name for new test pack (required if `hotfixCreateNewTestPack=true`)
 - `hotfixNewTestPackDescription` (string): description for new test pack
 
 The response JSON contains:
 - `success`, `errorCode`, `errorMessage` (standard error contract)
 - `packagedComponentId` (string): ID of the created PackagedComponent
+- `prodPackageId` (string): same as `packagedComponentId` — stored to PromotionLog for Mode 2 retrieval
 - `integrationPackId` (string): ID of the Integration Pack (new or existing)
 - `integrationPackName` (string): name of the Integration Pack
 - `releaseId` (string): ID from ReleaseIntegrationPack response, for status polling
@@ -44,8 +58,10 @@ The response JSON contains:
 - `testReleaseId` (string): Test release ID (hotfix mode only)
 - `testReleaseVersion` (string): Test release version (hotfix mode only)
 - `deploymentTarget` (string): echoes the deployment mode used
-- `branchPreserved` (string): `"true"` if branch was kept (test mode), `"false"` if deleted
+- `branchPreserved` (string): always `"false"` — all modes delete the branch
 - `isHotfix` (string): `"true"` if this was an emergency hotfix deployment
+- `needsPackAssignment` (boolean): `true` when Mode 1 auto-detect found no IP and status is set to `PENDING_PACK_ASSIGNMENT`
+- `autoDetectedPackId` (string): the auto-detected Integration Pack ID (for logging), empty if not found
 
 #### FSS Operation
 
@@ -55,15 +71,18 @@ Create `PROMO - FSS Op - PackageAndDeploy` per Section 3.B, using `PROMO - Profi
 
 | DPP Name | Initial Value | Purpose |
 |----------|--------------|---------|
-| `branchId` | (from request) | Promotion branch to merge before packaging |
+| `branchId` | (from request) | Promotion branch for packaging (Mode 1) or for merge (Modes 2/3) |
+| `branchName` | (from PromotionLog) | Branch name string, used in POST /PackagedComponent `branchName` field (Mode 1) |
 | `promotionId` | (from request) | Promotion run ID for PromotionLog updates |
-| `mergeRequestId` | (set in step 2.5) | Merge request ID for merge execute and polling |
 | `adminEmail` | (from request context) | Admin user's email for self-approval check |
 | `packagedComponentId` | (set in step 3) | Created PackagedComponent ID |
+| `prodPackageId` | (set in step 3) | Same as packagedComponentId — persisted to PromotionLog |
 | `deploymentTarget` | (from request) | `"TEST"` or `"PRODUCTION"` |
 | `isHotfix` | (from request) | Emergency hotfix flag |
 | `hotfixJustification` | (from request) | Hotfix justification text |
-| `testPromotionId` | (from request) | Links production to preceding test deployment |
+| `testPromotionId` | (from request) | Links production promotion to preceding test deployment |
+| `integrationPackId` | (from request or auto-detect) | Target Integration Pack ID |
+| `mergeRequestId` | (set in step 2.5) | Merge request ID for merge execute and polling |
 | `cacheRefreshFailed` | "false" | Tracks whether ExtensionAccessMapping cache refresh succeeded |
 | `extensionAccessMappingCount` | "0" | Count of ExtensionAccessMapping records created/updated |
 | `hotfixTestPackId` | (from request or step 7.5.1) | Test Integration Pack for hotfix sync |
@@ -79,282 +98,393 @@ Create `PROMO - FSS Op - PackageAndDeploy` per Section 3.B, using `PROMO - Profi
 
 2. **Set Properties — Read Request**
    - DPP `prodComponentId` = document path: `prodComponentId`
-   - DPP `prodAccountId` = document path: `prodAccountId`
    - DPP `branchId` = document path: `branchId`
    - DPP `promotionId` = document path: `promotionId`
    - DPP `packageVersion` = document path: `packageVersion`
-   - DPP `createNewPack` = document path: `createNewPack`
    - DPP `integrationPackId` = document path: `integrationPackId`
+   - DPP `createNewPack` = document path: `createNewPack`
    - DPP `newPackName` = document path: `newPackName`
    - DPP `newPackDescription` = document path: `newPackDescription`
    - DPP `deploymentTarget` = document path: `deploymentTarget`
    - DPP `isHotfix` = document path: `isHotfix`
    - DPP `hotfixJustification` = document path: `hotfixJustification`
    - DPP `testPromotionId` = document path: `testPromotionId`
-   - DPP `testIntegrationPackId` = document path: `testIntegrationPackId`
-   - DPP `testIntegrationPackName` = document path: `testIntegrationPackName`
+   - DPP `hotfixTestPackId` = document path: `hotfixTestPackId`
+   - DPP `hotfixCreateNewTestPack` = document path: `hotfixCreateNewTestPack`
+   - DPP `hotfixNewTestPackName` = document path: `hotfixNewTestPackName`
+   - DPP `hotfixNewTestPackDescription` = document path: `hotfixNewTestPackDescription`
 
 2.0. **Promotion Status Gate**
    - Query PromotionLog from DataHub for the given `promotionId`.
    - Validate that the `status` field is one of:
-     - `"COMPLETED"` — promotion succeeded, ready for packaging
-     - `"TEST_DEPLOYED"` — test deployment succeeded, ready for production promotion
+     - `"COMPLETED"` — promotion succeeded, ready for test packaging (Mode 1)
+     - `"TEST_DEPLOYED"` — test deployment succeeded, ready for production promotion (Mode 2)
+     - `"ADMIN_APPROVED"` — admin approved, ready for production packaging (Modes 2/3)
+     - `"PENDING_PACK_ASSIGNMENT"` — test-packaged but awaiting IP assignment (Mode 4)
    - If the status is anything else (e.g., `"FAILED"`, `"PENDING_PEER_REVIEW"`, `"PENDING_ADMIN_APPROVAL"`), return an error response immediately:
      - `success = false`
      - `errorCode = "PROMOTION_NOT_COMPLETED"`
-     - `errorMessage = "Promotion {promotionId} has status '{status}' — packaging requires COMPLETED or TEST_DEPLOYED status"`
-   - **Why this gate exists**: Process D merges the promotion branch to main. Without this gate, a direct API call to the Flow Service could bypass the UI and merge a partially-promoted or unapproved branch. This is a defense-in-depth measure.
+     - `errorMessage = "Promotion {promotionId} has status '{status}' — packaging requires COMPLETED, TEST_DEPLOYED, ADMIN_APPROVED, or PENDING_PACK_ASSIGNMENT status"`
+   - **Why this gate exists**: Process D merges the promotion branch to main (Modes 2/3). Without this gate, a direct API call to the Flow Service could bypass the UI and merge a partially-promoted or unapproved branch. This is a defense-in-depth measure.
 
-2.1. **Admin Self-Approval Prevention**
-   - Before proceeding to any deployment mode, validate that the admin submitting the deployment did not initiate the original promotion.
+2.1. **Decision — Mode Detection**
+   - Examine PromotionLog `status` and request fields to determine the deployment mode:
+     - **Mode 4** — `status = "PENDING_PACK_ASSIGNMENT"` → jump to step M4.1
+     - **Mode 1** — `deploymentTarget = "TEST"` → proceed to step 2.2
+     - **Mode 2** — `deploymentTarget = "PRODUCTION"` AND `testPromotionId` non-empty → proceed to step 2.3
+     - **Mode 3** — `deploymentTarget = "PRODUCTION"` AND `isHotfix = "true"` → proceed to step 2.4
+
+2.2. **Admin Self-Approval Prevention (Modes 2 and 3 only)**
+   - For production modes, validate that the admin submitting the deployment did not initiate the original promotion.
    - Query PromotionLog for the `promotionId` to retrieve the `initiatedBy` field.
    - Compare: `adminEmail.toLowerCase() != initiatedBy.toLowerCase()`.
    - If the same person: return error with `errorCode = "SELF_APPROVAL_NOT_ALLOWED"`, `errorMessage = "Admin cannot approve and deploy their own promotion"`. Do not proceed.
    - This is a backend enforcement in addition to the UI-level Decision step on Page 7.
+   - **Note**: Mode 1 (TEST) is developer-driven. Mode 4 (PACK_ASSIGNMENT) is admin IP assignment, not promotion approval. Neither requires this check.
 
-2.2. **Decision — Deployment Mode**
-   - The process supports 3 deployment modes based on `deploymentTarget`, `testPromotionId`, and `isHotfix`:
-     - **Mode 1 — TEST** (`deploymentTarget = "TEST"`): Merge → package → release to test Integration Pack, preserve branch, update PromotionLog with test status
-     - **Mode 2 — PRODUCTION from test** (`deploymentTarget = "PRODUCTION"` AND `testPromotionId` is non-empty): Skip merge (content already on main from test), package from main → release to production Integration Pack, delete branch
-     - **Mode 3 — PRODUCTION hotfix** (`deploymentTarget = "PRODUCTION"` AND `isHotfix = "true"`): Merge → package → release to production → release to test → delete branch, flag as hotfix
-   - Use a Decision shape on DPP `deploymentTarget`:
-     - **`TEST`** branch → step 2.3 (test-specific pre-processing)
-     - **`PRODUCTION`** branch → Decision on DPP `testPromotionId`:
-       - Non-empty → step 2.4 (skip merge, jump to step 3)
-       - Empty (hotfix) → step 2.5 (merge as normal)
+---
 
 ### Deployment Mode Decision Tree
 
-Process D supports three deployment modes. The mode determines which pipeline steps are executed and the resulting promotion status.
+Process D supports four deployment modes. The mode determines which pipeline steps are executed and the resulting promotion status.
 
 ```mermaid
 flowchart TD
     entryNode["Process D Entry"]
-    statusGate["Status Gate\n(COMPLETED or TEST_DEPLOYED?)"]
-    selfCheck["Self-Approval Check\n(admin != initiator?)"]
-    modeDecision{"deploymentMode?"}
-    testPromotionCheck{"testPromotionId\nnon-empty?"}
+    statusGate["Status Gate\n(COMPLETED, TEST_DEPLOYED,\nADMIN_APPROVED, or\nPENDING_PACK_ASSIGNMENT?)"]
+    modeCheck{"Mode Detection"}
 
-    testMerge["Merge branch to main\n(OVERRIDE strategy)"]
-    testPackage["Create PackagedComponent"]
-    testPack["Create / Add to Integration Pack"]
-    testRelease["Release Integration Pack"]
-    testCache["Refresh ExtensionAccessMapping Cache"]
-    testBranchKeep["Preserve Branch\n(branch stays for prod promotion)"]
-    testStatus["Status → TEST_DEPLOYED"]
+    mode1Label["Mode 1: TEST\n(deploymentTarget=TEST)"]
+    mode2Label["Mode 2: PRODUCTION from test\n(PRODUCTION + testPromotionId)"]
+    mode3Label["Mode 3: HOTFIX\n(PRODUCTION + isHotfix=true)"]
+    mode4Label["Mode 4: PACK_ASSIGNMENT\n(status=PENDING_PACK_ASSIGNMENT)"]
 
-    prodSkipMerge["Skip Merge\n(content already on main)"]
-    prodPackage["Create PackagedComponent"]
-    prodPack["Create / Add to Integration Pack"]
-    prodRelease["Release Integration Pack"]
-    prodCache["Refresh ExtensionAccessMapping Cache"]
-    prodBranchDel["Delete Branch"]
-    prodStatus["Status → PROD_DEPLOYED"]
+    selfCheck23["Self-Approval Check\n(Modes 2 & 3 only)"]
 
-    hotfixMerge["Merge branch to main\n(OVERRIDE strategy)"]
-    hotfixPackage["Create PackagedComponent"]
-    hotfixPack["Create / Add to Integration Pack\n(with hotfix flag)"]
-    hotfixRelease["Release Integration Pack"]
-    hotfixTestPack["Create / Use Test Integration Pack"]
-    hotfixTestRelease["Release Test Integration Pack"]
-    hotfixCache["Refresh ExtensionAccessMapping Cache"]
-    hotfixBranchDel["Delete Branch"]
-    hotfixStatus["Status → PROD_DEPLOYED\n(isHotfix = true)"]
+    m1Package["Package from branch\n(branchName field on POST /PackagedComponent)"]
+    m1DeleteBranch["Delete branch\n(immediately after packaging)"]
+    m1SetProdPkg["Set prodPackageId in PromotionLog"]
+    m1AutoDetect{"Auto-detect test IP\nfrom PromotionLog history?"}
+    m1AddIP["Add to IP + Release IP"]
+    m1Status1["Status → TEST_DEPLOYED"]
+    m1Pending["Status → PENDING_PACK_ASSIGNMENT\nneedsPackAssignment=true"]
+
+    m2Branch["Create branch from test package\nPOST /Branch (packageId=prodPackageId)"]
+    m2Merge["Merge new branch to main\n(MergeRequest OVERRIDE)"]
+    m2Package["Package from main\n(no branchName)"]
+    m2DeleteBranch["Delete branch"]
+    m2AddIP["Add to admin-selected prod IP\n(query IP state first)"]
+    m2Release["Release IP"]
+    m2Cache["Refresh ExtensionAccessMapping Cache"]
+    m2Status["Status → DEPLOYED"]
+
+    m3Merge["Merge branch to main\n(MergeRequest OVERRIDE)"]
+    m3Package["Package from main"]
+    m3AddProdIP["Add to admin-selected prod IP\n(query IP state first)"]
+    m3ReleaseProd["Release prod IP"]
+    m3AddTestIP["Add to admin-selected test IP\n(query IP state first)"]
+    m3ReleaseTest["Release test IP\n(non-blocking failure)"]
+    m3DeleteBranch["Delete branch"]
+    m3Cache["Refresh ExtensionAccessMapping Cache"]
+    m3Status["Status → DEPLOYED (isHotfix=true)"]
+
+    m4GetPkg["Retrieve prodPackageId\nfrom PromotionLog"]
+    m4AddIP["Add PackagedComponent to\nadmin-selected IP\n(query IP state first)"]
+    m4Release["Release IP"]
+    m4Status["Status → TEST_DEPLOYED"]
 
     errStatus["Return PROMOTION_NOT_COMPLETED Error"]
     errSelf["Return SELF_APPROVAL_NOT_ALLOWED Error"]
 
     entryNode --> statusGate
-    statusGate -->|"COMPLETED or TEST_DEPLOYED"| selfCheck
+    statusGate -->|"Valid status"| modeCheck
     statusGate -->|"Other status"| errStatus
 
-    selfCheck -->|"Different users"| modeDecision
-    selfCheck -->|"Same user"| errSelf
+    modeCheck -->|"PENDING_PACK_ASSIGNMENT"| mode4Label
+    modeCheck -->|"TEST"| mode1Label
+    modeCheck -->|"PRODUCTION + testPromotionId"| mode2Label
+    modeCheck -->|"PRODUCTION + isHotfix"| mode3Label
 
-    modeDecision -->|"TEST\n(deploymentTarget=TEST)"| testMerge
-    modeDecision -->|"PRODUCTION"| testPromotionCheck
+    mode2Label --> selfCheck23
+    mode3Label --> selfCheck23
+    selfCheck23 -->|"Same user"| errSelf
+    selfCheck23 -->|"Different users"| mode2Label
+    selfCheck23 -->|"Different users"| mode3Label
 
-    testPromotionCheck -->|"Non-empty\n(production-from-test)"| prodSkipMerge
-    testPromotionCheck -->|"Empty\n(hotfix)"| hotfixMerge
+    mode1Label --> m1Package --> m1DeleteBranch --> m1SetProdPkg --> m1AutoDetect
+    m1AutoDetect -->|"IP found"| m1AddIP --> m1Status1
+    m1AutoDetect -->|"IP not found"| m1Pending
 
-    testMerge --> testPackage --> testPack --> testRelease --> testCache --> testBranchKeep --> testStatus
+    mode2Label --> m2Branch --> m2Merge --> m2Package --> m2DeleteBranch --> m2AddIP --> m2Release --> m2Cache --> m2Status
 
-    prodSkipMerge --> prodPackage --> prodPack --> prodRelease --> prodCache --> prodBranchDel --> prodStatus
+    mode3Label --> m3Merge --> m3Package --> m3AddProdIP --> m3ReleaseProd --> m3AddTestIP --> m3ReleaseTest --> m3DeleteBranch --> m3Cache --> m3Status
 
-    hotfixMerge --> hotfixPackage --> hotfixPack --> hotfixRelease --> hotfixTestPack --> hotfixTestRelease --> hotfixCache --> hotfixBranchDel --> hotfixStatus
+    mode4Label --> m4GetPkg --> m4AddIP --> m4Release --> m4Status
 ```
 
-2.3. **TEST Mode Pre-Processing**
-   - No additional pre-processing needed — proceed to step 2.5 (merge) as normal
-   - After merge + package + deploy, the process will:
-     - Preserve the branch (skip step 8.5 DELETE)
-     - Update PromotionLog: `status = "TEST_DEPLOYED"`, `testDeployedAt` = current timestamp, `testIntegrationPackId`, `testIntegrationPackName`
+---
 
-2.4. **PRODUCTION from Test — Skip Merge**
-   - Content is already on main from the test deployment merge
-   - Skip steps 2.5-2.7 (merge) entirely
-   - Jump directly to step 3 (PackagedComponent creation)
+### Mode 1 — TEST
 
-2.5. **HTTP Client Send — POST MergeRequest (Create)**
-   - Connector: `PROMO - Partner API Connection`
-   - Operation: `PROMO - HTTP Op - POST MergeRequest`
-   - URL parameter `{1}` = DPP `primaryAccountId`
-   - Request body: `source` = DPP `branchId`, `strategy` = `"OVERRIDE"`, `priorityBranch` = DPP `branchId`. See `/integration/api-requests/create-merge-request.json`
-   - OVERRIDE strategy ensures promotion branch content wins (no conflict resolution needed — Process C is the sole writer to the branch)
-   - Extract `mergeRequestId` from the response; store in DPP `mergeRequestId`
+**Goal**: Package the promoted component for test environment validation without touching main.
 
-2.6. **HTTP Client Send — POST MergeRequest Execute**
-   - Connector: `PROMO - Partner API Connection`
-   - Operation: `PROMO - HTTP Op - POST MergeRequest Execute`
-   - URL parameter `{1}` = DPP `primaryAccountId`, `{2}` = DPP `mergeRequestId`
-   - Request body: `action` = `"MERGE"`. See `/integration/api-requests/execute-merge-request.json`
-   - After execution, poll using `PROMO - HTTP Op - GET MergeRequest` (operation 19) with URL parameter `{2}` = DPP `mergeRequestId` until `stage = MERGED`. See `/integration/api-requests/get-merge-request.json` for merge stages.
-   - On merge failure (`stage = FAILED_TO_MERGE`): error with `errorCode = "MERGE_FAILED"`, attempt `DELETE /Branch/{branchId}`, return error
-
-2.7. **Note**: After a successful merge, the promoted components now exist on main. Packaging (step 3) reads from main, so the merge must complete before proceeding.
-
-3. **HTTP Client Send — POST PackagedComponent**
+**Step M1.1 — HTTP Client Send — POST PackagedComponent (from branch)**
    - Connector: `PROMO - Partner API Connection`
    - Operation: `PROMO - HTTP Op - POST PackagedComponent`
    - URL parameter `{1}` = DPP `primaryAccountId`
-   - Request body: JSON containing `componentId` = DPP `prodComponentId`, `packageVersion` = DPP `packageVersion`, `notes` = promotion metadata, `shareable` = `true`
-   - Build the request JSON with a Map shape before this connector:
-     - Source: DPPs
-     - Destination: PackagedComponent create JSON
-   - Response returns the new `packagedComponentId`
-   - Extract `packagedComponentId` into a DPP
+   - Request body: `componentId` = DPP `prodComponentId`, `packageVersion` = DPP `packageVersion`, `branchName` = DPP `branchName`, `notes` = promotion metadata, `shareable` = `true`
+   - The `branchName` field causes Boomi to package from the branch snapshot — main is NOT modified
+   - Response returns the new `packagedComponentId`; extract into DPP `packagedComponentId` and `prodPackageId`
 
-4. **Decision — Create New Pack?**
-   - Condition: DPP `createNewPack` **EQUALS** `"true"`
-   - **YES** branch: step 5 (create new Integration Pack)
-   - **NO** branch: step 6 (add to existing pack)
-
-5. **YES Branch — HTTP Client Send — POST IntegrationPack**
-   - Connector: `PROMO - Partner API Connection`
-   - Operation: `PROMO - HTTP Op - POST IntegrationPack`
-   - URL parameter `{1}` = DPP `primaryAccountId`
-   - Request body: JSON with `name` = DPP `newPackName`, `description` = DPP `newPackDescription`
-   - Response returns the new `integrationPackId`
-   - Set DPP `integrationPackId` from the response
-   - After creating the pack, add the PackagedComponent to it using `PROMO - HTTP Op - POST Add To IntegrationPack` (operation 17) with URL parameters `{2}` = DPP `integrationPackId`, `{3}` = DPP `packagedComponentId`. See `/integration/api-requests/add-to-integration-pack.json`.
-   - Continue to step 7
-
-6. **NO Branch — Add to Existing Pack**
-   - The `integrationPackId` DPP already holds the existing pack ID
-   - Add the PackagedComponent (from step 3) to the existing Integration Pack using `PROMO - HTTP Op - POST Add To IntegrationPack` (operation 17) with URL parameters `{2}` = DPP `integrationPackId`, `{3}` = DPP `packagedComponentId`. See `/integration/api-requests/add-to-integration-pack.json`.
-   - Continue to step 7
-
-7. **HTTP Client Send — Release Integration Pack**
-   - Connector: `PROMO - Partner API Connection`
-   - Operation: `PROMO - HTTP Op - POST ReleaseIntegrationPack` (operation 18)
-   - URL parameter `{1}` = DPP `primaryAccountId`
-   - Request body: JSON with `integrationPackId` = DPP `integrationPackId`, `version` = DPP `packageVersion`, `notes` = promotion metadata. See `/integration/api-requests/release-integration-pack.json`.
-   - Extract `releaseId` from the response; store in DPP `releaseId`. This is the final API step before branch decision.
-
-7.5. **Hotfix Test Release (Mode 3 Only)**
-   - This step only executes when `isHotfix = "true"`. After releasing to the Production Integration Pack, release the same PackagedComponent to a Test Integration Pack to keep test environments in sync.
-
-   7.5.1. **Decision — Create/Use Test Pack**
-   - Condition: DPP `hotfixCreateNewTestPack` **EQUALS** `"true"`
-   - **YES** branch: POST IntegrationPack (reuse `PROMO - HTTP Op - POST IntegrationPack`, operation 9) with `hotfixNewTestPackName` / `hotfixNewTestPackDescription`. Store result in DPP `hotfixTestPackId`.
-   - **NO** branch: Use existing `hotfixTestPackId` from request.
-
-   7.5.2. **Add PackagedComponent to Test Pack**
-   - Reuse `PROMO - HTTP Op - POST Add To IntegrationPack` (operation 17) with URL parameters `{2}` = DPP `hotfixTestPackId`, `{3}` = DPP `packagedComponentId`
-
-   7.5.3. **Release Test Integration Pack**
-   - Reuse `PROMO - HTTP Op - POST ReleaseIntegrationPack` (operation 18) with `integrationPackId` = DPP `hotfixTestPackId`, `version` = DPP `packageVersion`
-   - Extract `testReleaseId` from the response; store in DPP `testReleaseId`
-
-   **Error Handling:** Test release failure is **NON-BLOCKING**. Production release already succeeded. Log the error, set DPP `testReleaseFailed` = `"true"`, and continue to branch deletion. The hotfix is live in production regardless.
-
-8. **(Removed)** — Explicit DeployedPackage calls removed. ReleaseIntegrationPack auto-propagates to all environments where the Integration Pack is installed. Environment installation is managed separately outside this flow.
-
-8.3. **ExtensionAccessMapping Cache Refresh (Post-Release)**
-   - After successful release, refresh the extension access mapping cache for the release environment context
-   - This step enables the Extension Editor feature to provide fast, process-level access control for extension editing
-
-   **Sub-steps for the release environment context:**
-   1. **HTTP Client Send — GET EnvironmentExtensions**
-      - Connector: `PROMO - Partner API Connection`
-      - Operation: `PROMO - HTTP Op - GET EnvironmentExtensions`
-      - URL parameter `{1}` = DPP `primaryAccountId`
-      - Query: `environmentId = {targetEnvironmentId}` (from release context)
-      - Response: Full EnvironmentExtensions object with all extension components
-
-   2. **DataHub Query — ComponentMapping Lookup**
-      - For each component found in the EnvironmentExtensions response (connections, operations, processProperties, etc.):
-        - Query ComponentMapping: `prodComponentId = {componentId}` to find the originating `devAccountId`(s)
-        - If multiple devAccountIds map to the same prodComponentId → component is shared
-
-   3. **DataHub Query — DevAccountAccess Lookup**
-      - For each unique `devAccountId` found:
-        - Query DevAccountAccess: `devAccountId = {devAccountId}` AND `isActive = "true"`
-        - Collect authorized SSO group IDs
-
-   4. **Groovy Script — Build Extension Access Cache**
-      - Script: `build-extension-access-cache.groovy` (from `/integration/scripts/`)
-      - Input: Combined JSON containing extensions, componentMappings, and devAccountAccessRecords
-      - For each extension component:
-        - Determine `isConnectionExtension` (component is in `connections` section → "true")
-        - Determine `isSharedComponent` (multiple devAccountIds → "true")
-        - Compute `authorizedSsoGroups` as union of all matching SSO groups
-        - Set `ownerProcessId` and `ownerProcessName` from deployment context
-      - Output: Array of ExtensionAccessMapping records
-
-   5. **DataHub Upsert — Store ExtensionAccessMapping Records**
-      - Operation: `PROMO - DH Op - Upsert ExtensionAccessMapping`
-      - Upsert each record to DataHub (match on `environmentId` + `prodComponentId`)
-      - Records that already exist are updated; new records are created
-
-   **Error Handling:** Cache refresh failures MUST NOT fail the overall release. If the cache refresh fails:
-   - Log the error with `logger.warning("ExtensionAccessMapping cache refresh failed for environment {environmentId}: {error}")`
-   - Set DPP `cacheRefreshFailed` = `"true"` for downstream reporting
-   - Continue to step 8.5 (branch deletion) — the release was successful even if the cache refresh failed
-   - Admin can trigger a manual cache refresh later via the Extension Editor's refresh action
-
-   **DPP additions:**
-   - `cacheRefreshFailed` (set in step 8.3 error handler) — `"true"` if any environment's cache refresh failed, `"false"` otherwise
-   - `extensionAccessMappingCount` (set by Groovy script) — total records upserted across all environments
-
-8.5. **Decision — Delete or Preserve Branch**
-   - **TEST mode** (`deploymentTarget = "TEST"`): **SKIP branch deletion** — branch is preserved for future production promotion and diff review
-   - **PRODUCTION mode** (both from-test and hotfix): **DELETE branch**
-   - **Note (Mode 3 hotfix):** Branch is deleted only after BOTH the production release (step 7) and the test release (step 7.5) have been attempted. Test release failure is non-blocking — the branch is still deleted even if the test release fails.
-
-8.6. **HTTP Client Send — DELETE Branch (Cleanup)** (PRODUCTION modes only)
+**Step M1.2 — HTTP Client Send — DELETE Branch (immediately)**
    - Connector: `PROMO - Partner API Connection`
    - Operation: `PROMO - HTTP Op - DELETE Branch`
    - URL parameter `{1}` = DPP `primaryAccountId`, `{2}` = DPP `branchId`
-   - See `/integration/api-requests/delete-branch.json`
+   - Delete the branch immediately after packaging — the branch content has been captured in the PackagedComponent
    - Idempotent: both `200` (deleted) and `404` (already deleted) are success
-   - **Ignore delete failures** — log the error but do not fail the process (the merge and deployment already succeeded)
-   - Update PromotionLog: set `branchId` = `null` (branch no longer exists)
+   - **Branch is freed here**, before IP operations — frees the branch slot early regardless of IP outcome
+
+**Step M1.3 — DataHub Update — Set prodPackageId in PromotionLog**
+   - Update PromotionLog record for `promotionId`: set `prodPackageId` = DPP `prodPackageId`
+   - This persists the package reference for Mode 2 retrieval
+
+**Step M1.4 — Auto-Detect Test Integration Pack**
+   - Query PromotionLog DataHub for records matching:
+     - `processName = {processName from current PromotionLog}`
+     - `targetEnvironment = "TEST"`
+     - `status = "TEST_DEPLOYED"`
+     - Has non-empty `integrationPackId`
+   - Sort by `testDeployedAt` descending; take the most recent match
+   - If a matching record is found: set DPP `integrationPackId` to the matched record's `integrationPackId`
+   - If no matching record is found: proceed to PENDING_PACK_ASSIGNMENT path
+
+**Step M1.5 — Decision — IP Found?**
+   - **YES (IP found):**
+     - Query IP state: GET /IntegrationPack/{integrationPackId} (see Multi-Package Release Safety below)
+     - Add PackagedComponent to IP: `PROMO - HTTP Op - POST Add To IntegrationPack` with `{2}` = DPP `integrationPackId`, `{3}` = DPP `packagedComponentId`
+     - Release IP: `PROMO - HTTP Op - POST ReleaseIntegrationPack`
+     - Extract `releaseId` from response; store in DPP `releaseId`
+     - Update PromotionLog: `status = "TEST_DEPLOYED"`, `testDeployedAt = now`, `integrationPackId` = DPP `integrationPackId`
+     - Response: `needsPackAssignment = false`, `autoDetectedPackId = integrationPackId`
+   - **NO (IP not found):**
+     - Update PromotionLog: `status = "PENDING_PACK_ASSIGNMENT"`
+     - Response: `needsPackAssignment = true`, `autoDetectedPackId = ""`
+     - Return success response — no error; admin will assign the IP via Mode 4
+
+---
+
+### Mode 2 — PRODUCTION from Test
+
+**Goal**: Promote a test-validated component to production. Main is touched for the first time here.
+
+**Step M2.1 — Retrieve Test Package Reference**
+   - Query PromotionLog for `testPromotionId` to retrieve `prodPackageId` (the PackagedComponent created in Mode 1)
+   - Store in DPP `testProdPackageId`
+
+**Step M2.2 — HTTP Client Send — POST Branch (from test package)**
+   - Connector: `PROMO - Partner API Connection`
+   - Operation: `PROMO - HTTP Op - POST Branch`
+   - URL parameter `{1}` = DPP `primaryAccountId`
+   - Request body: `name` = `"promo-prod-{promotionId}"`, `packageId` = DPP `testProdPackageId`
+   - Creating a branch from a PackagedComponent restores that component snapshot to a new branch
+   - Extract new `branchId` from response; store in DPP `branchId`
+
+**Step M2.3 — HTTP Client Send — POST MergeRequest (Create)**
+   - Connector: `PROMO - Partner API Connection`
+   - Operation: `PROMO - HTTP Op - POST MergeRequest`
+   - URL parameter `{1}` = DPP `primaryAccountId`
+   - Request body: `source` = DPP `branchId`, `strategy` = `"OVERRIDE"`, `priorityBranch` = DPP `branchId`
+   - OVERRIDE strategy — the branch from the test package wins without conflict resolution
+   - Extract `mergeRequestId` from response; store in DPP `mergeRequestId`
+
+**Step M2.4 — HTTP Client Send — POST MergeRequest Execute + Poll**
+   - Execute: `PROMO - HTTP Op - POST MergeRequest Execute` with `action = "MERGE"`
+   - Poll: `PROMO - HTTP Op - GET MergeRequest` until `stage = MERGED` (max 12 attempts, 5s interval)
+   - On `MERGE_FAILED`: error with `errorCode = "MERGE_FAILED"`, attempt DELETE branch
+   - On timeout: error with `errorCode = "MERGE_TIMEOUT"`
+   - **This is the first and only time main is modified for this promotion**
+
+**Step M2.5 — HTTP Client Send — POST PackagedComponent (from main)**
+   - Standard package from main (no `branchName` field)
+   - Request body: `componentId` = DPP `prodComponentId`, `packageVersion` = DPP `packageVersion`, `notes` = metadata, `shareable` = `true`
+   - Extract `packagedComponentId` into DPP
+
+**Step M2.6 — HTTP Client Send — DELETE Branch**
+   - Delete the temporary production branch created in M2.2
+   - Idempotent: both `200` and `404` are success
+
+**Step M2.7 — Multi-Package Safety Query + Add to IP + Release**
+   - Query IP state: GET /IntegrationPack/{integrationPackId} (admin-supplied from request)
+   - Build release list including ALL current component versions (see Multi-Package Release Safety below)
+   - Add PackagedComponent to IP: POST Add To IntegrationPack
+   - Release IP: POST ReleaseIntegrationPack
+   - Extract `releaseId` from response
+
+**Step M2.8 — ExtensionAccessMapping Cache Refresh**
+   - See Cache Refresh section below
+
+**Step M2.9 — Update PromotionLog**
+   - `status = "DEPLOYED"`, `deployedAt = now`, `integrationPackId`, `releaseId`, `prodPackageId`
+
+---
+
+### Mode 3 — HOTFIX
+
+**Goal**: Emergency production fix. Merges branch to main, releases to prod then test.
+
+**Step M3.1 — HTTP Client Send — POST MergeRequest (Create)**
+   - Same as old step 2.5: `source` = DPP `branchId`, `strategy` = `"OVERRIDE"`
+   - Extract `mergeRequestId`
+
+**Step M3.2 — HTTP Client Send — POST MergeRequest Execute + Poll**
+   - Execute and poll until `stage = MERGED`
+   - On failure: error with `MERGE_FAILED`, attempt DELETE branch
+
+**Step M3.3 — HTTP Client Send — POST PackagedComponent (from main)**
+   - Standard package from main (no `branchName` field)
+   - Extract `packagedComponentId`
+
+**Step M3.4 — Multi-Package Safety Query + Add to Prod IP + Release Prod**
+   - Query prod IP state: GET /IntegrationPack/{integrationPackId}
+   - Add PackagedComponent to prod IP
+   - Release prod IP; extract `releaseId`
+
+**Step M3.5 — Hotfix Test Release (Non-Blocking)**
+
+   **M3.5.1 — Decision — Create/Use Test Pack**
+   - Condition: DPP `hotfixCreateNewTestPack` **EQUALS** `"true"`
+   - **YES** branch: POST IntegrationPack with `hotfixNewTestPackName` / `hotfixNewTestPackDescription`; store result in DPP `hotfixTestPackId`
+   - **NO** branch: Use existing `hotfixTestPackId` from request
+
+   **M3.5.2 — Multi-Package Safety Query + Add to Test IP**
+   - Query test IP state: GET /IntegrationPack/{hotfixTestPackId}
+   - Add PackagedComponent to test IP
+
+   **M3.5.3 — Release Test Integration Pack**
+   - POST ReleaseIntegrationPack with `integrationPackId` = DPP `hotfixTestPackId`
+   - Extract `testReleaseId`; store in DPP `testReleaseId`
+
+   **Error Handling:** Test release failure is **NON-BLOCKING**. Production release already succeeded. Log the error, set DPP `testReleaseFailed` = `"true"`, and continue to branch deletion.
+
+**Step M3.6 — HTTP Client Send — DELETE Branch**
+   - Delete branch after BOTH prod and test releases are attempted
+   - Idempotent: both `200` and `404` are success
+
+**Step M3.7 — ExtensionAccessMapping Cache Refresh**
+   - See Cache Refresh section below
+
+**Step M3.8 — Update PromotionLog**
+   - `status = "DEPLOYED"`, `isHotfix = "true"`, `hotfixJustification`, `deployedAt = now`, `integrationPackId`, `releaseId`, `testIntegrationPackId`, `testReleaseId`
+
+---
+
+### Mode 4 — PACK_ASSIGNMENT
+
+**Goal**: Admin assigns an Integration Pack to a component that was packaged in Mode 1 but found no IP.
+
+**Note**: No branch operations occur in Mode 4 — the branch was already deleted in Mode 1 step M1.2. No self-approval check — this is IP assignment, not promotion approval.
+
+**Step M4.1 — Retrieve Existing PackagedComponent Reference**
+   - Query PromotionLog for `promotionId` to retrieve `prodPackageId`
+   - Store in DPP `packagedComponentId`
+
+**Step M4.2 — Multi-Package Safety Query + Add to Admin-Selected IP + Release**
+   - Query IP state: GET /IntegrationPack/{integrationPackId} (admin-supplied from request)
+   - Build release list (see Multi-Package Release Safety)
+   - Add PackagedComponent: POST Add To IntegrationPack with `{2}` = DPP `integrationPackId`, `{3}` = DPP `packagedComponentId`
+   - Release IP: POST ReleaseIntegrationPack
+   - Extract `releaseId`
+
+**Step M4.3 — Update PromotionLog**
+   - `status = "TEST_DEPLOYED"`, `integrationPackId`, `testDeployedAt = now`, `releaseId`
+   - The PackagedComponent was created for test in Mode 1 → status becomes TEST_DEPLOYED
+
+---
+
+### Multi-Package Release Safety
+
+Applies to **all modes** that perform IP release operations. Before releasing an Integration Pack, query its current state to avoid accidentally excluding other components from the release.
+
+**Why this matters**: The ReleaseIntegrationPack API requires an explicit list of all `ReleasePackagedComponents`. Any component omitted from the list is excluded from the released version. If multiple processes are in the same Integration Pack, omitting them would de-publish them.
+
+**Procedure** (add before each Release IP step):
+
+1. **GET /IntegrationPack/{integrationPackId}** — returns the current list of `packagedComponents` with their current `version` values
+2. **Build `ReleasePackagedComponents` list**: include ALL entries from the GET response
+3. **Update only the target component's version** to the newly created `packagedComponentId`
+4. **POST ReleaseIntegrationPack** with the explicit `ReleasePackagedComponents` list
+
+This ensures other components in the pack retain their current release versions.
+
+---
+
+### ExtensionAccessMapping Cache Refresh
+
+Applies to **Modes 2 and 3** only. Test environment (Mode 1) and IP assignment (Mode 4) do not require cache refresh.
+
+After successful release to Production:
+
+1. **HTTP Client Send — GET EnvironmentExtensions**
+   - Connector: `PROMO - Partner API Connection`
+   - Operation: `PROMO - HTTP Op - GET EnvironmentExtensions`
+   - Query: `environmentId = {targetEnvironmentId}` (from release context)
+   - Response: Full EnvironmentExtensions object with all extension components
+
+2. **DataHub Query — ComponentMapping Lookup**
+   - For each component found in the EnvironmentExtensions response:
+     - Query ComponentMapping: `prodComponentId = {componentId}` to find originating `devAccountId`(s)
+
+3. **DataHub Query — DevAccountAccess Lookup**
+   - For each unique `devAccountId` found:
+     - Query DevAccountAccess: `devAccountId = {devAccountId}` AND `isActive = "true"`
+     - Collect authorized SSO group IDs
+
+4. **Groovy Script — Build Extension Access Cache**
+   - Script: `build-extension-access-cache.groovy` (from `/integration/scripts/`)
+   - Input: Combined JSON with extensions, componentMappings, and devAccountAccessRecords
+   - Output: Array of ExtensionAccessMapping records
+
+5. **DataHub Upsert — Store ExtensionAccessMapping Records**
+   - Operation: `PROMO - DH Op - Upsert ExtensionAccessMapping`
+   - Upsert each record (match on `environmentId` + `prodComponentId`)
+
+**Error Handling:** Cache refresh failures MUST NOT fail the overall release. If it fails:
+- Log: `logger.warning("ExtensionAccessMapping cache refresh failed for environment {environmentId}: {error}")`
+- Set DPP `cacheRefreshFailed` = `"true"`
+- Continue to next step — the release succeeded
+
+---
+
+### Steps 9–10: Build Response and Return
 
 9. **Map — Build Response JSON**
    - Source: accumulated results and DPPs
    - Destination: `PROMO - Profile - PackageAndDeployResponse`
    - Map:
-     - `packagedComponentId` from DPP
-     - `integrationPackId` from DPP
+     - `packagedComponentId` from DPP `packagedComponentId`
+     - `prodPackageId` from DPP `prodPackageId`
+     - `integrationPackId` from DPP `integrationPackId`
      - `integrationPackName` = DPP `newPackName` (or queried name for existing pack)
      - `releaseId` from DPP `releaseId`
-     - `releaseVersion` from step 7 response
+     - `releaseVersion` from Release IP response
      - `deploymentTarget` = DPP `deploymentTarget`
-     - `branchPreserved` = `"true"` if TEST mode, `"false"` if PRODUCTION mode
+     - `branchPreserved` = `"false"` (all modes delete branch)
      - `isHotfix` = DPP `isHotfix`
+     - `needsPackAssignment` = `true` only if Mode 1 auto-detect failed
+     - `autoDetectedPackId` = detected IP ID or empty string
      - `success` = `true`
 
 10. **Return Documents** — same as Process F
 
 #### Error Handling
 
-Wrap the entire process (steps 2.5-8.5) in a **Try/Catch**:
-- **Promotion status gate failure** (step 2.0): return error immediately with `errorCode = "PROMOTION_NOT_COMPLETED"` — PromotionLog status is not `COMPLETED` or `TEST_DEPLOYED`. The promotion must complete successfully (and pass any required reviews) before packaging. This gate prevents merging incomplete branches to main.
-- **Merge failure** (step 2.6): attempt `DELETE /Branch/{branchId}`, return error with `errorCode = "MERGE_FAILED"`
-- **PackagedComponent creation failure**: attempt `DELETE /Branch/{branchId}`, return error with `errorCode = "PROMOTION_FAILED"`
-- **Integration Pack failure**: attempt `DELETE /Branch/{branchId}`, return error with `errorCode = "PROMOTION_FAILED"`
-- **Catch block**: In all catastrophic failure cases, attempt `DELETE /Branch/{branchId}` before returning the error response. Log delete failures but do not mask the original error.
+Wrap the entire process (steps 2.0–9) in a **Try/Catch**:
+- **Promotion status gate failure** (step 2.0): return error immediately with `errorCode = "PROMOTION_NOT_COMPLETED"` — PromotionLog status is not one of the accepted values. This gate prevents merging incomplete branches to main.
+- **Merge failure** (M2.4 / M3.2): attempt `DELETE /Branch/{branchId}`, return error with `errorCode = "MERGE_FAILED"`
+- **PackagedComponent creation failure**: attempt `DELETE /Branch/{branchId}` (Modes 2/3 only — Mode 1 already deleted it), return error with `errorCode = "PROMOTION_FAILED"`
+- **Integration Pack failure**: attempt `DELETE /Branch/{branchId}` (Modes 2/3 only), return error with `errorCode = "PROMOTION_FAILED"`
+- **Branch errors in Mode 1**: branch is already deleted before IP operations. If branch DELETE in M1.2 fails, log and continue — the PackagedComponent is already created.
+- **Catch block**: In all catastrophic failure cases, attempt `DELETE /Branch/{branchId}` (if applicable) before returning the error response. Log delete failures but do not mask the original error.
 
 #### Branch Deletion on Rejection/Denial
 
@@ -380,22 +510,32 @@ When an admin denies the deployment at Page 7:
 
 ---
 
-**Verify — 3 deployment modes:**
+**Verify — 4 deployment modes:**
 
-**Test deployment (Mode 1):**
-- Promote a component (Process C), then send a Package and Deploy request with `deploymentTarget = "TEST"`, `createNewPack = true`, `newPackName = "Orders - TEST"`
-- **Expected**: `success = true`, `branchPreserved = "true"`, `deploymentTarget = "TEST"`, `releaseId` populated, branch still exists (GET `/Branch/{branchId}` returns `200`)
-- **Expected PromotionLog**: `status = "TEST_DEPLOYED"`, `testDeployedAt` populated, `testIntegrationPackId`/`testIntegrationPackName` populated, `branchId` still set
+**Mode 1 — Test deployment (auto-detect IP found):**
+- Promote a component (Process C), then send a Package and Deploy request with `deploymentTarget = "TEST"`
+- **Expected**: `success = true`, `branchPreserved = "false"`, `needsPackAssignment = false`, `autoDetectedPackId` populated, `releaseId` populated
+- **Expected PromotionLog**: `status = "TEST_DEPLOYED"`, `testDeployedAt` populated, `integrationPackId` populated, `branchId` null (branch deleted)
 
-**Production from test (Mode 2):**
-- Using the test deployment from Mode 1, send a Package and Deploy request with `deploymentTarget = "PRODUCTION"`, `testPromotionId = "{testPromotionId}"`, existing production `integrationPackId`
-- **Expected**: `success = true`, `branchPreserved = "false"`, merge is skipped, `releaseId` populated, branch is deleted (GET `/Branch/{branchId}` returns `404`)
-- **Expected PromotionLog**: `status = "DEPLOYED"`, `testPromotionId` links back to test record
+**Mode 1 — Test deployment (no prior IP history):**
+- Promote a brand-new process (Process C), then send a Package and Deploy request with `deploymentTarget = "TEST"`
+- **Expected**: `success = true`, `branchPreserved = "false"`, `needsPackAssignment = true`, `releaseId` empty, `autoDetectedPackId` empty
+- **Expected PromotionLog**: `status = "PENDING_PACK_ASSIGNMENT"`, `prodPackageId` populated, `branchId` null
 
-**Hotfix (Mode 3):**
-- Promote a component (Process C), then send a Package and Deploy request with `deploymentTarget = "PRODUCTION"`, `isHotfix = "true"`, `hotfixJustification = "Critical API fix"`, `hotfixTestPackId` or `hotfixCreateNewTestPack = true`
-- **Expected**: `success = true`, `isHotfix = "true"`, `branchPreserved = "false"`, branch is deleted, `testIntegrationPackId` populated, `testReleaseId` populated
-- **Expected PromotionLog**: `status = "DEPLOYED"`, `isHotfix = "true"`, `hotfixJustification` populated, `testIntegrationPackId`/`testIntegrationPackName` populated, `testReleaseId` populated
+**Mode 2 — Production from test:**
+- Using the test deployment from Mode 1, send a Package and Deploy request with `deploymentTarget = "PRODUCTION"`, `testPromotionId = "{testPromotionId}"`, admin-supplied `integrationPackId`
+- **Expected**: `success = true`, `branchPreserved = "false"`, `releaseId` populated, temp branch created and deleted
+- **Expected PromotionLog**: `status = "DEPLOYED"`, `testPromotionId` links back to test record, `deployedAt` populated
+
+**Mode 3 — Hotfix:**
+- Promote a component (Process C), then send a Package and Deploy request with `deploymentTarget = "PRODUCTION"`, `isHotfix = "true"`, `hotfixJustification = "Critical API fix"`, admin-supplied `integrationPackId` and `hotfixTestPackId` (or `hotfixCreateNewTestPack = true`)
+- **Expected**: `success = true`, `isHotfix = "true"`, `branchPreserved = "false"`, `testIntegrationPackId` populated, `testReleaseId` populated
+- **Expected PromotionLog**: `status = "DEPLOYED"`, `isHotfix = "true"`, `hotfixJustification` populated, `testIntegrationPackId`/`testReleaseId` populated
+
+**Mode 4 — Pack assignment:**
+- Starting from a promotion with `status = "PENDING_PACK_ASSIGNMENT"`, send a Package and Deploy request with admin-supplied `integrationPackId`
+- **Expected**: `success = true`, `releaseId` populated, `needsPackAssignment = false`
+- **Expected PromotionLog**: `status = "TEST_DEPLOYED"`, `integrationPackId` populated, `testDeployedAt` updated
 
 ---
 

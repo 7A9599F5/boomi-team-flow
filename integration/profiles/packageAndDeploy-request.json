@@ -1,4 +1,9 @@
 {
+  "_field_notes": {
+    "process_derived": ["prodComponentId", "branchId", "deploymentTarget", "isHotfix", "hotfixJustification", "testPromotionId"],
+    "developer_supplied_page4": ["promotionId", "packageVersion", "deploymentNotes", "devAccountId", "devPackageId", "devPackageCreator", "devPackageVersion"],
+    "admin_supplied_page7": ["integrationPackId", "createNewPack", "newPackName", "newPackDescription", "hotfixTestPackId", "hotfixCreateNewTestPack", "hotfixNewTestPackName", "hotfixNewTestPackDescription"]
+  },
   "promotionId": "string",
   "prodComponentId": "string",
   "packageVersion": "string",
@@ -6,7 +11,7 @@
   "createNewPack": false,
   "newPackName": "string",
   "newPackDescription": "string",
-  "existingPackId": "string",
+  "integrationPackId": "string",
   "devAccountId": "string",
   "devPackageId": "string",
   "devPackageCreator": "string",
@@ -16,8 +21,6 @@
   "isHotfix": false,
   "hotfixJustification": "string",
   "testPromotionId": "string",
-  "testIntegrationPackId": "string",
-  "testIntegrationPackName": "string",
   "hotfixTestPackId": "string",
   "hotfixCreateNewTestPack": false,
   "hotfixNewTestPackName": "string",
