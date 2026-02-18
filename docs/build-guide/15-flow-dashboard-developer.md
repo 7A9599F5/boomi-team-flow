@@ -10,7 +10,7 @@
    - **Authentication**: Basic
      - **Username**: the shared web server user (from **Shared Web Server User Management** in AtomSphere)
      - **Password**: the API token for that user
-4. Click **"Retrieve Connector Configuration Data"**. Flow contacts the deployed Flow Service and auto-discovers all 19 message actions. Wait for the operation to complete.
+4. Click **"Retrieve Connector Configuration Data"**. Flow contacts the deployed Flow Service and auto-discovers all 20 message actions. Wait for the operation to complete.
 5. Verify the auto-generated Flow Types. You should see exactly 38 types (one request and one response for each action):
    1. `getDevAccounts REQUEST - getDevAccountsRequest`
    2. `getDevAccounts RESPONSE - getDevAccountsResponse`
@@ -53,7 +53,7 @@
 6. Open the **Configuration Values** section of the connector. Set `primaryAccountId` to your primary Boomi account ID.
 7. Click **Install**, then **Save**.
 
-**Verify:** Open the connector and confirm all 38 types appear under **Types**. If any are missing, click "Retrieve Connector Configuration Data" again and check that the Flow Service is deployed and all 19 listeners are running.
+**Verify:** Open the connector and confirm all 38 types appear under **Types**. If any are missing, click "Retrieve Connector Configuration Data" again and check that the Flow Service is deployed and all 20 listeners are running.
 
 ### Step 5.2 -- Create Flow Application
 

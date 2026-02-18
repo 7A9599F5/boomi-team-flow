@@ -35,7 +35,7 @@ For components with complex internal XML (Integration Processes, Maps), the guid
 
 ## Bill of Materials
 
-The system comprises **124 components** across 7 phases:
+The system comprises **128 components** across 7 phases:
 
 | Phase | Category | Count | Components |
 |-------|----------|-------|------------|
@@ -43,9 +43,9 @@ The system comprises **124 components** across 7 phases:
 | 2 | Connections | 2 | HTTP Client (Partner API), DataHub |
 | 2 | HTTP Client Operations | 19 | GET/POST/QUERY for Component, Reference, Metadata, Package, Deploy, IntegrationPack; Branch (create, query, get, delete), MergeRequest (create, execute, get); Add To IntegrationPack, ReleaseIntegrationPack |
 | 2 | DataHub Operations | 6 | Query + Update for each of 3 models |
-| 3 | JSON Profiles | 28 | Request + Response for each of 14 message actions |
-| 3 | Integration Processes | 13 | A0, A, B, C, D, E, E2, E3, E4, E5, F, G, J |
-| 4 | FSS Operations | 14 | One per message action |
+| 3 | JSON Profiles | 30 | Request + Response for each of 15 message actions (incl. checkReleaseStatus) |
+| 3 | Integration Processes | 14 | A0, A, B, C, D, E, E2, E3, E4, E5, F, G, J, P |
+| 4 | FSS Operations | 15 | One per message action |
 | 4 | Flow Service | 1 | PROMO - Flow Service |
 | 5 | Custom Component | 1 | XmlDiffViewer (React diff viewer for Flow custom player) |
 | 5 | Flow Connector | 1 | Promotion Service Connector |
@@ -57,7 +57,7 @@ The system comprises **124 components** across 7 phases:
 | 7 | Integration Processes | 5 | K (listClientAccounts), L (getExtensions), M (updateExtensions), N (copyExtensionsTestToProd), O (updateMapExtension) |
 | 7 | FSS Operations | 5 | One per new message action |
 | 7 | Custom Component | 1 | ExtensionEditor (React custom component for env extension editing) |
-| | **Total** | **124** | |
+| | **Total** | **128** | |
 
 ---
 
@@ -158,9 +158,9 @@ graph LR
 |-----------|----------|---------|
 | `/datahub/models/` | DataHub model specifications (5 JSON files) | Phase 1, 7 |
 | `/datahub/api-requests/` | Test XML for DataHub CRUD validation (5 files) | Phase 1, 6, 7 |
-| `/integration/profiles/` | JSON request/response profiles (38 files, 19 message actions × 2) | Phase 3, 7 |
+| `/integration/profiles/` | JSON request/response profiles (40 files, 20 message actions × 2) | Phase 3, 7 |
 | `/integration/scripts/` | Groovy scripts for XML manipulation (10 files) | Phase 3, 7 |
-| `/integration/api-requests/` | API request templates (27 files) | Phase 2, 3, 7 |
+| `/integration/api-requests/` | API request templates (28 files) | Phase 2, 3, 7 |
 | `/integration/flow-service/` | Flow Service component specification | Phase 4 |
 | `/flow/` | Flow app structure and page layouts (11 files) | Phase 5, 7 |
 | `/docs/` | This guide and architecture reference | All |

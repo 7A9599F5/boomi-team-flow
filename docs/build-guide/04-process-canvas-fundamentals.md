@@ -72,7 +72,7 @@ See [Appendix D: API Automation Guide](22-api-automation-guide.md#api-first-disc
 3. Click **Import** and select the corresponding file from `/integration/profiles/` (e.g., `manageMappings-request.json`)
 4. Boomi parses the JSON and creates the profile element tree automatically
 5. Click **Save**
-6. Repeat for each of the 38 profiles listed in the master component table:
+6. Repeat for each of the 40 profiles listed in the master component table:
 
 | Profile Name | Source File |
 |-------------|-------------|
@@ -199,7 +199,7 @@ Replace `{requestProfileComponentId}` and `{responseProfileComponentId}` with th
 
 > **Note:** The exact XML structure for FSS operation configuration may vary — use the [API-First Discovery Workflow](22-api-automation-guide.md#api-first-discovery-workflow) to capture precise XML from a UI-created operation if the template above does not work directly.
 
-See [Appendix D: API Automation Guide](22-api-automation-guide.md) for a batch creation script covering all 19 operations.
+See [Appendix D: API Automation Guide](22-api-automation-guide.md) for a batch creation script covering all 20 operations.
 
 ##### Via UI (Manual Fallback)
 
@@ -266,9 +266,9 @@ Invoke-RestMethod -Uri "https://api.boomi.com/partner/api/rest/v1/{accountId}/Co
 4. **Batch create** — loop through a list of component definitions, substituting unique values into the template
 
 This workflow is especially valuable for:
-- **38 JSON profiles** — create one, export, template the remaining 37
+- **40 JSON profiles** — create one, export, template the remaining 39
 - **27 HTTP Client operations** — create one, export, template the remaining 26
-- **19 FSS operations** — create one, export, template the remaining 18
+- **20 FSS operations** — create one, export, template the remaining 19
 - **Cross-account migration** — export all components from one account, recreate in another
 
 See [Appendix D: API Automation Guide](22-api-automation-guide.md) for complete batch creation scripts and the dependency-ordered workflow.

@@ -30,6 +30,7 @@ globs:
 - **M**: updateExtensions — save env extension changes (partial update, access-validated)
 - **N**: copyExtensionsTestToProd — copy non-connection extensions from Test to Prod
 - **O**: updateMapExtension — save map extension changes (Phase 2; Phase 1 read-only)
+- **P**: checkReleaseStatus — poll ReleaseIntegrationPackStatus for release propagation tracking
 
 ### Profile Naming
 - **Pattern**: `PROMO - Profile - {ActionName}Request` / `PROMO - Profile - {ActionName}Response`
@@ -66,6 +67,7 @@ globs:
 16. **Process M** (depends on L context) — extension writing
 17. **Process N** (depends on L context) — Test-to-Prod copy
 18. **Process O** (depends on L context) — map extension writing
+19. **Process P** (depends on D context) — release status polling
 
 ### Why This Order Matters
 - Process C creates the promotion branch; Processes G and D depend on branch operations

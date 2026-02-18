@@ -6,7 +6,7 @@ This section provides test scenarios for the Extension Editor feature. Run these
 
 Before testing:
 - [ ] All 5 new processes (K-O) deployed and listeners running
-- [ ] Flow Service redeployed with 19 message actions
+- [ ] Flow Service redeployed with 20 message actions
 - [ ] Flow connector re-retrieved (38 types visible)
 - [ ] ExtensionEditor custom component assets uploaded
 - [ ] Pages 10-11 built and published

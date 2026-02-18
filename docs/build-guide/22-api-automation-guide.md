@@ -60,12 +60,12 @@ Step 1:  DataHub Repository
 Step 2:  DataHub Sources (3)
 Step 3:  DataHub Models (5) -> Publish -> Deploy
 Step 4:  Folder Structure
-Step 5:  JSON Profiles (38)
+Step 5:  JSON Profiles (40)
 Step 6:  HTTP Client Connection
 Step 7:  HTTP Client Operations (27)
 Step 8:  DataHub Connection
 Step 9:  DataHub Operations (10)
-Step 10: FSS Operations (19)
+Step 10: FSS Operations (20)
 Step 11: Integration Processes (18)
 Step 12: Flow Service
 Step 13: Package + Deploy Flow Service
@@ -262,7 +262,7 @@ Invoke-RestMethod -Uri "https://api.boomi.com/partner/api/rest/v1/$env:BOOMI_ACC
 
 ---
 
-#### Step 5 -- Create 38 JSON Profiles (Batch)
+#### Step 5 -- Create 40 JSON Profiles (Batch)
 
 Reference: [Phase 3: Process Canvas Fundamentals](04-process-canvas-fundamentals.md) for profile import instructions.
 
@@ -293,7 +293,7 @@ Invoke-RestMethod -Uri "https://api.boomi.com/partner/api/rest/v1/$env:BOOMI_ACC
   -Method POST -Headers $BoomiHeadersXml -Body $profileXml
 ```
 
-**Complete Profile Inventory (38 profiles):**
+**Complete Profile Inventory (40 profiles):**
 
 | # | Profile Component Name | Source File |
 |---|----------------------|-------------|
@@ -533,7 +533,7 @@ Invoke-RestMethod -Uri "https://api.boomi.com/partner/api/rest/v1/$env:BOOMI_ACC
 
 ---
 
-#### Step 10 -- Create 19 FSS Operations (Batch)
+#### Step 10 -- Create 20 FSS Operations (Batch)
 
 Reference: [Phase 4: Flow Service Component](14-flow-service.md)
 
@@ -564,7 +564,7 @@ Invoke-RestMethod -Uri "https://api.boomi.com/partner/api/rest/v1/$env:BOOMI_ACC
   -Method POST -Headers $BoomiHeadersXml -Body $fssOpXml
 ```
 
-**Complete FSS Operation Inventory (19 operations):**
+**Complete FSS Operation Inventory (20 operations):**
 
 | # | Component Name | Linked Process | Action Name |
 |---|---------------|---------------|-------------|
@@ -661,7 +661,7 @@ Invoke-RestMethod -Uri "https://api.boomi.com/partner/api/rest/v1/$env:BOOMI_ACC
 
 Reference: [Phase 4: Flow Service Component](14-flow-service.md)
 
-The Flow Service is a `flowservice` type component that links 19 message actions to their FSS Operations and profiles.
+The Flow Service is a `flowservice` type component that links 20 message actions to their FSS Operations and profiles.
 
 ```bash
 curl -s -u "$BOOMI_AUTH" \
@@ -690,7 +690,7 @@ Invoke-RestMethod -Uri "https://api.boomi.com/partner/api/rest/v1/$env:BOOMI_ACC
   -Method POST -Headers $BoomiHeadersXml -Body $fsXml
 ```
 
-> **Recommended workflow:** Build the Flow Service in the UI following [Phase 4](14-flow-service.md) to link all 19 message actions correctly, then export with `GET /Component/{id}` to capture the complete XML for future automation.
+> **Recommended workflow:** Build the Flow Service in the UI following [Phase 4](14-flow-service.md) to link all 20 message actions correctly, then export with `GET /Component/{id}` to capture the complete XML for future automation.
 
 ---
 
@@ -756,7 +756,7 @@ After deployment, set the `primaryAccountId` configuration value via the Boomi U
 1. Navigate to Manage -> Atom Management -> select the public cloud atom.
 2. Open Properties -> Configuration Values.
 3. Set `primaryAccountId` to your primary Boomi account ID.
-4. Save and verify all 19 listeners appear in Runtime Management -> Listeners.
+4. Save and verify all 20 listeners appear in Runtime Management -> Listeners.
 
 > The `primaryAccountId` configuration value cannot be set via API -- it must be configured in the Atom Management UI after deployment.
 
@@ -1134,7 +1134,7 @@ Invoke-RestMethod -Uri "https://api.boomi.com/partner/api/rest/v1/$env:BOOMI_ACC
   -Method POST -Headers $BoomiHeaders -Body $queryBody
 ```
 
-Verify `numberOfResults` equals **56** (27 HTTP Client + 10 DataHub + 19 FSS operations).
+Verify `numberOfResults` equals **57** (27 HTTP Client + 10 DataHub + 20 FSS operations).
 
 #### 4. Verify Profiles
 
@@ -1175,7 +1175,7 @@ Invoke-RestMethod -Uri "https://api.boomi.com/partner/api/rest/v1/$env:BOOMI_ACC
   -Method POST -Headers $BoomiHeaders -Body $queryBody
 ```
 
-Verify `numberOfResults` equals **38** (19 actions x 2 profiles each).
+Verify `numberOfResults` equals **40** (20 actions x 2 profiles each).
 
 #### 5. Verify Processes
 
@@ -1216,7 +1216,7 @@ Invoke-RestMethod -Uri "https://api.boomi.com/partner/api/rest/v1/$env:BOOMI_ACC
   -Method POST -Headers $BoomiHeaders -Body $queryBody
 ```
 
-Verify `numberOfResults` equals **18** processes.
+Verify `numberOfResults` equals **19** processes.
 
 #### 6. Verify Flow Service and Listeners
 
@@ -1279,11 +1279,11 @@ A successful `getDevAccounts` response with `"success": true` confirms the entir
 | Connections | 2 | GET Component for each ID |
 | HTTP Client Operations | 27 | STARTS_WITH "PROMO - HTTP Op" |
 | DataHub Operations | 10 | STARTS_WITH "PROMO - DH Op" |
-| FSS Operations | 19 | STARTS_WITH "PROMO - FSS Op" |
-| JSON Profiles | 38 | STARTS_WITH "PROMO - Profile" |
-| Integration Processes | 18 | type = "process", STARTS_WITH "PROMO - " |
+| FSS Operations | 20 | STARTS_WITH "PROMO - FSS Op" |
+| JSON Profiles | 40 | STARTS_WITH "PROMO - Profile" |
+| Integration Processes | 19 | type = "process", STARTS_WITH "PROMO - " |
 | Flow Service | 1 | name = "PROMO - Flow Service" |
-| **Total Components** | **124** | |
+| **Total Components** | **128** | |
 
 ---
 
