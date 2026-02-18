@@ -85,7 +85,6 @@ These properties are available to all processes via Flow Service component confi
 | `integrationPackId` | String | Set Properties (step 2) or HTTP response (step 5) | HTTP Client Send (steps 5, 6, 7), Map (step 9) | false | Integration Pack ID (existing or newly created) |
 | `newPackName` | String | Set Properties (step 2) | HTTP Client Send (step 5), Map (step 9) | false | Name for new Integration Pack |
 | `newPackDescription` | String | Set Properties (step 2) | HTTP Client Send (step 5) | false | Description for new Integration Pack |
-| `targetAccountGroupId` | String | Set Properties (step 2) | HTTP Client Send (step 8) | false | Account group for deployment |
 | `deploymentTarget` | String | Set Properties (step 2) | Decision (step 2.1), Decision (step 8.5), Map (step 9) | false | `"TEST"` or `"PRODUCTION"` -- determines deployment mode |
 | `isHotfix` | String | Set Properties (step 2) | Decision (step 2.1), Map (step 9), DataHub Update | false | `"true"` / `"false"` -- flags emergency production bypass |
 | `hotfixJustification` | String | Set Properties (step 2) | DataHub Update (PromotionLog) | false | Justification text for hotfix (up to 1000 chars) |

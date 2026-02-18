@@ -186,6 +186,20 @@
       "matchField": false
     },
     {
+      "name": "releaseId",
+      "type": "String",
+      "description": "ReleaseIntegrationPack response ID for production release; used to check propagation status",
+      "required": false,
+      "matchField": false
+    },
+    {
+      "name": "testReleaseId",
+      "type": "String",
+      "description": "ReleaseIntegrationPack response ID for test release (hotfix mode only)",
+      "required": false,
+      "matchField": false
+    },
+    {
       "name": "processName",
       "type": "String",
       "description": "Root process name — used for Integration Pack suggestions on future promotions of the same process",
@@ -202,7 +216,7 @@
     {
       "name": "isHotfix",
       "type": "String",
-      "description": "'true' or 'false' — flags emergency production bypass that skips test environment",
+      "description": "'true' or 'false' — flags emergency production bypass — releases to production first, then to test",
       "required": false,
       "matchField": false
     },
@@ -278,5 +292,5 @@
     }
   ],
   "dataQualitySteps": [],
-  "notes": "This model provides complete audit trail for compliance and troubleshooting. The promotion engine creates a record at the start of each promotion (status=IN_PROGRESS) and updates it when complete. For test deployments (targetEnvironment=TEST), the record transitions through TEST_DEPLOYING → TEST_DEPLOYED and the branch is preserved for future production review. For production deployments, the record enters a 2-layer approval workflow: peer review (peerReviewStatus) followed by admin review (adminReviewStatus). Emergency hotfixes (isHotfix=true) go directly to production with full reviews but skip the test-first requirement — hotfixJustification is required. When a test deployment is promoted to production, the new PRODUCTION record links back via testPromotionId. Self-review prevention is enforced at the backend level (reviewer cannot equal initiatedBy). The resultDetail field stores structured JSON for detailed analysis of individual component outcomes. The branchId field tracks the Boomi Branching promotion branch lifecycle — set on creation, cleared after cleanup (note: for test deployments, the branch persists through the test→production lifecycle for diff/audit purposes). Contributors can withdraw their own promotions while in PENDING_PEER_REVIEW or PENDING_ADMIN_REVIEW status via Process E5 — the branch is deleted, status set to WITHDRAWN, and withdrawnAt/withdrawalReason recorded. The processName and integrationPackId fields enable smart Integration Pack suggestions for repeat promotions."
+  "notes": "This model provides complete audit trail for compliance and troubleshooting. The promotion engine creates a record at the start of each promotion (status=IN_PROGRESS) and updates it when complete. For test deployments (targetEnvironment=TEST), the record transitions through TEST_DEPLOYING → TEST_DEPLOYED and the branch is preserved for future production review. For production deployments, the record enters a 2-layer approval workflow: peer review (peerReviewStatus) followed by admin review (adminReviewStatus). Emergency hotfixes (isHotfix=true) release to production first, then release the same PackagedComponent to test to keep environments in sync — hotfixJustification is required. When a test deployment is promoted to production, the new PRODUCTION record links back via testPromotionId. Self-review prevention is enforced at the backend level (reviewer cannot equal initiatedBy). The resultDetail field stores structured JSON for detailed analysis of individual component outcomes. The branchId field tracks the Boomi Branching promotion branch lifecycle — set on creation, cleared after cleanup (note: for test deployments, the branch persists through the test→production lifecycle for diff/audit purposes). Contributors can withdraw their own promotions while in PENDING_PEER_REVIEW or PENDING_ADMIN_REVIEW status via Process E5 — the branch is deleted, status set to WITHDRAWN, and withdrawnAt/withdrawalReason recorded. The processName and integrationPackId fields enable smart Integration Pack suggestions for repeat promotions."
 }

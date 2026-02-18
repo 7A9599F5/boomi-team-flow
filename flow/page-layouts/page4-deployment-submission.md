@@ -74,11 +74,6 @@ This prevents users from bookmarking or manually navigating to this page without
    - If `suggestedPackId` is returned: Pre-select the suggested pack in the combobox
    - Store results in Flow values: `availableIntegrationPacks`, `suggestedPackId`
 
-5. **Load account group options (optional):**
-   - Message step → API to get list of account groups (if available)
-   - Populate Combobox with group names
-   - Store in `availableAccountGroups` Flow value
-
 ## Components
 
 ### Package Version Input
@@ -201,32 +196,6 @@ This prevents users from bookmarking or manually navigating to this page without
 
 ---
 
-### Target Account Group Selector
-
-**Component Type:** Combobox (Dropdown)
-
-**Configuration:**
-- **Label:** "Target Account Group"
-- **Placeholder:** "Select the target account group..."
-- **Required:** Yes
-- **Data source:** `availableAccountGroups` API response (or static config)
-- **Display field:** `groupName`
-- **Value field:** `groupId`
-
-**Options:**
-- Example: "Production", "UAT", "QA", "Dev Sandbox"
-- Populated from primary account configuration
-- May include group descriptions in tooltip
-
-**Behavior:**
-- **On change:** Store selected `groupId` → `deploymentRequest.targetAccountGroupId`
-- **Validation message:** "Target account group is required" (if empty on submit)
-
-**Styling:**
-- Full width or max 400px
-
----
-
 ### Deployment Notes Textarea
 
 **Component Type:** Textarea
@@ -307,7 +276,8 @@ This prevents users from bookmarking or manually navigating to this page without
 
 **Test Deployment Post-Submit Results:**
 When `targetEnvironment = "TEST"`, the `packageAndDeploy` response is displayed inline:
-- Success: Green banner — "Successfully deployed to Test Integration Pack: {testIntegrationPackName}"
+- Success: Green banner — "Released to Test Integration Pack: {testIntegrationPackName} v{releaseVersion}"
+- Release ID: {releaseId}
 - Branch preserved message: "Your promotion branch has been preserved for future production review."
 - "Return to Dashboard" button
 - "View in Production Readiness" button → Page 9
@@ -317,7 +287,6 @@ When `targetEnvironment = "TEST"`, the `packageAndDeploy` response is displayed 
 - Check all required fields filled:
   - `packageVersion` not empty
   - `integrationPackId` selected OR (`createNewPack=true` AND `newPackName` not empty)
-  - `targetAccountGroupId` selected
 - If validation fails: Show error message, highlight empty required fields
 
 **Behavior on Click:**
@@ -335,7 +304,6 @@ When `targetEnvironment = "TEST"`, the `packageAndDeploy` response is displayed 
      "createNewPack": true/false,
      "newPackName": "{newPackName}" or null,
      "newPackDescription": "{newPackDescription}" or null,
-     "targetAccountGroupId": "{targetAccountGroupId}",
      "notes": "{notes}",
      "submittedBy": "{userEmail}",
      "submittedAt": "{timestamp}",
@@ -364,7 +332,6 @@ When `targetEnvironment = "TEST"`, the `packageAndDeploy` response is displayed 
 
      DEPLOYMENT DETAILS:
      Integration Pack: {integrationPackName or newPackName}
-     Target Account Group: {targetAccountGroupName}
 
      SUBMITTED BY:
      Name: {submitterName}
@@ -444,9 +411,6 @@ When `targetEnvironment = "TEST"`, the `packageAndDeploy` response is displayed 
 |    [_________________________]                           |
 |    [_________________________]                           |
 |                                                          |
-|  Target Account Group                                    |
-|  [Production ▼______________]                            |
-|                                                          |
 |  Deployment Notes                                        |
 |  [_________________________]                             |
 |  [_________________________]                             |
@@ -518,9 +482,6 @@ When `targetEnvironment = "TEST"`, the `packageAndDeploy` response is displayed 
 - Required: "New pack name is required when creating a new pack"
 - Max length: "Pack name cannot exceed 100 characters"
 
-**Target Account Group:**
-- Required: "Target account group is required"
-
 **Deployment Notes:**
 - Max length: "Notes cannot exceed 500 characters"
 
@@ -546,7 +507,6 @@ On "Submit for Peer Review" click:
 
   Promotion ID: abc123-def456-ghi789
   Package Version: 1.2.3
-  Target Account Group: Production
 
   You will receive email notifications as the review progresses.
   ```
@@ -592,7 +552,6 @@ On "Submit for Peer Review" click:
 3. **User fills out form:**
    - New Pack Name: "Order Management v3"
    - New Pack Description: "Handles order processing from API to database"
-   - Target Account Group: "Production"
    - Deployment Notes: "Deploy during maintenance window on Sunday 2am ET"
 
 4. **User clicks "Submit for Peer Review"**

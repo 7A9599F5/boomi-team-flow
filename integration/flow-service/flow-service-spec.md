@@ -180,9 +180,6 @@ else → effectiveTier = "READONLY" (no dashboard access — should not reach th
 - `newPackName` (string, conditional - required if createNewPack=true)
 - `newPackDescription` (string, conditional)
 - `existingPackId` (string, conditional - required if createNewPack=false)
-- `targetEnvironments` (array)
-  - `environmentId` (string)
-  - `environmentName` (string)
 - `devAccountId` (string, required) — Source dev account ID
 - `devPackageId` (string, required) — Source dev package ID
 - `devPackageCreator` (string) — Boomi user who created the dev package
@@ -199,11 +196,8 @@ else → effectiveTier = "READONLY" (no dashboard access — should not reach th
 - `packageId` (string)
 - `prodPackageId` (string) — Package ID of the created prod PackagedComponent
 - `integrationPackId` (string)
-- `deploymentResults` (array)
-  - `environmentId` (string)
-  - `environmentName` (string)
-  - `deployed` (boolean)
-  - `errorMessage` (string, optional)
+- `releaseId` (string) — ReleaseIntegrationPack response ID for status polling
+- `releaseVersion` (string) — released pack version
 - `deploymentTarget` (string) — echoed from request
 - `branchPreserved` (boolean) — true when branch is kept alive (test deployments only)
 - `isHotfix` (boolean) — echoed from request
@@ -221,26 +215,24 @@ Process D MUST validate that the admin submitting the deployment is not the same
 2. Create PackagedComponent from main
 3. Create/use Test Integration Pack (separate from production)
 4. Release Test Integration Pack
-5. Deploy to test environment(s)
-6. **DO NOT delete branch** — preserve for production review diffing
-7. Update PromotionLog: `status=TEST_DEPLOYED`, `testDeployedAt=now`, `testIntegrationPackId/Name`
-8. Response: `branchPreserved=true`
+5. **DO NOT delete branch** — preserve for production review diffing
+6. Update PromotionLog: `status=TEST_DEPLOYED`, `testDeployedAt=now`, `testIntegrationPackId/Name`
+7. Response: `branchPreserved=true`
 
 **Mode 2: PRODUCTION deployment from test** (`deploymentTarget="PRODUCTION"`, `testPromotionId` populated):
 1. **Skip merge** — content already on main from test deployment
 2. Create PackagedComponent from main (new version)
 3. Create/use Production Integration Pack
 4. Release Production Integration Pack
-5. Deploy to production environment(s)
-6. **Delete branch** (the one preserved from test phase)
-7. Update PromotionLog: `status=DEPLOYED`, `integrationPackId/Name`, `prodPackageId`
-8. Response: `branchPreserved=false`
+5. **Delete branch** (the one preserved from test phase)
+6. Update PromotionLog: `status=DEPLOYED`, `integrationPackId/Name`, `prodPackageId`
+7. Response: `branchPreserved=false`
 
 **Mode 3: PRODUCTION hotfix** (`deploymentTarget="PRODUCTION"`, `isHotfix=true`):
 1. Merge branch to main (same as current)
 2. Create PackagedComponent
 3. Create/use Production Integration Pack
-4. Release, deploy to production
+4. Release Production Integration Pack
 5. Delete branch
 6. Update PromotionLog: `status=DEPLOYED`, `isHotfix="true"`, `hotfixJustification`
 7. Response: `branchPreserved=false`, `isHotfix=true`
