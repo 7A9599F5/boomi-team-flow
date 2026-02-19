@@ -210,22 +210,19 @@ class PlatformApi:
 
     def count_components_by_prefix(self, prefix: str) -> int:
         """Query components with name starting with prefix, return count."""
-        query_xml = (
-            '<?xml version="1.0" encoding="UTF-8"?>'
-            '<QueryFilter xmlns="http://api.platform.boomi.com/"'
-            ' xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">'
-            '<expression operator="STARTS_WITH" property="name"'
-            ' xsi:type="SimpleExpression">'
-            f"<argument>{prefix}</argument>"
-            "</expression>"
-            "</QueryFilter>"
-        )
-        result = self.query_components(query_xml)
-        if isinstance(result, str):
-            import re
-            match = re.search(r'numberOfResults="(\d+)"', result)
-            if match:
-                return int(match.group(1))
+        query_json = json.dumps({
+            "QueryFilter": {
+                "expression": {
+                    "argument": [prefix],
+                    "operator": "STARTS_WITH",
+                    "property": "name",
+                }
+            }
+        })
+        url = f"{self._base}/Component/query"
+        result = self._client.post(url, data=query_json)
+        if isinstance(result, dict):
+            return int(result.get("numberOfResults", 0))
         return 0
 
     @staticmethod
