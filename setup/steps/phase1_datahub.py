@@ -516,6 +516,56 @@ class SeedDevAccess(BaseStep):
             "</batch>"
         )
 
+    def _validate_universe_ids(self, state: SetupState) -> bool:
+        """Pre-flight check: verify universe_ids are populated and unique.
+
+        Returns True if valid, False if misconfigured.
+        """
+        uids = self.datahub_api._config.universe_ids
+        state_uids = state.config.get("universe_ids", {})
+
+        ui.print_info("Pre-flight universe_id check:")
+        ui.print_info(f"  config.universe_ids: {dict(uids)}")
+        ui.print_info(f"  state.universe_ids:  {dict(state_uids)}")
+
+        # Check DevAccountAccess specifically
+        da_uid = uids.get("DevAccountAccess", "")
+        if not da_uid:
+            ui.print_error(
+                "universe_id for DevAccountAccess is MISSING from config. "
+                "Steps 1.2a-c may have been skipped without populating IDs."
+            )
+            # Attempt live recovery via GET /models
+            ui.print_info("Attempting live recovery via GET /models...")
+            recovered_id = self.datahub_api.find_model_by_name("DevAccountAccess")
+            if recovered_id:
+                ui.print_info(f"Recovered DevAccountAccess universe_id: {recovered_id}")
+                state.store_universe_id("DevAccountAccess", recovered_id)
+                self.datahub_api._config.universe_ids["DevAccountAccess"] = recovered_id
+                state.store_component_id("models", "DevAccountAccess", recovered_id)
+            else:
+                ui.print_error("Could not find DevAccountAccess via GET /models")
+                return False
+
+        # Check for duplicates (different models sharing same universe_id)
+        seen: dict[str, str] = {}
+        for model_name, uid in uids.items():
+            if uid in seen:
+                ui.print_error(
+                    f"DUPLICATE universe_id detected: '{model_name}' and "
+                    f"'{seen[uid]}' both have universe_id '{uid}'"
+                )
+                return False
+            seen[uid] = model_name
+
+        # Log the URL that will be used
+        hub_url = self.datahub_api._config.hub_cloud_url
+        final_uid = uids.get("DevAccountAccess", "MISSING")
+        ui.print_info(
+            f"  Record URL: {hub_url}/mdm/universes/{final_uid}/records"
+        )
+        return True
+
     def execute(self, state: SetupState, dry_run: bool = False) -> StepStatus:
         ui.print_step(self.step_id, self.name, self.step_type.value)
 
@@ -523,8 +573,15 @@ class SeedDevAccess(BaseStep):
             ui.print_info("Would prompt for DevAccountAccess records and insert via DataHub API")
             return StepStatus.COMPLETED
 
+        # Validate universe_ids before attempting record creation
+        if not self._validate_universe_ids(state):
+            ui.print_error(
+                "Universe ID validation failed. Check the IDs above against "
+                "your DataHub UI (Services > DataHub > Models > click model > URL contains the ID)"
+            )
+            return StepStatus.FAILED
+
         record_count = 0
-        logged_uid = False
         while True:
             sso_group_id = guide_and_collect(
                 "Enter the SSO group ID for this dev account access record.\n"
@@ -547,12 +604,6 @@ class SeedDevAccess(BaseStep):
             record_xml = self._build_record_xml(
                 sso_group_id, group_name, dev_account_id, dev_account_name
             )
-
-            # Log universe_id once (before first record) for diagnostics
-            if not logged_uid:
-                uid = state.config.get("universe_ids", {}).get("DevAccountAccess", "MISSING")
-                ui.print_info(f"Using universe_id for DevAccountAccess: {uid}")
-                logged_uid = True
 
             try:
                 # Retry on "entity of unknown type" — model may not yet be
