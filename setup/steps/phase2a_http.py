@@ -163,28 +163,30 @@ class CreateHttpConn(BaseStep):
         connections_folder_id = state.get_component_id("folders", "Connections") or ""
 
         # Build connection component XML
+        # Structure must match Boomi's GenericConnectorConfig format
+        # (see integration/api-requests/component-types/connector-settings.xml)
         component_xml = (
             '<?xml version="1.0" encoding="UTF-8"?>\n'
             '<bns:Component xmlns:bns="http://api.platform.boomi.com/" '
             f'name="PROMO - HTTP Client Connection" type="connector-settings" '
-            f'subType="http" folderId="{connections_folder_id}">\n'
+            f'subType="httpclnt" folderId="{connections_folder_id}">\n'
             "  <bns:object>\n"
-            "    <ConnectorSettings>\n"
-            f"      <Url>https://api.boomi.com</Url>\n"
-            "      <AuthType>BASIC</AuthType>\n"
-            f"      <User>{api_user}</User>\n"
-            f"      <Password>{api_token}</Password>\n"
-            "    </ConnectorSettings>\n"
+            '    <GenericConnectorConfig xmlns="">\n'
+            f'      <field id="url">https://api.boomi.com</field>\n'
+            f'      <field id="authType">basic</field>\n'
+            f'      <field id="username">{api_user}</field>\n'
+            f'      <field id="password">{api_token}</field>\n'
+            '      <field id="cookieScope">none</field>\n'
+            '      <field id="connectTimeout">30000</field>\n'
+            '      <field id="readTimeout">120000</field>\n'
+            "    </GenericConnectorConfig>\n"
             "  </bns:object>\n"
             "</bns:Component>"
         )
 
         try:
             result = self.platform_api.create_component(component_xml)
-            conn_id = result["@id"] if isinstance(result, dict) else ""
-            if not conn_id:
-                # Try alternate key
-                conn_id = result.get("id", "") if isinstance(result, dict) else ""
+            conn_id = self.platform_api.parse_component_id(result)
             if not conn_id:
                 ui.print_error("No connection ID returned from API")
                 return StepStatus.FAILED
