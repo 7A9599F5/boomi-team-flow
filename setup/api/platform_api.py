@@ -218,9 +218,9 @@ class PlatformApi:
                     "nestedExpression": [
                         {
                             "@type": "SimpleExpression",
-                            "operator": "STARTS_WITH",
+                            "operator": "LIKE",
                             "property": "name",
-                            "argument": [prefix],
+                            "argument": [f"{prefix}%"],
                         },
                         {
                             "@type": "SimpleExpression",
