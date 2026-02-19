@@ -251,17 +251,51 @@ class CreateModel(BaseStep):
 
         try:
             spec = load_model_spec(self._model_name)
-            model_id = self.datahub_api.create_model(spec)
-            ui.print_info(f"Created model '{self._model_name}' (ID: {model_id})")
 
-            self.datahub_api.publish_model(model_id)
-            ui.print_info(f"Published model '{self._model_name}'")
+            # Try to create; recover if model already exists in Boomi but
+            # not in our state (e.g. state was reset after a prior run).
+            try:
+                model_id = self.datahub_api.create_model(spec)
+                ui.print_info(f"Created model '{self._model_name}' (ID: {model_id})")
+            except BoomiApiError as create_exc:
+                if create_exc.status_code in (400, 409) and "already" in create_exc.body.lower():
+                    ui.print_info(
+                        f"Model '{self._model_name}' already exists in Boomi — recovering ID..."
+                    )
+                    model_id = self.datahub_api.find_model_by_name(self._model_name)
+                    if not model_id:
+                        ui.print_error(
+                            f"Model '{self._model_name}' reportedly exists but "
+                            "could not be found via GET /models"
+                        )
+                        return StepStatus.FAILED
+                    ui.print_info(f"Recovered model ID: {model_id}")
+                else:
+                    raise
 
-            deployment_id = self.datahub_api.deploy_model(model_id)
-            ui.print_info(f"Deploying model '{self._model_name}'...")
+            # Publish (idempotent — ignore "already published" errors)
+            try:
+                self.datahub_api.publish_model(model_id)
+                ui.print_info(f"Published model '{self._model_name}'")
+            except BoomiApiError as pub_exc:
+                if pub_exc.status_code == 400:
+                    ui.print_info(f"Model '{self._model_name}' already published")
+                else:
+                    raise
 
-            self.datahub_api.poll_model_deployed(model_id, deployment_id)
-            ui.print_success(f"Model '{self._model_name}' deployed (ID: {model_id})")
+            # Deploy (may already be deployed — 400 is acceptable)
+            try:
+                deployment_id = self.datahub_api.deploy_model(model_id)
+                ui.print_info(f"Deploying model '{self._model_name}'...")
+                self.datahub_api.poll_model_deployed(model_id, deployment_id)
+                ui.print_success(f"Model '{self._model_name}' deployed (ID: {model_id})")
+            except BoomiApiError as dep_exc:
+                if dep_exc.status_code == 400:
+                    ui.print_info(
+                        f"Model '{self._model_name}' already deployed (ID: {model_id})"
+                    )
+                else:
+                    raise
 
             state.store_component_id("models", self._model_name, model_id)
             # C2a fix: store universe_id (= model_id) so record operations can build

@@ -644,6 +644,57 @@ class DataHubApi:
             500, f"Could not parse model ID from response: {result!r}", url,
         )
 
+    def list_models(self) -> list[dict[str, str]]:
+        """GET /models — list all models in the account.
+
+        Returns list of dicts with keys: id, name.
+        """
+        url = f"{self._base}/models"
+        result = self._client.get(url, accept_xml=True)
+        if isinstance(result, str):
+            return self._parse_models_xml(result)
+        return []
+
+    @staticmethod
+    def _parse_models_xml(xml_str: str) -> list[dict[str, str]]:
+        """Parse <mdm:Models> XML response into list of model dicts."""
+        models: list[dict[str, str]] = []
+        try:
+            root = ET.fromstring(xml_str)
+            ns = {"mdm": _MDM_NS}
+            # Try namespace-aware search first
+            model_elements = root.findall(".//mdm:Model", ns)
+            if not model_elements:
+                # Fall back to namespace-unaware search
+                model_elements = [
+                    el for el in root.iter()
+                    if el.tag.endswith("}Model") or el.tag == "Model"
+                ]
+            for model in model_elements:
+                model_id = model.get("id", "")
+                name = model.get("name", "")
+                # Some responses use child elements instead of attributes
+                if not model_id:
+                    id_el = model.find("mdm:id", ns)
+                    if id_el is not None and id_el.text:
+                        model_id = id_el.text
+                if not name:
+                    name_el = model.find("mdm:name", ns)
+                    if name_el is not None and name_el.text:
+                        name = name_el.text
+                if model_id:
+                    models.append({"id": model_id, "name": name})
+        except ET.ParseError as exc:
+            logger.warning("Failed to parse models XML: %s", exc)
+        return models
+
+    def find_model_by_name(self, model_name: str) -> str | None:
+        """Find a model ID by name, or None if not found."""
+        for model in self.list_models():
+            if model["name"] == model_name:
+                return model["id"]
+        return None
+
     def get_model(self, model_id: str) -> dict | str:
         """GET /models/{modelId}."""
         url = f"{self._base}/models/{model_id}"
