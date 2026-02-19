@@ -1,4 +1,3 @@
-<?xml version="1.0" encoding="UTF-8"?>
 <batch src="PROMOTION_ENGINE">
   <ComponentMapping>
     <devComponentId>test-dev-comp-001</devComponentId>

@@ -502,9 +502,10 @@ class SeedDevAccess(BaseStep):
     ) -> str:
         # C2c fix: include <id> source entity ID so DataHub does not quarantine the record.
         # The composite key uses the two match fields separated by colon.
+        # NOTE: No XML declaration — Boomi docs show batch XML without <?xml?> header,
+        # and some parsers may mis-detect the entity type when the declaration is present.
         entity_id = f"{sso_group_id}:{dev_account_id}"
         return (
-            '<?xml version="1.0" encoding="UTF-8"?>\n'
             '<batch src="ADMIN_CONFIG">\n'
             "  <DevAccountAccess>\n"
             f"    <id>{entity_id}</id>\n"
@@ -648,11 +649,13 @@ class SeedDevAccess(BaseStep):
                 # Retry on "entity of unknown type" — model may not yet be
                 # recognized by the Repository API after deployment.
                 last_exc = None
+                created = False
                 for attempt in range(4):
                     try:
                         self.datahub_api.create_record(
                             "DevAccountAccess", record_xml, "ADMIN_CONFIG"
                         )
+                        created = True
                         break
                     except BoomiApiError as exc:
                         last_exc = exc
@@ -665,8 +668,21 @@ class SeedDevAccess(BaseStep):
                             time.sleep(wait)
                             continue
                         raise  # Non-retryable error
-                else:
-                    raise last_exc  # type: ignore[misc]
+
+                # Fallback: try staging endpoint if /records kept failing
+                if not created:
+                    ui.print_info(
+                        "All /records attempts failed — trying staging endpoint "
+                        "(/staging/ADMIN_CONFIG) as fallback..."
+                    )
+                    try:
+                        self.datahub_api.create_record_staging(
+                            "DevAccountAccess", record_xml, "ADMIN_CONFIG"
+                        )
+                        ui.print_info("Staging endpoint succeeded")
+                    except BoomiApiError as staging_exc:
+                        ui.print_error(f"Staging endpoint also failed: {staging_exc}")
+                        raise last_exc  # type: ignore[misc]
 
                 record_count += 1
                 ui.print_success(
@@ -730,9 +746,9 @@ class TestCrud(BaseStep):
         test_dev_id = "test-crud-00000000"
         test_account_id = "test-account-00000000"
         # C2c fix: include <id> source entity ID (composite of match fields)
+        # NOTE: No XML declaration — Boomi docs show batch XML without <?xml?> header.
         test_entity_id = f"{test_dev_id}:{test_account_id}"
         record_xml = (
-            '<?xml version="1.0" encoding="UTF-8"?>\n'
             '<batch src="PROMOTION_ENGINE">\n'
             "  <ComponentMapping>\n"
             f"    <id>{test_entity_id}</id>\n"
@@ -749,11 +765,13 @@ class TestCrud(BaseStep):
             # Create (retry on "entity of unknown type" propagation delay)
             ui.print_info("Creating test ComponentMapping record...")
             last_exc = None
+            created = False
             for attempt in range(4):
                 try:
                     self.datahub_api.create_record(
                         "ComponentMapping", record_xml, "PROMOTION_ENGINE"
                     )
+                    created = True
                     break
                 except BoomiApiError as exc:
                     last_exc = exc
@@ -766,8 +784,20 @@ class TestCrud(BaseStep):
                         time.sleep(wait)
                         continue
                     raise  # Non-retryable error
-            else:
-                raise last_exc  # type: ignore[misc]
+
+            # Fallback: try staging endpoint if /records kept failing
+            if not created:
+                ui.print_info(
+                    "All /records attempts failed — trying staging endpoint "
+                    "(/staging/PROMOTION_ENGINE) as fallback..."
+                )
+                try:
+                    self.datahub_api.create_record_staging(
+                        "ComponentMapping", record_xml, "PROMOTION_ENGINE"
+                    )
+                except BoomiApiError as staging_exc:
+                    ui.print_error(f"Staging endpoint also failed: {staging_exc}")
+                    raise last_exc  # type: ignore[misc]
             ui.print_success("Test record created")
 
             # Query
@@ -775,7 +805,6 @@ class TestCrud(BaseStep):
             # (DEV_COMPONENT_ID, DEV_ACCOUNT_ID) to match the model's field uniqueId.
             ui.print_info("Querying test record...")
             query_xml = (
-                '<?xml version="1.0" encoding="UTF-8"?>\n'
                 '<RecordQueryRequest limit="10">\n'
                 "  <view>\n"
                 "    <fieldId>DEV_COMPONENT_ID</fieldId>\n"

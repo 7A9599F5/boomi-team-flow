@@ -205,10 +205,7 @@ class DataHubApi:
                 hub_url,
             )
 
-            probe_body = (
-                '<?xml version="1.0" encoding="UTF-8"?>\n'
-                '<RecordQueryRequest limit="1"/>'
-            )
+            probe_body = '<RecordQueryRequest limit="1"/>'
             results: list[tuple[str, int, str]] = []
 
             for fmt, header in candidates:
@@ -805,6 +802,18 @@ class DataHubApi:
             url, data=record_xml, content_type="application/xml", accept_xml=True,
         )
 
+    def create_record_staging(self, model_name: str, record_xml: str, source: str) -> dict | str:
+        """POST https://{hub_cloud_url}/mdm/universes/{universeId}/staging/{stagingAreaId}.
+
+        Fallback endpoint for record creation when /records fails with
+        "entity of unknown type".  Uses the source name as the staging area ID
+        (matching the staging_id passed to add_staging_area in step 1.2d).
+        """
+        url = f"{self._record_base(model_name)}/staging/{source}"
+        return self._repo_client.post(
+            url, data=record_xml, content_type="application/xml", accept_xml=True,
+        )
+
     def delete_record(self, model_name: str, record_id: str) -> dict | str:
         """End-date a record via batch POST with op="DELETE".
 
@@ -815,7 +824,6 @@ class DataHubApi:
         """
         entity_tag = xml_escape(model_name)
         delete_xml = (
-            '<?xml version="1.0" encoding="UTF-8"?>\n'
             '<batch src="PROMOTION_ENGINE">\n'
             f'  <{entity_tag} op="DELETE"><id>{xml_escape(record_id)}</id></{entity_tag}>\n'
             "</batch>"
