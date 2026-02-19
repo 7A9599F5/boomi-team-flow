@@ -404,8 +404,8 @@ class VerifyPhase2(BaseStep):
                 if actual >= expected:
                     ui.print_success(f"{label}: {actual}/{expected}")
                 elif prefix == "PROMO - DH Op":
-                    # Auto-repair: re-create missing DH ops from template
-                    repaired = self._repair_missing_dh_ops(state, expected - actual)
+                    # Diagnose + auto-repair missing DH ops
+                    repaired = self._diagnose_and_repair_dh_ops(state)
                     if repaired:
                         actual = self.platform_api.count_components_by_prefix(prefix)
                     if actual >= expected:
@@ -437,41 +437,76 @@ class VerifyPhase2(BaseStep):
             ui.print_error("Phase 2 verification failed — check counts above")
             return StepStatus.FAILED
 
-    def _repair_missing_dh_ops(self, state: SetupState, missing: int) -> bool:
-        """Re-create DH ops whose stored ID no longer exists in Boomi."""
-        template_xml = state.api_first_discovery.get("dh_operation_template_xml")
-        if not template_xml:
-            ui.print_error("Cannot repair — DH operation template not in state")
-            return False
+    def _diagnose_and_repair_dh_ops(self, state: SetupState) -> bool:
+        """Check each DH op by stored ID, report actual name, repair if needed."""
+        import re as _re
 
+        template_xml = state.api_first_discovery.get("dh_operation_template_xml")
         ops_folder_id = state.get_component_id("folders", "Operations") or ""
         repaired = 0
 
         for op_name, entity, action in DH_OPERATIONS:
             stored_id = state.get_component_id("dh_operations", op_name)
-            if stored_id:
-                try:
-                    self.platform_api.get_component(stored_id)
-                    continue  # exists — skip
-                except BoomiApiError:
-                    pass  # missing — re-create below
+            if not stored_id:
+                ui.print_error(f"  {op_name}: NO stored ID")
+                if template_xml:
+                    repaired += self._try_create_dh_op(
+                        state, op_name, entity, action, template_xml, ops_folder_id
+                    )
+                continue
 
-            ui.print_info(f"Repairing '{op_name}'...")
-            parameterized = _parameterize_dh_template(
-                template_xml, op_name, entity, action, ops_folder_id
-            )
+            # Fetch component and check its actual name
             try:
-                result = self.platform_api.create_component(parameterized)
-                comp_id = _extract_id(result)
-                if comp_id:
-                    state.store_component_id("dh_operations", op_name, comp_id)
-                    state.mark_step_item_complete("2.7_create_dh_ops", op_name)
-                    repaired += 1
-                    ui.print_success(f"Repaired '{op_name}' → {comp_id}")
+                comp_xml = self.platform_api.get_component(stored_id)
+                comp_str = comp_xml if isinstance(comp_xml, str) else str(comp_xml)
+                name_match = _re.search(r'name="([^"]*)"', comp_str)
+                actual_name = name_match.group(1) if name_match else "(unknown)"
+                if actual_name == op_name:
+                    ui.print_success(f"  {op_name}: OK ({stored_id})")
+                else:
+                    ui.print_error(
+                        f"  {op_name}: NAME MISMATCH — stored ID {stored_id} "
+                        f"has name '{actual_name}'"
+                    )
+                    # Re-create with correct name
+                    if template_xml:
+                        repaired += self._try_create_dh_op(
+                            state, op_name, entity, action, template_xml, ops_folder_id
+                        )
             except BoomiApiError as exc:
-                ui.print_error(f"Failed to repair '{op_name}': {exc}")
+                ui.print_error(f"  {op_name}: GET failed ({stored_id}) — {exc}")
+                if template_xml:
+                    repaired += self._try_create_dh_op(
+                        state, op_name, entity, action, template_xml, ops_folder_id
+                    )
 
         return repaired > 0
+
+    def _try_create_dh_op(
+        self,
+        state: SetupState,
+        op_name: str,
+        entity: str,
+        action: str,
+        template_xml: str,
+        folder_id: str,
+    ) -> int:
+        """Attempt to create a single DH op from template. Returns 1 on success, 0 on failure."""
+        ui.print_info(f"  Creating '{op_name}'...")
+        parameterized = _parameterize_dh_template(
+            template_xml, op_name, entity, action, folder_id
+        )
+        try:
+            result = self.platform_api.create_component(parameterized)
+            comp_id = _extract_id(result)
+            if comp_id:
+                state.store_component_id("dh_operations", op_name, comp_id)
+                state.mark_step_item_complete("2.7_create_dh_ops", op_name)
+                ui.print_success(f"  Created '{op_name}' → {comp_id}")
+                return 1
+        except BoomiApiError as exc:
+            ui.print_error(f"  Failed to create '{op_name}': {exc}")
+        return 0
 
 
 # -- Shared utilities --
