@@ -461,6 +461,10 @@ class DataHubApi:
 
         # --- fields ---
         for field in spec["fields"]:
+            # Skip 'id' — DataHub auto-provides a system id field at the root level;
+            # including a user-defined 'id' causes a 400 error.
+            if field["name"] == "id":
+                continue
             ftype = _FIELD_TYPE_MAP.get(field["type"], "STRING")
             # M3 fix: generate UPPER_SNAKE_CASE uniqueId (e.g. devComponentId → DEV_COMPONENT_ID)
             uid = re.sub(r"(?<!^)(?=[A-Z])", "_", field["name"]).upper()

@@ -11,11 +11,12 @@ class TestModelSpecToXml:
         "modelName": "TestModel",
         "fields": [
             {"name": "id", "type": "String", "required": False, "matchField": False},
+            {"name": "entityName", "type": "String", "required": True, "matchField": True},
             {"name": "myDate", "type": "Date", "required": True, "matchField": False},
             {"name": "count", "type": "Number", "required": False, "matchField": False},
             {"name": "active", "type": "Boolean", "required": False, "matchField": False},
         ],
-        "matchRules": [{"type": "EXACT", "fields": ["id"]}],
+        "matchRules": [{"type": "EXACT", "fields": ["entityName"]}],
         "sources": [{"name": "TEST_SOURCE", "type": "contribute-only"}],
     }
 
@@ -47,7 +48,16 @@ class TestModelSpecToXml:
         """uniqueId must be UPPER_SNAKE_CASE (e.g. myDate → MY_DATE)."""
         xml = DataHubApi._model_spec_to_xml(self.MINIMAL_SPEC)
         assert 'uniqueId="MY_DATE"' in xml
-        assert 'uniqueId="ID"' in xml
+        assert 'uniqueId="COUNT"' in xml
+
+    def test_id_field_excluded(self) -> None:
+        """DataHub auto-provides a system 'id' field — user-defined 'id' must be skipped.
+
+        Including a user-defined 'id' causes: 'A user-defined id field
+        exists at the root level' 400 error.
+        """
+        xml = DataHubApi._model_spec_to_xml(self.MINIMAL_SPEC)
+        assert 'name="id"' not in xml
 
     def test_model_name_in_output(self) -> None:
         xml = DataHubApi._model_spec_to_xml(self.MINIMAL_SPEC)
@@ -59,7 +69,7 @@ class TestModelSpecToXml:
 
     def test_match_rule_field_uid(self) -> None:
         xml = DataHubApi._model_spec_to_xml(self.MINIMAL_SPEC)
-        assert "<mdm:fieldUniqueId>ID</mdm:fieldUniqueId>" in xml
+        assert "<mdm:fieldUniqueId>ENTITY_NAME</mdm:fieldUniqueId>" in xml
 
     def test_component_mapping_spec_datetime(self) -> None:
         """Verify the actual ComponentMapping spec produces DATETIME for lastPromotedAt."""
