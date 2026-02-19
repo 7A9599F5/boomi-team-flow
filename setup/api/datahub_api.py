@@ -100,6 +100,61 @@ class DataHubApi:
             self._repo_client_instance = repo_client
         return self._repo_client_instance
 
+    def reset_repo_client(self) -> None:
+        """Invalidate the cached Repository API client.
+
+        Call after changing hub_auth_user or hub_auth_token on config so the
+        next _repo_client access rebuilds the client with fresh credentials.
+        """
+        self._repo_client_instance = None
+
+    def verify_repo_auth(self) -> bool:
+        """Test Repository API credentials with a lightweight request.
+
+        Returns True if auth succeeds, False on 401.  Skips (returns True) if
+        hub_cloud_url or credentials are not yet configured.
+        """
+        hub_url = self._config.hub_cloud_url
+        auth_user = self._config.hub_auth_user
+        auth_token = self._config.hub_auth_token
+
+        if not hub_url or not auth_user or not auth_token:
+            return True  # Can't verify yet — will fail later with a clear message
+
+        raw = f"{auth_user}:{auth_token}"
+        encoded = base64.b64encode(raw.encode()).decode()
+        headers = {"Authorization": f"Basic {encoded}"}
+
+        import requests as _requests  # noqa: PLC0415
+
+        # Pick any universe to query; fall back to base MDM path
+        universe_id = (
+            next(iter(self._config.universe_ids.values()), None)
+            if self._config.universe_ids
+            else None
+        )
+        try:
+            if universe_id:
+                url = f"{hub_url}/mdm/universes/{universe_id}/records/query"
+                resp = _requests.post(
+                    url,
+                    data=(
+                        '<?xml version="1.0" encoding="UTF-8"?>\n'
+                        '<RecordQueryRequest limit="1">\n'
+                        "  <view><fieldId>RECORD_ID</fieldId></view>\n"
+                        "</RecordQueryRequest>"
+                    ),
+                    headers={**headers, "Content-Type": "application/xml"},
+                    timeout=10,
+                )
+            else:
+                resp = _requests.get(
+                    f"{hub_url}/mdm", headers=headers, timeout=10,
+                )
+            return resp.status_code != 401
+        except _requests.RequestException:
+            return True  # Network error — don't fail on connectivity issues
+
     def _record_base(self, model_name: str) -> str:
         """Base URL for Repository API record operations.
 

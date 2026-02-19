@@ -282,7 +282,7 @@ class SeedDevAccess(BaseStep):
 
     @property
     def depends_on(self) -> list[str]:
-        return ["1.2c"]
+        return ["1.2c", "2.4"]
 
     def _build_record_xml(
         self, sso_group_id: str, group_name: str, dev_account_id: str, dev_account_name: str
@@ -374,7 +374,7 @@ class TestCrud(BaseStep):
 
     @property
     def depends_on(self) -> list[str]:
-        return ["1.2a"]
+        return ["1.2a", "2.4"]
 
     def execute(self, state: SetupState, dry_run: bool = False) -> StepStatus:
         ui.print_step(self.step_id, self.name, self.step_type.value)
