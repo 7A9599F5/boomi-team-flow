@@ -58,15 +58,19 @@ class DataHubApi:
         self._repo_client_instance: Optional[BoomiClient] = None
 
     # Auth format candidates for the Repository API (tried in order).
-    # Different Boomi environments may accept different formats.
+    # Per Boomi docs: Basic Auth = base64({accountId}:{hubAuthToken})
+    # https://help.boomi.com/docs/Atomsphere/Master%20Data%20Hub/REST%20APIs/r-mdm-Repository_API
     _AUTH_FORMATS = [
-        # Format 1: BOOMI_TOKEN.user:apiToken  (same as Platform API)
-        "boomi_token",
-        # Format 2: accountId:hubAuthToken  (per Boomi DataHub docs)
+        # Format 1: accountId:hubAuthToken  (per Boomi DataHub docs — primary)
         "account_hub",
-        # Format 3: accountId:apiToken  (cross-format)
+        # Format 2: BOOMI_TOKEN.user:apiToken  (Platform API format — some envs may accept)
+        "boomi_token",
+        # Format 3: accountId:apiToken  (cross-format fallback)
         "account_api",
     ]
+
+    # Response codes that confirm auth worked (even if the request itself had issues)
+    _AUTH_OK_CODES = set(range(200, 400)) | {400, 403, 405, 409, 500, 502, 503}
 
     def _build_auth_header(self, fmt: str) -> str | None:
         """Build a Basic Auth header for the given format key.
@@ -74,16 +78,24 @@ class DataHubApi:
         Returns None if required credentials are missing for that format.
         """
         cfg = self._config
-        if fmt == "boomi_token" and cfg.boomi_user and cfg.boomi_token:
-            raw = f"BOOMI_TOKEN.{cfg.boomi_user}:{cfg.boomi_token}"
-        elif fmt == "account_hub" and cfg.boomi_account_id and cfg.hub_auth_token:
+        if fmt == "account_hub" and cfg.boomi_account_id and cfg.hub_auth_token:
             raw = f"{cfg.boomi_account_id}:{cfg.hub_auth_token}"
+        elif fmt == "boomi_token" and cfg.boomi_user and cfg.boomi_token:
+            raw = f"BOOMI_TOKEN.{cfg.boomi_user}:{cfg.boomi_token}"
         elif fmt == "account_api" and cfg.boomi_account_id and cfg.boomi_token:
             raw = f"{cfg.boomi_account_id}:{cfg.boomi_token}"
         else:
             return None
         encoded = base64.b64encode(raw.encode()).decode()
         return f"Basic {encoded}"
+
+    @staticmethod
+    def _mask_header(header: str) -> str:
+        """Mask a Basic Auth header for safe diagnostic display."""
+        # "Basic <base64>" → show first 8 chars of base64
+        if header.startswith("Basic ") and len(header) > 14:
+            return f"Basic {header[6:14]}..."
+        return "Basic ***"
 
     def _make_repo_client(self, auth_header: str) -> BoomiClient:
         """Build a BoomiClient for Repository API with a pre-built auth header."""
@@ -101,16 +113,16 @@ class DataHubApi:
     def _repo_client(self) -> BoomiClient:
         """Lazy-initialized BoomiClient for Repository API record operations.
 
-        Auto-detects the correct auth format by testing candidates against the
-        hub cloud URL.  Falls back to the first available format if no universe
-        is deployed yet for live-testing.
+        Uses the documented auth format: Basic base64({accountId}:{hubAuthToken}).
+        If hub_cloud_url and universe_ids are available, probes to verify auth
+        before caching the client.
         """
         if self._repo_client_instance is not None:
             return self._repo_client_instance
 
         hub_url = self._config.hub_cloud_url
 
-        # Build candidate headers
+        # Build candidate headers (primary format first)
         candidates: list[tuple[str, str]] = []
         for fmt in self._AUTH_FORMATS:
             header = self._build_auth_header(fmt)
@@ -120,63 +132,93 @@ class DataHubApi:
         if not candidates:
             raise BoomiApiError(
                 401,
-                "No DataHub credentials available — run 'configure' and step 2.4 first",
+                "No DataHub credentials available. Ensure:\n"
+                "  - boomi_account_id is set (config or BOOMI_ACCOUNT env var)\n"
+                "  - hub_auth_token is set (run step 2.4 or set datahub_token in state)\n"
+                "  - OR boomi_user + boomi_token are set (env vars BOOMI_USER/BOOMI_TOKEN)",
                 "",
             )
 
-        # If we can probe the hub, try each format and pick the one that works
-        if hub_url:
-            probe_url, probe_data = self._build_probe_request(hub_url)
-            if probe_url:
-                import requests as _requests  # noqa: PLC0415
+        # Can we do a live probe? Need both hub_url and a deployed universe.
+        probe_url = self._build_probe_url(hub_url)
+        if probe_url:
+            import requests as _requests  # noqa: PLC0415
 
-                for fmt, header in candidates:
-                    try:
-                        hdrs = {"Authorization": header}
-                        if probe_data:
-                            hdrs["Content-Type"] = "application/xml"
-                            resp = _requests.post(
-                                probe_url, data=probe_data, headers=hdrs, timeout=10,
-                            )
-                        else:
-                            resp = _requests.get(probe_url, headers=hdrs, timeout=10)
-                        if resp.status_code != 401:
-                            logger.info("Repository API auth format: %s (HTTP %d)", fmt, resp.status_code)
-                            self._repo_client_instance = self._make_repo_client(header)
-                            return self._repo_client_instance
-                    except _requests.RequestException:
-                        continue
-                # All formats returned 401
-                tried = ", ".join(f[0] for f in candidates)
-                raise BoomiApiError(
-                    401,
-                    f"All auth formats returned 401 against {hub_url} "
-                    f"(tried: {tried}). Verify your DataHub token is current: "
-                    "Services > DataHub > Repositories > Configure > Authentication Token",
-                    hub_url,
-                )
+            probe_body = (
+                '<?xml version="1.0" encoding="UTF-8"?>\n'
+                '<RecordQueryRequest limit="1">\n'
+                "  <view><fieldId>RECORD_ID</fieldId></view>\n"
+                "</RecordQueryRequest>"
+            )
+            results: list[tuple[str, int]] = []
 
-        # No hub URL yet — use first available format (will be validated later)
-        self._repo_client_instance = self._make_repo_client(candidates[0][1])
+            for fmt, header in candidates:
+                try:
+                    hdrs = {
+                        "Authorization": header,
+                        "Content-Type": "application/xml",
+                    }
+                    resp = _requests.post(
+                        probe_url, data=probe_body, headers=hdrs, timeout=15,
+                    )
+                    results.append((fmt, resp.status_code))
+                    logger.info(
+                        "  Auth probe %s → HTTP %d (%s)",
+                        fmt, resp.status_code, self._mask_header(header),
+                    )
+
+                    # Accept any status that confirms auth worked
+                    # (401 = wrong creds, 404 = ambiguous, anything else = auth OK)
+                    if resp.status_code in self._AUTH_OK_CODES:
+                        logger.info("Repository API auth: %s (HTTP %d)", fmt, resp.status_code)
+                        self._repo_client_instance = self._make_repo_client(header)
+                        return self._repo_client_instance
+                except _requests.RequestException as exc:
+                    results.append((fmt, -1))
+                    logger.warning("  Auth probe %s → network error: %s", fmt, exc)
+                    continue
+
+            # No format produced a definitive auth-OK response
+            detail_lines = [f"  {fmt}: HTTP {code}" for fmt, code in results]
+            detail = "\n".join(detail_lines)
+            raise BoomiApiError(
+                401,
+                f"No auth format succeeded against {probe_url}\n"
+                f"Results:\n{detail}\n\n"
+                "Verify your DataHub token:\n"
+                "  1. Services > DataHub > Repositories > PromotionHub > Configure\n"
+                "  2. Copy the Authentication Token value\n"
+                "  3. Re-run step 2.4 to enter the fresh token",
+                hub_url,
+            )
+
+        # Cannot probe (no hub_url or no universe_ids deployed yet).
+        # Use the primary format (accountId:hubAuthToken) per Boomi docs.
+        # Auth will be validated on the first real record operation.
+        fmt, header = candidates[0]
+        logger.info(
+            "Repository API auth: using %s (no universe available for probe)", fmt,
+        )
+        self._repo_client_instance = self._make_repo_client(header)
         return self._repo_client_instance
 
-    def _build_probe_request(self, hub_url: str) -> tuple[str | None, str | None]:
-        """Build a lightweight probe URL + body for auth testing."""
+    def _build_probe_url(self, hub_url: str) -> str | None:
+        """Build a probe URL for auth testing, or None if probing isn't possible.
+
+        Only returns a URL when we have both a hub_cloud_url AND a deployed
+        universe.  The GET /mdm fallback was removed because it can return
+        200/404 regardless of auth validity (false positive).
+        """
+        if not hub_url:
+            return None
         universe_id = (
             next(iter(self._config.universe_ids.values()), None)
             if self._config.universe_ids
             else None
         )
-        if universe_id:
-            return (
-                f"{hub_url}/mdm/universes/{universe_id}/records/query",
-                '<?xml version="1.0" encoding="UTF-8"?>\n'
-                '<RecordQueryRequest limit="1">\n'
-                "  <view><fieldId>RECORD_ID</fieldId></view>\n"
-                "</RecordQueryRequest>",
-            )
-        # No universe — try base path; any non-401 means auth works
-        return f"{hub_url}/mdm", None
+        if not universe_id:
+            return None
+        return f"{hub_url}/mdm/universes/{universe_id}/records/query"
 
     def reset_repo_client(self) -> None:
         """Invalidate the cached Repository API client.
@@ -189,16 +231,27 @@ class DataHubApi:
     def verify_repo_auth(self) -> bool:
         """Test whether _repo_client can authenticate.
 
-        Triggers the lazy init which auto-probes auth formats.
-        Returns True if a working format is found, False on 401.
+        Triggers the lazy init which probes auth if a universe is available.
+        Returns True if auth appears valid or cannot be tested yet.
+        Returns False only on definitive 401.
+
+        If no universe was available for probing, the client is built with
+        the primary format but then RESET so the next access can re-probe
+        once universes are deployed.
         """
+        could_probe = self._build_probe_url(self._config.hub_cloud_url) is not None
         try:
-            _ = self._repo_client  # triggers auto-detection
+            _ = self._repo_client  # triggers probe if universe available
+            if not could_probe:
+                # Auth wasn't actually verified — reset so next access re-probes
+                # (by then, universes from steps 1.2a-e may be available)
+                self._repo_client_instance = None
             return True
         except BoomiApiError as exc:
             if exc.status_code == 401:
+                logger.warning("Repository API auth verification failed: %s", exc.body)
                 return False
-            return True  # Non-auth errors mean auth succeeded
+            return True  # Non-auth errors mean auth itself succeeded
 
     def _record_base(self, model_name: str) -> str:
         """Base URL for Repository API record operations.

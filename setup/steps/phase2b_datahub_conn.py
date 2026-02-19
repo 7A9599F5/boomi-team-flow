@@ -57,13 +57,15 @@ class GetDhToken(BaseStep):
             "2. Select the 'PromotionHub' repository\n"
             "3. Click Configure > Authentication Token\n"
             "4. Copy the 'Token' value (click Generate if none exists)\n\n"
-            "The Repository API uses Basic Auth with your Account ID\n"
-            "as the username and this token as the password.",
+            "Auth format: Basic base64({AccountID}:{Token})\n"
+            "The Account ID is already in your config; only the token is needed.",
             "DataHub Token",
         )
 
     def _apply_token(self, state: SetupState, token: str) -> None:
         """Store token in both state and in-memory config."""
+        # Strip whitespace — copy-paste from browser can add trailing newlines
+        token = token.strip()
         state.update_config({"datahub_token": token})
         self.config.hub_auth_token = token
         # Invalidate cached repo client so it rebuilds with new credentials
@@ -80,15 +82,23 @@ class GetDhToken(BaseStep):
 
         if existing_token:
             # Sync in-memory config with state value
-            self.config.hub_auth_token = existing_token
+            self.config.hub_auth_token = existing_token.strip()
 
-            # Verify against the actual Repository API (auth = accountId:token)
+            # Print diagnostic context
+            acct = self.config.boomi_account_id
+            tok_preview = existing_token[:8] + "..." if len(existing_token) > 8 else "***"
+            ui.print_info(
+                f"DataHub auth: accountId={acct[:8]}..., "
+                f"token={tok_preview} ({len(existing_token)} chars)"
+            )
+
+            # Verify against Repository API if a universe is available for probing
             if self.datahub_api.verify_repo_auth():
-                ui.print_success("DataHub token verified against Repository API")
+                ui.print_success("DataHub token accepted (or deferred to first record operation)")
                 return StepStatus.COMPLETED
             else:
                 ui.print_warning(
-                    "Existing DataHub token returned 401 — "
+                    "Existing DataHub token failed auth check — "
                     "token may have expired or been regenerated"
                 )
                 token = self._collect_token()
@@ -97,13 +107,23 @@ class GetDhToken(BaseStep):
             token = self._collect_token()
             self._apply_token(state, token)
 
+        # Print what we stored
+        acct = self.config.boomi_account_id
+        stored_tok = self.config.hub_auth_token
+        tok_preview = stored_tok[:8] + "..." if len(stored_tok) > 8 else "***"
+        ui.print_info(
+            f"DataHub auth stored: accountId={acct[:8]}..., "
+            f"token={tok_preview} ({len(stored_tok)} chars)"
+        )
+
         # Verify the new token against the Repository API
         if self.datahub_api.verify_repo_auth():
-            ui.print_success("DataHub token verified against Repository API")
+            ui.print_success("DataHub token verified (or deferred to first record operation)")
         else:
             ui.print_warning(
-                "Could not verify token via Repository API "
-                "(may still work — verify token in DataHub > Repositories > Configure)"
+                "Token auth check failed — verify the token is from:\n"
+                "  Services > DataHub > Repositories > PromotionHub > Configure > Authentication Token\n"
+                "  (NOT the Platform API token from Settings > Account Information)"
             )
 
         return StepStatus.COMPLETED
