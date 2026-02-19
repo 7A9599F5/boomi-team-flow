@@ -212,9 +212,9 @@ class PlatformApi:
         """Query components with name starting with prefix, return count."""
         query_xml = (
             '<?xml version="1.0" encoding="UTF-8"?>'
-            "<QueryFilter>"
+            '<QueryFilter xmlns="http://api.platform.boomi.com/"'
+            ' xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">'
             '<expression operator="STARTS_WITH" property="name"'
-            ' xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"'
             ' xsi:type="SimpleExpression">'
             f"<argument>{prefix}</argument>"
             "</expression>"
