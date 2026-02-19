@@ -17,9 +17,10 @@ def _build_registry(
     platform_api: PlatformApi | None,
     datahub_api: DataHubApi | None,
 ) -> StepRegistry:
-    """Build the step registry with all 31 steps across 6 phases."""
+    """Build the step registry with all 32 steps across 6 phases."""
     from setup.steps.phase1_datahub import (
-        CreateModel, CreateRepo, CreateSources, SeedDevAccess, TestCrud,
+        CreateModel, CreateRepo, CreateSources, SeedDevAccess, StageSources,
+        TestCrud,
     )
     from setup.steps.phase2a_http import (
         CreateFolders, CreateHttpConn, CreateHttpOps, DiscoverHttpTemplate,
@@ -48,6 +49,7 @@ def _build_registry(
     registry.register(_make(CreateModel, model_name="ComponentMapping", sub_id="a"))
     registry.register(_make(CreateModel, model_name="DevAccountAccess", sub_id="b"))
     registry.register(_make(CreateModel, model_name="PromotionLog", sub_id="c"))
+    registry.register(_make(StageSources))
     registry.register(_make(SeedDevAccess))
     registry.register(_make(TestCrud))
 

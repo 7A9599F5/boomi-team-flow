@@ -516,6 +516,78 @@ class DataHubApi:
         return self._client.get(url, accept_xml=True)
 
     # ------------------------------------------------------------------
+    # Staging area operations  (universe-scoped, Platform API)
+    # ------------------------------------------------------------------
+
+    def add_staging_area(
+        self, universe_id: str, source_id: str, name: str, staging_id: str
+    ) -> str:
+        """POST /repositories/{repoId}/universes/{universeId}/sources/{sourceId}/stagingArea/create.
+
+        Creates a staging area for the given source in a universe, which marks
+        the source as allowed to send record update batches.  Without this,
+        record writes from the source are rejected with:
+          "this source is not yet marked as one that can send updates"
+
+        Uses Platform API credentials (self._client), NOT Repository API.
+        Returns the system staging area UUID from the response.
+        """
+        repo_id = self._config.boomi_repo_id
+        url = (
+            f"{self._base}/repositories/{repo_id}"
+            f"/universes/{universe_id}"
+            f"/sources/{source_id}/stagingArea/create"
+        )
+        body = (
+            f'<mdm:CreateStagingAreaRequest xmlns:mdm="{_MDM_NS}"'
+            f' xmlns:xsi="{_XSI_NS}">'
+            f"<mdm:name>{xml_escape(name)}</mdm:name>"
+            f"<mdm:id>{xml_escape(staging_id)}</mdm:id>"
+            f"</mdm:CreateStagingAreaRequest>"
+        )
+        result = self._client.post(
+            url, data=body, content_type="application/xml", accept_xml=True,
+        )
+        if isinstance(result, str):
+            match = re.search(r"<mdm:id>([^<]+)</mdm:id>", result)
+            if match:
+                return match.group(1)
+            # Fallback: try UUID pattern anywhere in the response
+            match = re.search(
+                r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}",
+                result, re.IGNORECASE,
+            )
+            if match:
+                return match.group(0)
+        return staging_id  # Return the requested ID as fallback
+
+    def get_staging_area_status(
+        self, universe_id: str, source_id: str, system_staging_area_id: str
+    ) -> str:
+        """GET /repositories/{repoId}/universes/{universeId}/sources/{sourceId}/stagingArea/{systemId}/status.
+
+        Returns state string: READY, CREATED, DISABLED, or DELETED.
+        Used to verify a staging area was created successfully.
+        """
+        repo_id = self._config.boomi_repo_id
+        url = (
+            f"{self._base}/repositories/{repo_id}"
+            f"/universes/{universe_id}"
+            f"/sources/{source_id}"
+            f"/stagingArea/{system_staging_area_id}/status"
+        )
+        result = self._client.get(url, accept_xml=True)
+        if isinstance(result, str):
+            match = re.search(r"<mdm:state>([^<]+)</mdm:state>", result)
+            if match:
+                return match.group(1)
+            # Fallback: try status attribute pattern
+            match = re.search(r'state="([^"]+)"', result)
+            if match:
+                return match.group(1)
+        return "UNKNOWN"
+
+    # ------------------------------------------------------------------
     # Model operations  (account-scoped, NOT repository-scoped)
     # ------------------------------------------------------------------
 

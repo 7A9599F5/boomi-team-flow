@@ -18,6 +18,7 @@ def _empty_component_ids() -> dict:
     return {
         "models": {},
         "sources": {},
+        "staging_areas": {},
         "folders": {},
         "connections": {},
         "http_operations": {},

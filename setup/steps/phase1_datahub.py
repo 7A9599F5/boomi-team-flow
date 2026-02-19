@@ -265,6 +265,116 @@ class CreateModel(BaseStep):
             return StepStatus.FAILED
 
 
+class StageSources(BaseStep):
+    """Step 1.2d — Create staging areas for all source-model pairs.
+
+    After models are deployed to the repository (steps 1.2a-c), each source
+    must have a staging area created in the universe before it can send record
+    update batches.  Without this, record writes from a source are rejected:
+      "this source is not yet marked as one that can send updates"
+
+    Reads the source lists from model specs to build the pairs dynamically.
+    """
+
+    # The three models deployed in steps 1.2a-c and their spec names
+    _MODELS = ["ComponentMapping", "DevAccountAccess", "PromotionLog"]
+
+    @property
+    def step_id(self) -> str:
+        return "1.2d"
+
+    @property
+    def name(self) -> str:
+        return "Stage Sources for Record Updates"
+
+    @property
+    def step_type(self) -> StepType:
+        return StepType.AUTO
+
+    @property
+    def depends_on(self) -> list[str]:
+        return ["1.2a", "1.2b", "1.2c"]
+
+    def _build_pairs(self) -> list[tuple[str, str]]:
+        """Build (source_name, model_name) pairs from model specs.
+
+        Returns e.g.:
+          [("PROMOTION_ENGINE", "ComponentMapping"),
+           ("ADMIN_SEEDING", "ComponentMapping"),
+           ("ADMIN_CONFIG", "DevAccountAccess"),
+           ("PROMOTION_ENGINE", "PromotionLog")]
+        """
+        pairs: list[tuple[str, str]] = []
+        for model_name in self._MODELS:
+            spec = load_model_spec(model_name)
+            for src in spec.get("sources", []):
+                pairs.append((src["name"], model_name))
+        return pairs
+
+    def execute(self, state: SetupState, dry_run: bool = False) -> StepStatus:
+        ui.print_step(self.step_id, self.name, self.step_type.value)
+
+        pairs = self._build_pairs()
+        # Item key = "SOURCE:Model" for resumability tracking
+        all_items = [f"{src}:{model}" for src, model in pairs]
+        remaining = state.get_remaining_items(self.step_id, all_items)
+
+        if not remaining:
+            ui.print_success("All staging areas already created")
+            return StepStatus.COMPLETED
+
+        if dry_run:
+            ui.print_info(f"Would create {len(remaining)} staging areas: {', '.join(remaining)}")
+            return StepStatus.COMPLETED
+
+        # Build lookup from remaining keys back to (source, model) pairs
+        remaining_set = set(remaining)
+
+        for source_name, model_name in pairs:
+            item_key = f"{source_name}:{model_name}"
+            if item_key not in remaining_set:
+                continue
+
+            universe_id = state.config.get("universe_ids", {}).get(model_name, "")
+            if not universe_id:
+                ui.print_error(
+                    f"No universe_id for model '{model_name}' — "
+                    "ensure steps 1.2a-c completed successfully"
+                )
+                return StepStatus.FAILED
+
+            try:
+                system_id = self.datahub_api.add_staging_area(
+                    universe_id=universe_id,
+                    source_id=source_name,
+                    name=source_name,
+                    staging_id=source_name,
+                )
+                state.mark_step_item_complete(self.step_id, item_key)
+                # Persist system staging area ID for potential future use
+                state.store_component_id(
+                    "staging_areas", item_key, system_id,
+                )
+                ui.print_success(
+                    f"Staged source '{source_name}' for model '{model_name}'"
+                )
+            except BoomiApiError as exc:
+                # "Already exists" is success — the staging area was created previously
+                if exc.status_code == 400 and "already" in exc.body.lower():
+                    state.mark_step_item_complete(self.step_id, item_key)
+                    ui.print_success(
+                        f"Staging area for '{source_name}' in '{model_name}' already exists"
+                    )
+                    continue
+                ui.print_error(
+                    f"Failed to stage source '{source_name}' "
+                    f"for model '{model_name}': {exc}"
+                )
+                return StepStatus.FAILED
+
+        return StepStatus.COMPLETED
+
+
 class SeedDevAccess(BaseStep):
     """Step 1.3 — Seed DevAccountAccess records via interactive prompts."""
 
@@ -282,7 +392,7 @@ class SeedDevAccess(BaseStep):
 
     @property
     def depends_on(self) -> list[str]:
-        return ["1.2c", "2.4"]
+        return ["1.2d", "2.4"]
 
     def _build_record_xml(
         self, sso_group_id: str, group_name: str, dev_account_id: str, dev_account_name: str
@@ -374,7 +484,7 @@ class TestCrud(BaseStep):
 
     @property
     def depends_on(self) -> list[str]:
-        return ["1.2a", "2.4"]
+        return ["1.2d", "2.4"]
 
     def execute(self, state: SetupState, dry_run: bool = False) -> StepStatus:
         ui.print_step(self.step_id, self.name, self.step_type.value)
