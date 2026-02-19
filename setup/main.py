@@ -261,6 +261,53 @@ def reset(ctx: click.Context, confirm: bool) -> None:
     click.echo("State reset. All progress cleared.")
 
 
+@cli.command("reset-step")
+@click.argument("step_ids", nargs=-1, required=True)
+@click.pass_context
+def reset_step(ctx: click.Context, step_ids: tuple[str, ...]) -> None:
+    """Reset one or more steps to pending (allows re-run).
+
+    Also clears any item trackers associated with the step.
+    Example: reset-step 2.6 2.7
+    """
+    state = _load_state(ctx.obj["state_file"])
+
+    for step_id in step_ids:
+        step_data = state._data["steps"].get(step_id)
+        if step_data is None:
+            click.echo(f"  {step_id}: not found in state (skipped)")
+            continue
+
+        old_status = step_data.get("status", "unknown")
+        state._data["steps"][step_id] = {"status": "pending"}
+
+        # Clear associated item trackers (e.g., "2.7_create_dh_ops")
+        tracker_keys = [
+            k for k in state._data["steps"]
+            if k.startswith(f"{step_id}_")
+        ]
+        for tk in tracker_keys:
+            del state._data["steps"][tk]
+            click.echo(f"  {tk}: item tracker cleared")
+
+        # Clear associated discovery templates
+        template_map = {
+            "2.3": "http_operation_template_xml",
+            "2.6": "dh_operation_template_xml",
+            "3.1": "profile_template_xml",
+            "4.1": "fss_operation_template_xml",
+        }
+        template_key = template_map.get(step_id)
+        if template_key and state._data.get("api_first_discovery", {}).get(template_key):
+            state._data["api_first_discovery"][template_key] = None
+            click.echo(f"  {step_id}: cleared discovery template '{template_key}'")
+
+        click.echo(f"  {step_id}: {old_status} -> pending")
+
+    state.save()
+    click.echo("Done. Run 'setup' to re-execute reset steps.")
+
+
 def main() -> None:
     cli()
 
