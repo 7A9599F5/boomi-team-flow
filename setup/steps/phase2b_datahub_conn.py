@@ -137,7 +137,7 @@ class CreateDhConn(BaseStep):
 
         repo_id = state.config.get("boomi_repo_id", "")
         token = state.config.get("datahub_token", "")
-        connections_folder_id = state.get_component_id("folders", "Connections") or "0"
+        connections_folder_id = state.get_component_id("folders", "Connections") or ""
 
         if not repo_id:
             ui.print_error("Repository ID not found in state — run step 1.0 first")
@@ -278,7 +278,7 @@ class CreateDhOps(BaseStep):
             ui.print_info(f"Would create {len(remaining)} DataHub operations from template")
             return StepStatus.COMPLETED
 
-        ops_folder_id = state.get_component_id("folders", "Operations") or "0"
+        ops_folder_id = state.get_component_id("folders", "Operations") or ""
         total = len(remaining)
 
         for idx, op_name in enumerate(remaining, 1):

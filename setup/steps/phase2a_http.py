@@ -47,7 +47,7 @@ class CreateFolders(BaseStep):
     """Step 2.0 — Create the /Promoted/ folder tree in AtomSphere."""
 
     FOLDERS = [
-        ("Promoted", "0"),          # root
+        ("Promoted", ""),           # empty parentId = account root
         ("Profiles", "Promoted"),   # sub-folder under Promoted
         ("Connections", "Promoted"),
         ("Operations", "Promoted"),
@@ -86,8 +86,8 @@ class CreateFolders(BaseStep):
                 continue
 
             # Resolve parent ID
-            if parent_ref == "0":
-                parent_id = "0"
+            if parent_ref == "":
+                parent_id = ""
             else:
                 parent_id = state.get_component_id("folders", parent_ref) or promoted_folder_id
                 if not parent_id:
@@ -160,7 +160,7 @@ class CreateHttpConn(BaseStep):
             "API Token",
         )
 
-        connections_folder_id = state.get_component_id("folders", "Connections") or "0"
+        connections_folder_id = state.get_component_id("folders", "Connections") or ""
 
         # Build connection component XML
         component_xml = (
@@ -299,7 +299,7 @@ class CreateHttpOps(BaseStep):
             ui.print_info(f"Would create {len(remaining)} HTTP operations from template")
             return StepStatus.COMPLETED
 
-        ops_folder_id = state.get_component_id("folders", "Operations") or "0"
+        ops_folder_id = state.get_component_id("folders", "Operations") or ""
         total = len(remaining)
 
         for idx, op_name in enumerate(remaining, 1):

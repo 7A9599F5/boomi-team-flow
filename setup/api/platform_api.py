@@ -45,7 +45,7 @@ class PlatformApi:
 
     # -- Folder operations --
 
-    def create_folder(self, name: str, parent_id: str = "0") -> dict | str:
+    def create_folder(self, name: str, parent_id: str = "") -> dict | str:
         """POST /Folder to create a folder under parent_id."""
         url = f"{self._base}/Folder"
         body = json.dumps({"name": name, "parentId": parent_id})
