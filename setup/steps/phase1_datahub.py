@@ -560,18 +560,47 @@ class SeedDevAccess(BaseStep):
             seen[uid] = model_name
 
         # Verify actual model name matches expected name via GET /models/{id}
+        # Uses ElementTree parsing instead of regex to avoid matching field name
+        # attributes (e.g. <mdm:field name="ssoGroupId">) instead of the model name.
         da_uid = uids.get("DevAccountAccess", "")
         if da_uid:
             try:
                 model_resp = self.datahub_api.get_model(da_uid)
                 if isinstance(model_resp, str):
-                    import re
-                    name_match = re.search(r'name="([^"]+)"', model_resp)
-                    if not name_match:
-                        name_match = re.search(r"<mdm:name>([^<]+)</mdm:name>", model_resp)
-                    actual_name = name_match.group(1) if name_match else "UNKNOWN"
+                    import xml.etree.ElementTree as ET
+                    actual_name = "UNKNOWN"
+                    try:
+                        root = ET.fromstring(model_resp)
+                        # Model name can be: attribute on root, <mdm:name> child, or
+                        # attribute on a Model child element
+                        ns = {"mdm": "http://mdm.api.platform.boomi.com/"}
+                        # Try root element name attribute first
+                        actual_name = root.get("name", "")
+                        if not actual_name:
+                            # Try <mdm:name> child element
+                            name_el = root.find("mdm:name", ns)
+                            if name_el is not None and name_el.text:
+                                actual_name = name_el.text
+                        if not actual_name:
+                            # Try Model child with name attribute
+                            for el in root.iter():
+                                tag = el.tag.split("}")[-1] if "}" in el.tag else el.tag
+                                if tag == "Model" and el.get("name"):
+                                    actual_name = el.get("name", "")
+                                    break
+                        if not actual_name:
+                            actual_name = "UNKNOWN"
+                    except ET.ParseError:
+                        # Fall back to regex on the model-level element only
+                        import re
+                        # Match name= on Model element specifically, not field elements
+                        name_match = re.search(r"<[^>]*Model[^>]*\bname=\"([^\"]+)\"", model_resp)
+                        if not name_match:
+                            name_match = re.search(r"<mdm:name>([^<]+)</mdm:name>", model_resp)
+                        actual_name = name_match.group(1) if name_match else "UNKNOWN"
+
                     ui.print_info(f"  Model {da_uid} actual name: '{actual_name}'")
-                    if actual_name != "DevAccountAccess":
+                    if actual_name != "DevAccountAccess" and actual_name != "UNKNOWN":
                         ui.print_error(
                             f"NAME MISMATCH: universe {da_uid} contains model "
                             f"'{actual_name}', not 'DevAccountAccess'. "
@@ -593,6 +622,11 @@ class SeedDevAccess(BaseStep):
                                 "Check the model name in DataHub UI."
                             )
                             return False
+                    elif actual_name == "UNKNOWN":
+                        ui.print_warning(
+                            "  Could not extract model name from response — "
+                            "skipping name verification"
+                        )
                 else:
                     ui.print_info(f"  Model response (non-XML): {model_resp}")
             except BoomiApiError as exc:
