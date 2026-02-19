@@ -236,6 +236,13 @@ class CreateModel(BaseStep):
             ui.print_success(
                 f"Model '{self._model_name}' already exists (ID: {existing})"
             )
+            # Ensure universe_id is populated in both state and in-memory config
+            # so downstream steps (SeedDevAccess, TestCrud) use the correct ID.
+            current_uid = state.config.get("universe_ids", {}).get(self._model_name)
+            if current_uid != existing:
+                state.store_universe_id(self._model_name, existing)
+                ui.print_info(f"Re-synced universe_id for '{self._model_name}': {existing}")
+            self.datahub_api._config.universe_ids[self._model_name] = existing
             return StepStatus.COMPLETED
 
         if dry_run:
@@ -483,6 +490,7 @@ class SeedDevAccess(BaseStep):
             return StepStatus.COMPLETED
 
         record_count = 0
+        logged_uid = False
         while True:
             sso_group_id = guide_and_collect(
                 "Enter the SSO group ID for this dev account access record.\n"
@@ -506,10 +514,36 @@ class SeedDevAccess(BaseStep):
                 sso_group_id, group_name, dev_account_id, dev_account_name
             )
 
+            # Log universe_id once (before first record) for diagnostics
+            if not logged_uid:
+                uid = state.config.get("universe_ids", {}).get("DevAccountAccess", "MISSING")
+                ui.print_info(f"Using universe_id for DevAccountAccess: {uid}")
+                logged_uid = True
+
             try:
-                self.datahub_api.create_record(
-                    "DevAccountAccess", record_xml, "ADMIN_CONFIG"
-                )
+                # Retry on "entity of unknown type" — model may not yet be
+                # recognized by the Repository API after deployment.
+                last_exc = None
+                for attempt in range(4):
+                    try:
+                        self.datahub_api.create_record(
+                            "DevAccountAccess", record_xml, "ADMIN_CONFIG"
+                        )
+                        break
+                    except BoomiApiError as exc:
+                        last_exc = exc
+                        if exc.status_code == 400 and "entity of unknown type" in exc.body.lower():
+                            wait = 3 * (attempt + 1)
+                            ui.print_info(
+                                f"Model not yet recognized by Repository API, retrying in {wait}s "
+                                f"(attempt {attempt + 1}/4)..."
+                            )
+                            time.sleep(wait)
+                            continue
+                        raise  # Non-retryable error
+                else:
+                    raise last_exc  # type: ignore[misc]
+
                 record_count += 1
                 ui.print_success(
                     f"Created DevAccountAccess record #{record_count} "
@@ -588,11 +622,28 @@ class TestCrud(BaseStep):
         )
 
         try:
-            # Create
+            # Create (retry on "entity of unknown type" propagation delay)
             ui.print_info("Creating test ComponentMapping record...")
-            self.datahub_api.create_record(
-                "ComponentMapping", record_xml, "PROMOTION_ENGINE"
-            )
+            last_exc = None
+            for attempt in range(4):
+                try:
+                    self.datahub_api.create_record(
+                        "ComponentMapping", record_xml, "PROMOTION_ENGINE"
+                    )
+                    break
+                except BoomiApiError as exc:
+                    last_exc = exc
+                    if exc.status_code == 400 and "entity of unknown type" in exc.body.lower():
+                        wait = 3 * (attempt + 1)
+                        ui.print_info(
+                            f"Model not yet recognized by Repository API, retrying in {wait}s "
+                            f"(attempt {attempt + 1}/4)..."
+                        )
+                        time.sleep(wait)
+                        continue
+                    raise  # Non-retryable error
+            else:
+                raise last_exc  # type: ignore[misc]
             ui.print_success("Test record created")
 
             # Query
