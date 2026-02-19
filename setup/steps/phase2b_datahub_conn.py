@@ -321,6 +321,20 @@ class CreateDhOps(BaseStep):
         all_op_names = [op[0] for op in DH_OPERATIONS]
         remaining = state.get_remaining_items("2.7_create_dh_ops", all_op_names)
 
+        # Verify that ops marked "done" actually exist in Boomi — re-queue if missing
+        done_ops = [n for n in all_op_names if n not in remaining]
+        for op_name in done_ops:
+            stored_id = state.get_component_id("dh_operations", op_name)
+            if not stored_id:
+                ui.print_info(f"Re-queuing '{op_name}' (no stored component ID)")
+                remaining.append(op_name)
+                continue
+            try:
+                self.platform_api.get_component(stored_id)
+            except BoomiApiError:
+                ui.print_info(f"Re-queuing '{op_name}' (component {stored_id} not found)")
+                remaining.append(op_name)
+
         if not remaining:
             ui.print_success(f"All {len(DH_OPERATIONS)} DataHub operations already created")
             return StepStatus.COMPLETED
