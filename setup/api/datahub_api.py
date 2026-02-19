@@ -697,6 +697,65 @@ class DataHubApi:
         url = f"{self._base}/models/{model_id}"
         return self._client.get(url, accept_xml=True)
 
+    def get_model_root_element(self, model_name: str) -> str | None:
+        """Discover the root element name for a model's batch XML entity tag.
+
+        DataHub auto-generates element names when creating models. The root
+        element may differ from the model display name (e.g. "DevAccountAccess"
+        → "devAccountAccess" or "devaccountaccess").
+
+        Tries to extract from GET /models/{id} response, looking for:
+          - rootElement attribute on the Model element
+          - elementName attribute on the Model element
+          - <mdm:rootElement> or <mdm:elementName> child elements
+
+        Returns the discovered root element, or None if not found.
+        """
+        universe_id = self._config.universe_ids.get(model_name, "")
+        if not universe_id:
+            return None
+        try:
+            resp = self.get_model(universe_id)
+            if not isinstance(resp, str):
+                return None
+
+            # Log full response for diagnostics (truncated)
+            logger.info("GET /models/%s response (first 3000 chars):\n%s",
+                        universe_id, resp[:3000])
+
+            root = ET.fromstring(resp)
+            ns = {"mdm": _MDM_NS}
+
+            # Strategy 1: rootElement attribute on root or Model element
+            for attr_name in ("rootElement", "elementName", "rootElementName"):
+                val = root.get(attr_name, "")
+                if val:
+                    return val
+                for el in root.iter():
+                    val = el.get(attr_name, "")
+                    if val:
+                        return val
+
+            # Strategy 2: <mdm:rootElement> or <mdm:elementName> child
+            for tag in ("rootElement", "elementName", "rootElementName"):
+                el = root.find(f"mdm:{tag}", ns)
+                if el is not None and el.text:
+                    return el.text
+                # Also try without namespace
+                el = root.find(tag)
+                if el is not None and el.text:
+                    return el.text
+
+            # Strategy 3: Search all elements for these tag names
+            for el in root.iter():
+                local_tag = el.tag.split("}")[-1] if "}" in el.tag else el.tag
+                if local_tag in ("rootElement", "elementName") and el.text:
+                    return el.text
+
+        except (BoomiApiError, ET.ParseError) as exc:
+            logger.warning("Could not discover root element for %s: %s", model_name, exc)
+        return None
+
     def publish_model(self, model_id: str) -> dict | str:
         """POST /models/{modelId}/publish."""
         url = f"{self._base}/models/{model_id}/publish"

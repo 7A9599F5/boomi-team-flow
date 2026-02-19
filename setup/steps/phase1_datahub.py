@@ -498,7 +498,12 @@ class SeedDevAccess(BaseStep):
         return ["1.2d", "2.4"]
 
     def _build_record_xml(
-        self, sso_group_id: str, group_name: str, dev_account_id: str, dev_account_name: str
+        self,
+        sso_group_id: str,
+        group_name: str,
+        dev_account_id: str,
+        dev_account_name: str,
+        entity_tag: str = "DevAccountAccess",
     ) -> str:
         # C2c fix: include <id> source entity ID so DataHub does not quarantine the record.
         # The composite key uses the two match fields separated by colon.
@@ -507,13 +512,13 @@ class SeedDevAccess(BaseStep):
         entity_id = f"{sso_group_id}:{dev_account_id}"
         return (
             '<batch src="ADMIN_CONFIG">\n'
-            "  <DevAccountAccess>\n"
+            f"  <{entity_tag}>\n"
             f"    <id>{entity_id}</id>\n"
             f"    <ssoGroupId>{sso_group_id}</ssoGroupId>\n"
             f"    <ssoGroupName>{group_name}</ssoGroupName>\n"
             f"    <devAccountId>{dev_account_id}</devAccountId>\n"
             f"    <devAccountName>{dev_account_name}</devAccountName>\n"
-            "  </DevAccountAccess>\n"
+            f"  </{entity_tag}>\n"
             "</batch>"
         )
 
@@ -640,6 +645,28 @@ class SeedDevAccess(BaseStep):
         )
         return True
 
+    @staticmethod
+    def _entity_tag_variants(model_name: str) -> list[str]:
+        """Generate entity tag name variants to try in batch XML.
+
+        DataHub auto-generates element names from model names. The docs say
+        uppercase letters are converted to lowercase. We try multiple casings
+        since the exact rule isn't documented for root elements:
+          1. PascalCase (original model name): DevAccountAccess
+          2. camelCase (lowercase first letter): devAccountAccess
+          3. All lowercase: devaccountaccess
+        """
+        variants = [model_name]
+        # camelCase — lowercase first letter only
+        camel = model_name[0].lower() + model_name[1:] if model_name else model_name
+        if camel != model_name:
+            variants.append(camel)
+        # All lowercase
+        lower = model_name.lower()
+        if lower not in variants:
+            variants.append(lower)
+        return variants
+
     def execute(self, state: SetupState, dry_run: bool = False) -> StepStatus:
         ui.print_step(self.step_id, self.name, self.step_type.value)
 
@@ -654,6 +681,24 @@ class SeedDevAccess(BaseStep):
                 "your DataHub UI (Services > DataHub > Models > click model > URL contains the ID)"
             )
             return StepStatus.FAILED
+
+        # Discover the correct entity tag name from the model's API response.
+        # DataHub may use a different casing than the model display name.
+        discovered_tag = self.datahub_api.get_model_root_element("DevAccountAccess")
+        if discovered_tag:
+            ui.print_info(f"Discovered model root element: '{discovered_tag}'")
+            entity_tags = [discovered_tag]
+            # Add variants if the discovered tag is the same as model name
+            if discovered_tag == "DevAccountAccess":
+                entity_tags = self._entity_tag_variants("DevAccountAccess")
+        else:
+            ui.print_info(
+                "Could not discover root element from GET /models — "
+                "will try multiple casing variants"
+            )
+            entity_tags = self._entity_tag_variants("DevAccountAccess")
+
+        ui.print_info(f"Entity tag candidates: {entity_tags}")
 
         record_count = 0
         while True:
@@ -675,48 +720,49 @@ class SeedDevAccess(BaseStep):
                 "Dev Account Name",
             )
 
-            record_xml = self._build_record_xml(
-                sso_group_id, group_name, dev_account_id, dev_account_name
-            )
-
             try:
-                # Retry on "entity of unknown type" — model may not yet be
-                # recognized by the Repository API after deployment.
-                last_exc = None
+                # Try each entity tag variant until one succeeds
                 created = False
-                for attempt in range(4):
+                last_exc = None
+                for tag in entity_tags:
+                    record_xml = self._build_record_xml(
+                        sso_group_id, group_name, dev_account_id, dev_account_name,
+                        entity_tag=tag,
+                    )
+                    ui.print_info(f"Trying entity tag '<{tag}>' via /records...")
                     try:
                         self.datahub_api.create_record(
                             "DevAccountAccess", record_xml, "ADMIN_CONFIG"
                         )
+                        ui.print_success(f"Entity tag '<{tag}>' accepted by /records")
                         created = True
                         break
                     except BoomiApiError as exc:
                         last_exc = exc
                         if exc.status_code == 400 and "entity of unknown type" in exc.body.lower():
-                            wait = 3 * (attempt + 1)
-                            ui.print_info(
-                                f"Model not yet recognized by Repository API, retrying in {wait}s "
-                                f"(attempt {attempt + 1}/4)..."
-                            )
-                            time.sleep(wait)
-                            continue
+                            ui.print_info(f"  '<{tag}>' rejected — entity of unknown type")
+                            # Also try staging endpoint with this tag
+                            ui.print_info(f"  Trying '<{tag}>' via /staging/ADMIN_CONFIG...")
+                            try:
+                                self.datahub_api.create_record_staging(
+                                    "DevAccountAccess", record_xml, "ADMIN_CONFIG"
+                                )
+                                ui.print_success(f"Entity tag '<{tag}>' accepted by /staging")
+                                created = True
+                                break
+                            except BoomiApiError as staging_exc:
+                                ui.print_info(f"  '<{tag}>' also rejected by staging: {staging_exc.body[:200]}")
+                                continue
                         raise  # Non-retryable error
 
-                # Fallback: try staging endpoint if /records kept failing
                 if not created:
-                    ui.print_info(
-                        "All /records attempts failed — trying staging endpoint "
-                        "(/staging/ADMIN_CONFIG) as fallback..."
+                    ui.print_error(
+                        f"No entity tag variant worked. Tried: {entity_tags}\n"
+                        "Check the model's root element name in the DataHub UI:\n"
+                        "  Services > DataHub > Models > DevAccountAccess > "
+                        "look for 'Root Element' or 'Element Name' property"
                     )
-                    try:
-                        self.datahub_api.create_record_staging(
-                            "DevAccountAccess", record_xml, "ADMIN_CONFIG"
-                        )
-                        ui.print_info("Staging endpoint succeeded")
-                    except BoomiApiError as staging_exc:
-                        ui.print_error(f"Staging endpoint also failed: {staging_exc}")
-                        raise last_exc  # type: ignore[misc]
+                    raise last_exc  # type: ignore[misc]
 
                 record_count += 1
                 ui.print_success(
@@ -779,59 +825,71 @@ class TestCrud(BaseStep):
 
         test_dev_id = "test-crud-00000000"
         test_account_id = "test-account-00000000"
-        # C2c fix: include <id> source entity ID (composite of match fields)
-        # NOTE: No XML declaration — Boomi docs show batch XML without <?xml?> header.
         test_entity_id = f"{test_dev_id}:{test_account_id}"
-        record_xml = (
-            '<batch src="PROMOTION_ENGINE">\n'
-            "  <ComponentMapping>\n"
-            f"    <id>{test_entity_id}</id>\n"
-            f"    <devComponentId>{test_dev_id}</devComponentId>\n"
-            f"    <devAccountId>{test_account_id}</devAccountId>\n"
-            "    <prodComponentId>test-prod-00000000</prodComponentId>\n"
-            "    <componentName>CRUD Test Record</componentName>\n"
-            "    <componentType>process</componentType>\n"
-            "  </ComponentMapping>\n"
-            "</batch>"
-        )
+
+        # Discover the correct entity tag name (may be lowercase/camelCase)
+        discovered_tag = self.datahub_api.get_model_root_element("ComponentMapping")
+        if discovered_tag:
+            ui.print_info(f"Discovered ComponentMapping root element: '{discovered_tag}'")
+            entity_tags = [discovered_tag]
+            if discovered_tag == "ComponentMapping":
+                entity_tags = SeedDevAccess._entity_tag_variants("ComponentMapping")
+        else:
+            entity_tags = SeedDevAccess._entity_tag_variants("ComponentMapping")
+        ui.print_info(f"Entity tag candidates: {entity_tags}")
+
+        def _build_test_xml(tag: str) -> str:
+            return (
+                '<batch src="PROMOTION_ENGINE">\n'
+                f"  <{tag}>\n"
+                f"    <id>{test_entity_id}</id>\n"
+                f"    <devComponentId>{test_dev_id}</devComponentId>\n"
+                f"    <devAccountId>{test_account_id}</devAccountId>\n"
+                "    <prodComponentId>test-prod-00000000</prodComponentId>\n"
+                "    <componentName>CRUD Test Record</componentName>\n"
+                "    <componentType>process</componentType>\n"
+                f"  </{tag}>\n"
+                "</batch>"
+            )
 
         try:
-            # Create (retry on "entity of unknown type" propagation delay)
+            # Create — try each entity tag variant + staging fallback
             ui.print_info("Creating test ComponentMapping record...")
-            last_exc = None
             created = False
-            for attempt in range(4):
+            last_exc = None
+            working_tag = entity_tags[0]  # default for query/delete
+
+            for tag in entity_tags:
+                record_xml = _build_test_xml(tag)
+                ui.print_info(f"Trying entity tag '<{tag}>' via /records...")
                 try:
                     self.datahub_api.create_record(
                         "ComponentMapping", record_xml, "PROMOTION_ENGINE"
                     )
+                    ui.print_success(f"Entity tag '<{tag}>' accepted")
+                    working_tag = tag
                     created = True
                     break
                 except BoomiApiError as exc:
                     last_exc = exc
                     if exc.status_code == 400 and "entity of unknown type" in exc.body.lower():
-                        wait = 3 * (attempt + 1)
-                        ui.print_info(
-                            f"Model not yet recognized by Repository API, retrying in {wait}s "
-                            f"(attempt {attempt + 1}/4)..."
-                        )
-                        time.sleep(wait)
-                        continue
-                    raise  # Non-retryable error
+                        ui.print_info(f"  '<{tag}>' rejected — trying staging...")
+                        try:
+                            self.datahub_api.create_record_staging(
+                                "ComponentMapping", record_xml, "PROMOTION_ENGINE"
+                            )
+                            ui.print_success(f"Entity tag '<{tag}>' accepted by staging")
+                            working_tag = tag
+                            created = True
+                            break
+                        except BoomiApiError as staging_exc:
+                            ui.print_info(f"  staging also rejected: {staging_exc.body[:200]}")
+                            continue
+                    raise
 
-            # Fallback: try staging endpoint if /records kept failing
             if not created:
-                ui.print_info(
-                    "All /records attempts failed — trying staging endpoint "
-                    "(/staging/PROMOTION_ENGINE) as fallback..."
-                )
-                try:
-                    self.datahub_api.create_record_staging(
-                        "ComponentMapping", record_xml, "PROMOTION_ENGINE"
-                    )
-                except BoomiApiError as staging_exc:
-                    ui.print_error(f"Staging endpoint also failed: {staging_exc}")
-                    raise last_exc  # type: ignore[misc]
+                ui.print_error(f"No entity tag variant worked. Tried: {entity_tags}")
+                raise last_exc  # type: ignore[misc]
             ui.print_success("Test record created")
 
             # Query
