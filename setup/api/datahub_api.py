@@ -61,19 +61,18 @@ class DataHubApi:
     def _repo_client(self) -> BoomiClient:
         """Lazy-initialized BoomiClient for Repository API record operations.
 
-        Uses Basic Auth with {username}:{hubAuthToken} credentials.
-        The hub_auth_user, hub_auth_token, and hub_cloud_url must be set on
-        config before record operations are called (populated by GetDhToken +
+        Uses Basic Auth with {accountId}:{hubAuthToken} credentials.
+        The hub_auth_token and hub_cloud_url must be set on config before
+        record operations are called (token from GetDhToken, URL from
         list_repositories).
         """
         if self._repo_client_instance is None:
-            auth_user = self._config.hub_auth_user
+            account_id = self._config.boomi_account_id
             auth_token = self._config.hub_auth_token
-            if not auth_user:
+            if not account_id:
                 raise BoomiApiError(
                     401,
-                    "hub_auth_user is not configured — run step 2.4 (GetDhToken) to collect "
-                    "the DataHub Repository API username",
+                    "boomi_account_id is not configured — run 'configure' first",
                     "",
                 )
             if not auth_token:
@@ -82,14 +81,13 @@ class DataHubApi:
                     "hub_auth_token is not configured — run step 2.4 (GetDhToken) first",
                     "",
                 )
-            # Repository API uses Basic Auth: base64("{username}:{hubAuthToken}")
-            raw = f"{auth_user}:{auth_token}"
+            # Repository API uses Basic Auth: base64("{accountId}:{hubAuthToken}")
+            # NOT the BOOMI_TOKEN. prefix used by the Platform API, and NOT the
+            # generated username shown on the Authentication Token page.
+            raw = f"{account_id}:{auth_token}"
             encoded = base64.b64encode(raw.encode()).decode()
             auth_header = f"Basic {encoded}"
-            # Build a BoomiClient instance for the Repository API using plain Basic Auth.
-            # BoomiClient.__init__ always prepends "BOOMI_TOKEN." to the auth string, which
-            # is wrong for the Repository API. We bypass __init__ via __new__ and set
-            # _auth_header directly so the session uses the correct Basic Auth format.
+            # Build a BoomiClient bypassing __init__ (which prepends "BOOMI_TOKEN.")
             import requests as _requests  # noqa: PLC0415
             repo_client = BoomiClient.__new__(BoomiClient)
             repo_client._auth_header = auth_header
@@ -115,13 +113,13 @@ class DataHubApi:
         hub_cloud_url or credentials are not yet configured.
         """
         hub_url = self._config.hub_cloud_url
-        auth_user = self._config.hub_auth_user
+        account_id = self._config.boomi_account_id
         auth_token = self._config.hub_auth_token
 
-        if not hub_url or not auth_user or not auth_token:
+        if not hub_url or not account_id or not auth_token:
             return True  # Can't verify yet — will fail later with a clear message
 
-        raw = f"{auth_user}:{auth_token}"
+        raw = f"{account_id}:{auth_token}"
         encoded = base64.b64encode(raw.encode()).decode()
         headers = {"Authorization": f"Basic {encoded}"}
 
