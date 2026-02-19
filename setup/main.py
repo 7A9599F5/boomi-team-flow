@@ -117,8 +117,13 @@ def _load_state(state_file: str) -> SetupState:
     show_default=True,
     help="Path to the state file.",
 )
+@click.option(
+    "--verbose", "-v",
+    is_flag=True,
+    help="Show full request details (URL, headers, body, credentials) on API errors.",
+)
 @click.pass_context
-def cli(ctx: click.Context, state_file: str) -> None:
+def cli(ctx: click.Context, state_file: str, verbose: bool) -> None:
     """Boomi Build Guide Setup Automation.
 
     Automates the creation and configuration of Boomi components
@@ -126,6 +131,7 @@ def cli(ctx: click.Context, state_file: str) -> None:
     """
     ctx.ensure_object(dict)
     ctx.obj["state_file"] = state_file
+    ctx.obj["verbose"] = verbose
 
 
 @cli.command()
@@ -149,6 +155,7 @@ def setup(ctx: click.Context, dry_run: bool) -> None:
     """Run all setup steps in dependency order."""
     state = _load_state(ctx.obj["state_file"])
     config = load_config(existing_state_config=state.config, interactive=not dry_run)
+    config.verbose = ctx.obj.get("verbose", False)
 
     if not dry_run and not config.is_complete:
         click.echo("Error: configuration is incomplete. Run 'configure' first.")
@@ -168,6 +175,7 @@ def verify(ctx: click.Context) -> None:
     """Verify all completed steps are still valid."""
     state = _load_state(ctx.obj["state_file"])
     config = load_config(existing_state_config=state.config, interactive=True)
+    config.verbose = ctx.obj.get("verbose", False)
     platform_api, datahub_api = _init_apis(config)
     registry = _build_registry(config, platform_api, datahub_api)
     ordered = registry.resolve_order()
@@ -213,6 +221,7 @@ def run_step(ctx: click.Context, step_id: str, dry_run: bool) -> None:
     """Run a specific step (and its dependencies if needed)."""
     state = _load_state(ctx.obj["state_file"])
     config = load_config(existing_state_config=state.config, interactive=not dry_run)
+    config.verbose = ctx.obj.get("verbose", False)
 
     if not dry_run and not config.is_complete:
         click.echo("Error: configuration is incomplete. Run 'configure' first.")

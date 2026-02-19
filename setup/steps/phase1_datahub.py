@@ -383,6 +383,20 @@ class TestCrud(BaseStep):
             ui.print_info("Would create, query, and delete a test ComponentMapping record")
             return StepStatus.COMPLETED
 
+        # Print credential diagnostics before attempting CRUD
+        acct = self.config.boomi_account_id
+        tok = self.config.hub_auth_token
+        hub = self.config.hub_cloud_url
+        uids = self.config.universe_ids
+        ui.print_info(
+            f"Auth context: account={acct[:8] + '...' if acct else 'EMPTY'} "
+            f"({len(acct)} chars), "
+            f"token={tok[:4] + '...' if tok else 'EMPTY'} "
+            f"({len(tok)} chars), "
+            f"hub={hub or 'EMPTY'}, "
+            f"universes={list(uids.keys()) if uids else 'NONE'}"
+        )
+
         test_dev_id = "test-crud-00000000"
         test_account_id = "test-account-00000000"
         # C2c fix: include <id> source entity ID (composite of match fields)

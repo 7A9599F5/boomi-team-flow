@@ -39,6 +39,10 @@ class BoomiConfig(BaseModel):
         default_factory=dict,
         description="Mapping of model_name -> universe_id (model UUID) for record operations",
     )
+    verbose: bool = Field(
+        default=False,
+        description="Enable verbose/debug output (show full request details on error)",
+    )
 
     @property
     def is_complete(self) -> bool:

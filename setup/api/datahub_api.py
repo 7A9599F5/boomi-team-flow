@@ -97,6 +97,47 @@ class DataHubApi:
             return f"Basic {header[6:14]}..."
         return "Basic ***"
 
+    def _build_verbose_block(
+        self,
+        url: str,
+        body: str,
+        candidates: list[tuple[str, str]],
+    ) -> str:
+        """Build a verbose debug block with full request details for Postman/curl.
+
+        Only called when config.verbose is True. Shows raw credentials so the
+        user can copy-paste directly into Postman or a terminal.
+        """
+        lines = [
+            "\n\n╔══ VERBOSE: Postman / curl debug ══════════════════════════",
+            f"║ Method:  POST",
+            f"║ URL:     {url}",
+            f"║ Content-Type: application/xml",
+            "║",
+            "║ Request body:",
+        ]
+        for bline in body.strip().splitlines():
+            lines.append(f"║   {bline}")
+        lines.append("║")
+
+        # Show each candidate's raw credentials and curl command
+        for fmt, header in candidates:
+            raw_cred = base64.b64decode(header.split(" ", 1)[1]).decode()
+            lines.extend([
+                f"║ ── {fmt} ──",
+                f"║   Raw credentials: {raw_cred}",
+                f"║   Authorization:   {header}",
+                f"║   curl:",
+                f"║     curl -X POST '{url}' \\",
+                f"║       -H 'Authorization: {header}' \\",
+                f"║       -H 'Content-Type: application/xml' \\",
+                f"║       -d '{body.replace(chr(10), '')}'",
+                "║",
+            ])
+
+        lines.append("╚══════════════════════════════════════════════════════════")
+        return "\n".join(lines)
+
     def _make_repo_client(self, auth_header: str) -> BoomiClient:
         """Build a BoomiClient for Repository API with a pre-built auth header."""
         import requests as _requests  # noqa: PLC0415
@@ -144,13 +185,25 @@ class DataHubApi:
         if probe_url:
             import requests as _requests  # noqa: PLC0415
 
+            # Log credential diagnostics (masked) for debugging
+            cfg = self._config
+            logger.info(
+                "Auth probe diagnostics: account_id=%s (%d chars), "
+                "hub_auth_token=%s (%d chars), hub_url=%s",
+                cfg.boomi_account_id[:8] + "..." if cfg.boomi_account_id else "EMPTY",
+                len(cfg.boomi_account_id),
+                cfg.hub_auth_token[:4] + "..." if cfg.hub_auth_token else "EMPTY",
+                len(cfg.hub_auth_token),
+                hub_url,
+            )
+
             probe_body = (
                 '<?xml version="1.0" encoding="UTF-8"?>\n'
                 '<RecordQueryRequest limit="1">\n'
                 "  <view><fieldId>RECORD_ID</fieldId></view>\n"
                 "</RecordQueryRequest>"
             )
-            results: list[tuple[str, int]] = []
+            results: list[tuple[str, int, str]] = []
 
             for fmt, header in candidates:
                 try:
@@ -161,10 +214,13 @@ class DataHubApi:
                     resp = _requests.post(
                         probe_url, data=probe_body, headers=hdrs, timeout=15,
                     )
-                    results.append((fmt, resp.status_code))
+                    # Capture response body (truncated) for 401 diagnostics
+                    body_preview = resp.text[:200].strip() if resp.text else ""
+                    results.append((fmt, resp.status_code, body_preview))
                     logger.info(
-                        "  Auth probe %s → HTTP %d (%s)",
+                        "  Auth probe %s → HTTP %d (%s) body=%s",
                         fmt, resp.status_code, self._mask_header(header),
+                        body_preview[:100],
                     )
 
                     # Accept any status that confirms auth worked
@@ -174,17 +230,30 @@ class DataHubApi:
                         self._repo_client_instance = self._make_repo_client(header)
                         return self._repo_client_instance
                 except _requests.RequestException as exc:
-                    results.append((fmt, -1))
+                    results.append((fmt, -1, str(exc)))
                     logger.warning("  Auth probe %s → network error: %s", fmt, exc)
                     continue
 
             # No format produced a definitive auth-OK response
-            detail_lines = [f"  {fmt}: HTTP {code}" for fmt, code in results]
+            detail_lines = [f"  {fmt}: HTTP {code}" for fmt, code, _ in results]
             detail = "\n".join(detail_lines)
+            # Include the first non-empty response body for diagnostics
+            resp_body = next(
+                (body for _, code, body in results if code == 401 and body), ""
+            )
+            body_hint = f"\nServer response: {resp_body}" if resp_body else ""
+
+            # Verbose mode: print full request details for Postman/curl testing
+            verbose_block = ""
+            if getattr(self._config, "verbose", False):
+                verbose_block = self._build_verbose_block(
+                    probe_url, probe_body, candidates,
+                )
+
             raise BoomiApiError(
                 401,
-                f"No auth format succeeded against {probe_url}\n"
-                f"Results:\n{detail}\n\n"
+                f"No auth format succeeded against\n{probe_url}\n"
+                f"Results:\n{detail}{body_hint}{verbose_block}\n\n"
                 "Verify your DataHub token:\n"
                 "  1. Services > DataHub > Repositories > PromotionHub > Configure\n"
                 "  2. Copy the Authentication Token value\n"
