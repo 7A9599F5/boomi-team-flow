@@ -1,6 +1,8 @@
 """Phase 1 — DataHub setup steps (1.0 through 1.4)."""
 from __future__ import annotations
 
+import time
+
 from setup.api.client import BoomiApiError
 from setup.engine import StepStatus, StepType
 from setup.state import SetupState
@@ -364,13 +366,31 @@ class StageSources(BaseStep):
                     else:
                         raise
 
-                # Step 2: Create staging area
-                system_id = self.datahub_api.add_staging_area(
-                    universe_id=universe_id,
-                    source_id=source_name,
-                    name=source_name,
-                    staging_id=source_name,
-                )
+                # Step 2: Create staging area (retry — enableInitialLoad has variable propagation delay)
+                system_id = None
+                last_exc = None
+                for attempt in range(6):
+                    try:
+                        system_id = self.datahub_api.add_staging_area(
+                            universe_id=universe_id,
+                            source_id=source_name,
+                            name=source_name,
+                            staging_id=source_name,
+                        )
+                        break
+                    except BoomiApiError as staging_exc:
+                        last_exc = staging_exc
+                        if staging_exc.status_code == 400 and "not in a valid state" in staging_exc.body.lower():
+                            wait = 2 * (attempt + 1)
+                            ui.print_info(
+                                f"Source not ready yet, retrying in {wait}s "
+                                f"(attempt {attempt + 1}/6)..."
+                            )
+                            time.sleep(wait)
+                            continue
+                        raise  # Non-retryable error — propagate to outer handler
+                if system_id is None:
+                    raise last_exc  # type: ignore[misc]
 
                 # Step 3: Finish Initial Load — release lock for next source
                 try:

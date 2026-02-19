@@ -89,12 +89,20 @@ class SetupState:
         """Load state from an existing file.
 
         Raises FileNotFoundError if the state file does not exist.
+        Backfills any component_ids categories added after the file was created.
         """
         path = path or Path.cwd() / DEFAULT_STATE_FILE
         if not path.exists():
             raise FileNotFoundError(f"State file not found: {path}")
         with open(path, "r") as f:
             data = json.load(f)
+        # Backfill component_ids categories added after this state file was created
+        defaults = _empty_component_ids()
+        existing = data.get("component_ids", {})
+        for key, default_val in defaults.items():
+            if key not in existing:
+                existing[key] = default_val
+        data["component_ids"] = existing
         return cls(data, path)
 
     @classmethod
