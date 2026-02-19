@@ -23,11 +23,15 @@ from setup.config import BoomiConfig
 logger = logging.getLogger(__name__)
 
 # Map JSON model-spec field types → Platform API type attribute values
-# M1 fix: DATE_TIME (with underscore) is the correct value, not DATETIME
+# Valid types: BOOLEAN, CLOB, DATE, DATETIME, ENUMERATION, FLOAT, INTEGER,
+#              REFERENCE, STRING, TIME
+# Note: DATETIME (no underscore) is correct per Boomi docs. A prior "M1 fix"
+# incorrectly changed this to DATE_TIME, which caused "Missing required
+# properties" errors from the Create Model API.
 _FIELD_TYPE_MAP = {
     "String": "STRING",
     "Number": "INTEGER",
-    "Date": "DATE_TIME",
+    "Date": "DATETIME",
     "Boolean": "BOOLEAN",
 }
 
