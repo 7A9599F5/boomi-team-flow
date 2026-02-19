@@ -64,6 +64,9 @@
                 <!-- ===== CONNECTOR SHAPE (HTTP Client) ===== -->
                 <shape image="http_icon" name="shape2" shapetype="connector" userlabel="Query Packages" x="256.0" y="112.0">
                     <configuration>
+                        <!-- UNVERIFIED: connectortype="httpclnt" may be correct at process-shape level
+                             even though component-level subType is "http". Do not change without
+                             capturing real process XML from the API to confirm. -->
                         <connector
                             connectortype="httpclnt"
                             connectorname="HTTP Client"
@@ -107,6 +110,7 @@
   <shape image="start" name="shape1" shapetype="start" userlabel="" x="96.0" y="94.0">
       <configuration>
           <start>
+              <!-- UNVERIFIED: connectortype="httpclnt" — see note above -->
               <connector connectortype="httpclnt" connectorname="HTTP Client"
                   connectionId="{connection-uuid}" operationId="{operation-uuid}"
                   connectorId="{connector-type-id}"/>

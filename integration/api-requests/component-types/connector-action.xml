@@ -7,16 +7,17 @@
   IS PROMOTED — contains no credentials; connection/profile IDs are rewritten
   by rewrite-references.groovy during Process C.
 
-  Source: Boomi developer docs + connector operation reference
-  Confidence: HIGH
+  Source: Boomi Platform API capture (2026-02-19)
+  Confidence: HIGH for HTTP Client, LOW for DB/Disk (unverified)
 
   Key structural points:
-    - Root element inside <bns:object>: <GenericConnectorConfig xmlns="">
-    - Same <field id="..."> pattern as connections
-    - subType on Component wrapper: httpclnt, db, disk, sftp, etc.
-    - Profile references (requestProfile, responseProfile) are component UUIDs
-      that get rewritten during promotion
-    - <bns:encryptedValues/> is always empty (no credentials in operations)
+    - Inner XML root is POLYMORPHIC by connector type
+    - HTTP Client operations: <Operation xmlns=""> (NOT <GenericConnectorConfig>)
+    - subType on Component wrapper: "http" for HTTP Client (NOT "httpclnt")
+    - DB/Disk operations may still use <GenericConnectorConfig> (unverified)
+    - HTTP Client uses <Configuration> → <Http{Method}Action> with <pathElements>
+    - pathElements have named replacement variables matching DPP names
+    - Profile references (requestProfileType, responseProfileType) are enums, NOT UUIDs
     - Operations reference their parent connection via the process shape XML,
       NOT within the operation component itself
 
@@ -27,7 +28,7 @@
     </connector>
 -->
 
-<!-- === HTTP CLIENT OPERATION — GET (Send action) === -->
+<!-- === HTTP CLIENT OPERATION — GET === -->
 
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <bns:Component
@@ -38,7 +39,7 @@
     version="5"
     name="PROMO - Op - HTTP GET Component"
     type="connector-action"
-    subType="httpclnt"
+    subType="http"
     createdDate="2024-01-15T10:00:00Z"
     createdBy="admin@example.com"
     modifiedDate="2024-06-01T12:00:00Z"
@@ -50,25 +51,31 @@
     <bns:encryptedValues/>
     <bns:description>HTTP GET operation for fetching component XML from Platform API</bns:description>
     <bns:object>
-        <GenericConnectorConfig xmlns="">
-            <!-- HTTP Client uses SEND action for both GET and POST -->
-            <field id="action">SEND</field>
-            <field id="httpMethod">GET</field>                           <!-- GET|POST|PUT|DELETE|PATCH -->
-            <field id="contentType">application/xml</field>
-            <!-- Profile references: component UUIDs rewritten by rewrite-references.groovy -->
-            <field id="requestProfile">{request-profile-component-uuid}</field>
-            <field id="responseProfile">{response-profile-component-uuid}</field>
-            <!-- Resource path appended to connection base URL -->
-            <field id="resourcePath">/api/rest/v1/{1}/Component/{2}</field>
-            <field id="returnErrors">true</field>                        <!-- Return 4xx/5xx as documents -->
-            <field id="followRedirects">true</field>
-            <field id="trackingDirection">Output Documents</field>       <!-- Input Documents|Output Documents -->
-            <!-- Static request headers -->
-            <field id="headers">
-                <header name="Accept">application/xml</header>
-                <header name="Content-Type">application/xml</header>
-            </field>
-        </GenericConnectorConfig>
+        <Operation xmlns="">
+            <Archiving directory="" enabled="false"/>
+            <Configuration>
+                <HttpGetAction dataContentType="application/xml"
+                               followRedirects="false"
+                               methodType="GET"
+                               mimePassthrough="false"
+                               requestProfileType="NONE"
+                               responseProfileType="NONE"
+                               returnErrors="false"
+                               returnMimeResponse="false">
+                    <requestHeaders/>
+                    <pathElements>
+                        <element key="2000000" name="/partner/api/rest/v1/"/>
+                        <element isVariable="true" key="2000001" name="primaryAccountId"/>
+                        <element key="2000002" name="/Component/"/>
+                        <element isVariable="true" key="2000003" name="currentComponentId"/>
+                    </pathElements>
+                    <responseHeaderMapping/>
+                    <reflectHeaders/>
+                </HttpGetAction>
+            </Configuration>
+            <Tracking><TrackedFields/></Tracking>
+            <Caching/>
+        </Operation>
     </bns:object>
 </bns:Component>
 
@@ -76,25 +83,56 @@
 <!-- === HTTP CLIENT OPERATION — POST === -->
 
 <!--
-<bns:Component ... type="connector-action" subType="httpclnt"
-    name="PROMO - Op - HTTP POST Query" ...>
+  UNVERIFIED: POST action element may be HttpPostAction or HttpSendAction.
+  This structure is inferred from GET pattern, not captured from API.
+-->
+
+<!--
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<bns:Component
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns:bns="http://api.platform.boomi.com/"
+    folderFullPath="Promoted/Integrations/Ops"
+    componentId="f6a7b8c9-d0e1-5678-fab0-456789012345"
+    version="3"
+    name="PROMO - Op - HTTP POST Query"
+    type="connector-action"
+    subType="http"
+    createdDate="2024-01-15T10:00:00Z"
+    createdBy="admin@example.com"
+    modifiedDate="2024-06-01T12:00:00Z"
+    modifiedBy="admin@example.com"
+    deleted="false"
+    currentVersion="true"
+    folderName="Ops"
+    folderId="RjoxMjM0NTc">
     <bns:encryptedValues/>
+    <bns:description>HTTP POST operation for querying PackagedComponents</bns:description>
     <bns:object>
-        <GenericConnectorConfig xmlns="">
-            <field id="action">SEND</field>
-            <field id="httpMethod">POST</field>
-            <field id="contentType">application/xml</field>
-            <field id="requestProfile">{request-profile-uuid}</field>
-            <field id="responseProfile">{response-profile-uuid}</field>
-            <field id="resourcePath">/data/v1/{1}/models/{2}/records/query</field>
-            <field id="returnErrors">true</field>
-            <field id="followRedirects">false</field>
-            <field id="trackingDirection">Output Documents</field>
-            <field id="headers">
-                <header name="Accept">application/xml</header>
-                <header name="Content-Type">application/xml</header>
-            </field>
-        </GenericConnectorConfig>
+        <Operation xmlns="">
+            <Archiving directory="" enabled="false"/>
+            <Configuration>
+                <HttpPostAction dataContentType="application/json"
+                                followRedirects="false"
+                                methodType="POST"
+                                mimePassthrough="false"
+                                requestProfileType="NONE"
+                                responseProfileType="NONE"
+                                returnErrors="false"
+                                returnMimeResponse="false">
+                    <requestHeaders/>
+                    <pathElements>
+                        <element key="2000000" name="/partner/api/rest/v1/"/>
+                        <element isVariable="true" key="2000001" name="accountId"/>
+                        <element key="2000002" name="/PackagedComponent/query"/>
+                    </pathElements>
+                    <responseHeaderMapping/>
+                    <reflectHeaders/>
+                </HttpPostAction>
+            </Configuration>
+            <Tracking><TrackedFields/></Tracking>
+            <Caching/>
+        </Operation>
     </bns:object>
 </bns:Component>
 -->
@@ -103,9 +141,30 @@
 <!-- === DATABASE OPERATION — QUERY === -->
 
 <!--
-<bns:Component ... type="connector-action" subType="db"
-    name="PROMO - Op - DB Query Orders" ...>
+  UNVERIFIED: DB connector inner XML structure not captured from API.
+  This example uses <GenericConnectorConfig> structure (may be incorrect).
+-->
+
+<!--
+<bns:Component
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns:bns="http://api.platform.boomi.com/"
+    folderFullPath="Promoted/Integrations/Ops"
+    componentId="a1b2c3d4-e5f6-7890-ab12-cd3456789012"
+    version="2"
+    name="PROMO - Op - DB Query Orders"
+    type="connector-action"
+    subType="db"
+    createdDate="2024-01-15T10:00:00Z"
+    createdBy="admin@example.com"
+    modifiedDate="2024-06-01T12:00:00Z"
+    modifiedBy="admin@example.com"
+    deleted="false"
+    currentVersion="true"
+    folderName="Ops"
+    folderId="RjoxMjM0NTc">
     <bns:encryptedValues/>
+    <bns:description>Database query operation for orders table</bns:description>
     <bns:object>
         <GenericConnectorConfig xmlns="">
             <field id="action">QUERY</field>
@@ -123,9 +182,30 @@
 <!-- === DISK OPERATION — GET (read files) === -->
 
 <!--
-<bns:Component ... type="connector-action" subType="disk"
-    name="PROMO - Op - Disk Read Archive" ...>
+  UNVERIFIED: Disk connector inner XML structure not captured from API.
+  This example uses <GenericConnectorConfig> structure (may be incorrect).
+-->
+
+<!--
+<bns:Component
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns:bns="http://api.platform.boomi.com/"
+    folderFullPath="Promoted/Integrations/Ops"
+    componentId="b2c3d4e5-f6a7-8901-bc23-de4567890123"
+    version="1"
+    name="PROMO - Op - Disk Read Archive"
+    type="connector-action"
+    subType="disk"
+    createdDate="2024-01-15T10:00:00Z"
+    createdBy="admin@example.com"
+    modifiedDate="2024-06-01T12:00:00Z"
+    modifiedBy="admin@example.com"
+    deleted="false"
+    currentVersion="true"
+    folderName="Ops"
+    folderId="RjoxMjM0NTc">
     <bns:encryptedValues/>
+    <bns:description>Disk operation for reading archived XML files</bns:description>
     <bns:object>
         <GenericConnectorConfig xmlns="">
             <field id="action">GET</field>

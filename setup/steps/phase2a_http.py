@@ -9,38 +9,82 @@ from setup.ui import console as ui
 from setup.ui.prompts import collect_component_id, guide_and_collect, guide_and_wait
 
 
-# 28 HTTP Client Operations — name, method, URL path
-HTTP_OPERATIONS: list[tuple[str, str, str]] = [
-    ("PROMO - HTTP Op - GET Component", "GET", "/partner/api/rest/v1/{1}/Component/{2}"),
-    ("PROMO - HTTP Op - POST Component Create", "POST", "/partner/api/rest/v1/{1}/Component~{2}"),
-    ("PROMO - HTTP Op - POST Component Update", "POST", "/partner/api/rest/v1/{1}/Component/{2}~{3}"),
-    ("PROMO - HTTP Op - GET ComponentReference", "GET", "/partner/api/rest/v1/{1}/ComponentReference/{2}"),
-    ("PROMO - HTTP Op - GET ComponentMetadata", "GET", "/partner/api/rest/v1/{1}/ComponentMetadata/{2}"),
-    ("PROMO - HTTP Op - QUERY PackagedComponent", "POST", "/partner/api/rest/v1/{1}/PackagedComponent/query"),
-    ("PROMO - HTTP Op - POST PackagedComponent", "POST", "/partner/api/rest/v1/{1}/PackagedComponent"),
-    ("PROMO - HTTP Op - GET ReleaseIntegrationPackStatus", "GET", "/partner/api/rest/v1/{1}/ReleaseIntegrationPackStatus/{2}"),
-    ("PROMO - HTTP Op - GET IntegrationPack", "GET", "/partner/api/rest/v1/{1}/IntegrationPack/{2}"),  # Deployment flow redesign — query IP state for multi-package safety
-    ("PROMO - HTTP Op - POST IntegrationPack", "POST", "/partner/api/rest/v1/{1}/IntegrationPack"),
-    ("PROMO - HTTP Op - POST Branch", "POST", "/partner/api/rest/v1/{1}/Branch"),
-    ("PROMO - HTTP Op - QUERY Branch", "POST", "/partner/api/rest/v1/{1}/Branch/query"),
-    ("PROMO - HTTP Op - POST MergeRequest", "POST", "/partner/api/rest/v1/{1}/MergeRequest"),
-    ("PROMO - HTTP Op - POST MergeRequest Execute", "POST", "/partner/api/rest/v1/{1}/MergeRequest/{2}/execute"),
-    ("PROMO - HTTP Op - GET Branch", "GET", "/partner/api/rest/v1/{1}/Branch/{2}"),
-    ("PROMO - HTTP Op - DELETE Branch", "DELETE", "/partner/api/rest/v1/{1}/Branch/{2}"),
-    ("PROMO - HTTP Op - QUERY IntegrationPack", "POST", "/partner/api/rest/v1/{1}/IntegrationPack/query"),
-    ("PROMO - HTTP Op - POST Add To IntegrationPack", "POST", "/partner/api/rest/v1/{1}/IntegrationPack/{2}/PackagedComponent/{3}"),
-    ("PROMO - HTTP Op - POST ReleaseIntegrationPack", "POST", "/partner/api/rest/v1/{1}/ReleaseIntegrationPack"),
-    ("PROMO - HTTP Op - GET MergeRequest", "GET", "/partner/api/rest/v1/{1}/MergeRequest/{2}"),
+# 28 HTTP Client Operations — name, method, URL path, variable names, content type
+HTTP_OPERATIONS: list[tuple[str, str, str, list[str], str]] = [
+    ("PROMO - HTTP Op - GET Component", "GET", "/partner/api/rest/v1/{1}/Component/{2}", ["primaryAccountId", "currentComponentId"], "application/xml"),
+    ("PROMO - HTTP Op - POST Component Create", "POST", "/partner/api/rest/v1/{1}/Component~{2}", ["primaryAccountId", "branchId"], "application/xml"),
+    ("PROMO - HTTP Op - POST Component Update", "POST", "/partner/api/rest/v1/{1}/Component/{2}~{3}", ["primaryAccountId", "prodComponentId", "branchId"], "application/xml"),
+    ("PROMO - HTTP Op - GET ComponentReference", "GET", "/partner/api/rest/v1/{1}/ComponentReference/{2}", ["primaryAccountId", "currentComponentId"], "application/xml"),
+    ("PROMO - HTTP Op - GET ComponentMetadata", "GET", "/partner/api/rest/v1/{1}/ComponentMetadata/{2}", ["primaryAccountId", "currentComponentId"], "application/xml"),
+    ("PROMO - HTTP Op - QUERY PackagedComponent", "POST", "/partner/api/rest/v1/{1}/PackagedComponent/query", ["primaryAccountId"], "application/xml"),
+    ("PROMO - HTTP Op - POST PackagedComponent", "POST", "/partner/api/rest/v1/{1}/PackagedComponent", ["primaryAccountId"], "application/json"),
+    ("PROMO - HTTP Op - GET ReleaseIntegrationPackStatus", "GET", "/partner/api/rest/v1/{1}/ReleaseIntegrationPackStatus/{2}", ["primaryAccountId", "releaseId"], "application/json"),
+    ("PROMO - HTTP Op - GET IntegrationPack", "GET", "/partner/api/rest/v1/{1}/IntegrationPack/{2}", ["primaryAccountId", "integrationPackId"], "application/json"),  # Deployment flow redesign — query IP state for multi-package safety
+    ("PROMO - HTTP Op - POST IntegrationPack", "POST", "/partner/api/rest/v1/{1}/IntegrationPack", ["primaryAccountId"], "application/json"),
+    ("PROMO - HTTP Op - POST Branch", "POST", "/partner/api/rest/v1/{1}/Branch", ["primaryAccountId"], "application/json"),
+    ("PROMO - HTTP Op - QUERY Branch", "POST", "/partner/api/rest/v1/{1}/Branch/query", ["primaryAccountId"], "application/json"),
+    ("PROMO - HTTP Op - POST MergeRequest", "POST", "/partner/api/rest/v1/{1}/MergeRequest", ["primaryAccountId"], "application/json"),
+    ("PROMO - HTTP Op - POST MergeRequest Execute", "POST", "/partner/api/rest/v1/{1}/MergeRequest/{2}/execute", ["primaryAccountId", "mergeRequestId"], "application/json"),
+    ("PROMO - HTTP Op - GET Branch", "GET", "/partner/api/rest/v1/{1}/Branch/{2}", ["primaryAccountId", "branchId"], "application/json"),
+    ("PROMO - HTTP Op - DELETE Branch", "DELETE", "/partner/api/rest/v1/{1}/Branch/{2}", ["primaryAccountId", "branchId"], "application/json"),
+    ("PROMO - HTTP Op - QUERY IntegrationPack", "POST", "/partner/api/rest/v1/{1}/IntegrationPack/query", ["primaryAccountId"], "application/xml"),
+    ("PROMO - HTTP Op - POST Add To IntegrationPack", "POST", "/partner/api/rest/v1/{1}/IntegrationPack/{2}/PackagedComponent/{3}", ["primaryAccountId", "integrationPackId", "packagedComponentId"], "application/json"),
+    ("PROMO - HTTP Op - POST ReleaseIntegrationPack", "POST", "/partner/api/rest/v1/{1}/ReleaseIntegrationPack", ["primaryAccountId"], "application/json"),
+    ("PROMO - HTTP Op - GET MergeRequest", "GET", "/partner/api/rest/v1/{1}/MergeRequest/{2}", ["primaryAccountId", "mergeRequestId"], "application/json"),
     # Phase 7 — Extension Editor
-    ("PROMO - HTTP Op - QUERY Account", "POST", "/partner/api/rest/v1/{1}/Account/query"),
-    ("PROMO - HTTP Op - QUERY Environment", "POST", "/partner/api/rest/v1/{1}/Environment/query"),
-    ("PROMO - HTTP Op - GET EnvironmentExtensions", "GET", "/partner/api/rest/v1/{1}/EnvironmentExtensions/{2}"),
-    ("PROMO - HTTP Op - UPDATE EnvironmentExtensions", "POST", "/partner/api/rest/v1/{1}/EnvironmentExtensions/{2}/update"),
-    ("PROMO - HTTP Op - QUERY EnvironmentMapExtensionsSummary", "POST", "/partner/api/rest/v1/{1}/EnvironmentMapExtensions/{2}/query"),
-    ("PROMO - HTTP Op - GET EnvironmentMapExtension", "GET", "/partner/api/rest/v1/{1}/EnvironmentMapExtension/{2}"),
-    ("PROMO - HTTP Op - UPDATE EnvironmentMapExtension", "POST", "/partner/api/rest/v1/{1}/EnvironmentMapExtension/{2}/update"),
-    ("PROMO - HTTP Op - QUERY ComponentReference", "POST", "/partner/api/rest/v1/{1}/ComponentReference/query"),
+    ("PROMO - HTTP Op - QUERY Account", "POST", "/partner/api/rest/v1/{1}/Account/query", ["primaryAccountId"], "application/xml"),
+    ("PROMO - HTTP Op - QUERY Environment", "POST", "/partner/api/rest/v1/{1}/Environment/query", ["primaryAccountId"], "application/xml"),
+    ("PROMO - HTTP Op - GET EnvironmentExtensions", "GET", "/partner/api/rest/v1/{1}/EnvironmentExtensions/{2}", ["primaryAccountId", "environmentId"], "application/json"),
+    ("PROMO - HTTP Op - UPDATE EnvironmentExtensions", "POST", "/partner/api/rest/v1/{1}/EnvironmentExtensions/{2}/update", ["primaryAccountId", "environmentId"], "application/json"),
+    ("PROMO - HTTP Op - QUERY EnvironmentMapExtensionsSummary", "POST", "/partner/api/rest/v1/{1}/EnvironmentMapExtensions/{2}/query", ["primaryAccountId", "environmentId"], "application/xml"),
+    ("PROMO - HTTP Op - GET EnvironmentMapExtension", "GET", "/partner/api/rest/v1/{1}/EnvironmentMapExtension/{2}", ["primaryAccountId", "mapExtensionId"], "application/json"),
+    ("PROMO - HTTP Op - UPDATE EnvironmentMapExtension", "POST", "/partner/api/rest/v1/{1}/EnvironmentMapExtension/{2}/update", ["primaryAccountId", "mapExtensionId"], "application/json"),
+    ("PROMO - HTTP Op - QUERY ComponentReference", "POST", "/partner/api/rest/v1/{1}/ComponentReference/query", ["primaryAccountId"], "application/xml"),
 ]
+
+
+def _build_path_elements(url_path: str, variable_names: list[str]) -> str:
+    """Convert URL path with {1},{2},{3} placeholders to Boomi <pathElements> XML.
+
+    Example:
+        url_path = "/partner/api/rest/v1/{1}/Component/{2}"
+        variable_names = ["primaryAccountId", "currentComponentId"]
+
+    Produces:
+        <pathElements>
+            <element key="2000000" name="/partner/api/rest/v1/"/>
+            <element isVariable="true" key="2000001" name="primaryAccountId"/>
+            <element key="2000002" name="/Component/"/>
+            <element isVariable="true" key="2000003" name="currentComponentId"/>
+        </pathElements>
+    """
+    import re
+
+    # Split URL on {N} placeholders, keeping the delimiters
+    parts = re.split(r'(\{\d+\})', url_path)
+
+    elements: list[str] = []
+    key_counter = 2000000
+    var_index = 0
+
+    for part in parts:
+        if not part:
+            continue
+        if re.match(r'\{\d+\}', part):
+            # This is a variable placeholder — map to named variable
+            var_name = variable_names[var_index] if var_index < len(variable_names) else f"param{var_index + 1}"
+            elements.append(
+                f'                <element isVariable="true" key="{key_counter}" name="{var_name}"/>'
+            )
+            var_index += 1
+        else:
+            # Static path segment
+            elements.append(
+                f'                <element key="{key_counter}" name="{part}"/>'
+            )
+        key_counter += 1
+
+    return '<pathElements>\n' + '\n'.join(elements) + '\n            </pathElements>'
 
 
 class CreateFolders(BaseStep):
@@ -324,11 +368,12 @@ class CreateHttpOps(BaseStep):
                 ui.print_error(f"Unknown operation: {op_name}")
                 return StepStatus.FAILED
 
-            _, method, url_path = op_def
+            _, method, url_path, var_names, content_type = op_def
             ui.print_progress(idx, total, op_name)
 
             parameterized = self._parameterize_template(
-                template_xml, op_name, method, url_path, ops_folder_id
+                template_xml, op_name, method, url_path, ops_folder_id,
+                variable_names=var_names, content_type=content_type
             )
 
             try:
@@ -353,32 +398,56 @@ class CreateHttpOps(BaseStep):
         method: str,
         url_path: str,
         folder_id: str,
+        variable_names: list[str] | None = None,
+        content_type: str = "application/xml",
     ) -> str:
-        """Replace name, method, URL, and folder in the template XML."""
+        """Replace name, method, URL path, and folder in real Boomi operation XML.
+
+        The template is a captured HTTP Client Operation component. Real Boomi
+        operation XML uses <Operation> → <Configuration> → <Http{Method}Action>
+        with <pathElements> for URL construction.
+        """
         import re
 
         xml = template_xml
 
-        # Replace component name
+        # 1. Replace component name attribute (first occurrence only)
         xml = re.sub(r'name="[^"]*"', f'name="{name}"', xml, count=1)
 
-        # Replace folder ID
+        # 2. Replace folder ID
         xml = re.sub(r'folderId="[^"]*"', f'folderId="{folder_id}"', xml, count=1)
 
-        # Remove the existing component ID so the API generates a new one
-        xml = re.sub(r'\s+componentId="[^"]*"', "", xml)
-        xml = re.sub(r'\s+@id="[^"]*"', "", xml)
+        # 3. Remove componentId so API generates a new one
+        xml = re.sub(r'\s+componentId="[^"]*"', '', xml)
 
-        # Replace HTTP method
-        xml = re.sub(r"<Method>[^<]*</Method>", f"<Method>{method}</Method>", xml)
+        # 4. Replace HTTP action element name and methodType
+        ACTION_MAP = {
+            'GET': 'HttpGetAction',
+            'POST': 'HttpPostAction',
+            'DELETE': 'HttpDeleteAction',
+            'PUT': 'HttpPutAction',
+        }
+        target_action = ACTION_MAP.get(method, 'HttpPostAction')
 
-        # Replace URL path
-        xml = re.sub(r"<Url>[^<]*</Url>", f"<Url>{url_path}</Url>", xml)
-        xml = re.sub(
-            r"<ResourcePath>[^<]*</ResourcePath>",
-            f"<ResourcePath>{url_path}</ResourcePath>",
-            xml,
-        )
+        # Replace opening tag (e.g., <HttpGetAction ... > to <HttpPostAction ...>)
+        xml = re.sub(r'<Http\w+Action\b', f'<{target_action}', xml)
+        # Replace closing tag
+        xml = re.sub(r'</Http\w+Action>', f'</{target_action}>', xml)
+        # Replace methodType attribute
+        xml = re.sub(r'methodType="[^"]*"', f'methodType="{method}"', xml)
+
+        # 5. Replace dataContentType
+        xml = re.sub(r'dataContentType="[^"]*"', f'dataContentType="{content_type}"', xml)
+
+        # 6. Reconstruct <pathElements> from URL path and variable names
+        if variable_names is not None:
+            new_path_elements = _build_path_elements(url_path, variable_names)
+            xml = re.sub(
+                r'<pathElements>.*?</pathElements>',
+                new_path_elements,
+                xml,
+                flags=re.DOTALL,
+            )
 
         return xml
 

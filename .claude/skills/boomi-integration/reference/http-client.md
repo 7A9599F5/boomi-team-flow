@@ -260,24 +260,43 @@ Response Profile: QueryResult
 
 ## Dynamic URL Configuration
 
-### URL Variable Syntax
+### Replacement Variables (Named Path Elements)
 
-**Document Properties**:
-- `{1}`, `{2}`, `{3}`, ... — Replaced with document property values in order
-- Property Names: `document.dynamic.userdefined.param1`, `document.dynamic.userdefined.param2`, etc.
+HTTP Client operations use **named replacement variables** in URL paths. In the Boomi UI, these appear as `{1}`, `{2}`, `{3}`, but internally they are stored as named `<pathElements>`:
 
-**Process Properties**:
-- `{process.property.name}` — Replaced with process property value
-
-**Example**:
+```xml
+<pathElements>
+    <element key="2000000" name="/partner/api/rest/v1/"/>
+    <element isVariable="true" key="2000001" name="primaryAccountId"/>
+    <element key="2000002" name="/Component/"/>
+    <element isVariable="true" key="2000003" name="currentComponentId"/>
+</pathElements>
 ```
-Resource Path: /{1}/Component/{2}/ComponentReference
-Document Properties:
-  - document.dynamic.userdefined.param1 = account-123
-  - document.dynamic.userdefined.param2 = comp-456
 
-Final URL: https://api.boomi.com/api/rest/v1/account-123/Component/comp-456/ComponentReference
+**How values are supplied at runtime:**
+- Variable values come from **Dynamic Document Properties (DDPs)** set via a **Set Properties** shape before the connector
+- The DDP name must **match the replacement variable name exactly** (e.g., DDP `primaryAccountId` fills the `primaryAccountId` path element)
+
+**Example** (GET Component operation):
 ```
+Set Properties shape:
+  - DDP "primaryAccountId" = accountId from process context
+  - DDP "currentComponentId" = componentId from process context
+    ↓
+HTTP Client connector (GET Component)
+  → URL: /partner/api/rest/v1/{accountId}/Component/{componentId}
+```
+
+### POST/PUT Operations — Parameters Tab Bug
+
+> **Known Boomi Issue:** Using the connector shape's **Parameters tab** for POST/PUT operations sends a **blank request payload**. The payload is silently dropped.
+
+**Workaround:** Always use **Set Properties + DDPs** for POST/PUT URL parameters. GET and DELETE can safely use either approach.
+
+### Process Properties in URLs
+
+- `{process.property.name}` — Replaced with process property value (static configuration)
+- Less common than DDPs for URL construction
 
 ---
 
@@ -478,7 +497,7 @@ Decision (status = 200?)
 - Never hardcode credentials — use connection components
 
 ### Dynamic URLs
-- Use `{1}`, `{2}`, `{3}` for document properties (runtime values)
+- Use named replacement variables via DDPs for runtime URL values (not the Parameters tab for POST/PUT)
 - Use `{process.property.name}` for static configuration values
 - Always validate property values before HTTP call (avoid 400 errors)
 

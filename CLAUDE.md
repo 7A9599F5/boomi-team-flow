@@ -119,12 +119,14 @@ When working with Component CRUD templates (`create-component.xml`, `update-comp
 | EDI Profile | `profile.edi` | `<EDIProfile>` | Yes |
 | Database Profile | `profile.db` | `<DatabaseProfile>` | Yes |
 | Connection | `connector-settings` | `<GenericConnectorConfig>` | **No** |
-| Connector Operation | `connector-action` | `<GenericConnectorConfig>` | Yes |
+| Connector Operation | `connector-action` | `<Operation>` (HTTP Client) / varies by connector | Yes |
 | Map | `map` | `<map>` | Yes |
 | Map Script | `scripting` (scriptType=mapscript) | `<scripting>` | Yes |
 | Process Script | `scripting` (scriptType=processscript) | `<scripting>` | Yes |
 | Process Route | `processroute` | `<processRoute>` | Yes |
 | Cross Ref Table | `crossref` | `<CrossRefTable>` | Yes |
+
+> **Note:** The inner XML root varies by connector type. HTTP Client operations use `<Operation>` containing `<Http{Method}Action>` with named `<pathElements>` for URL construction. Other connector types (Database, Disk, etc.) may use `<GenericConnectorConfig>`. Always use the API-First Discovery workflow to capture the real XML structure.
 
 ## Conventions
 
