@@ -6,14 +6,14 @@
   NOT PROMOTED — connections are pre-configured in prod by admins and mapped via
   ComponentMapping DataHub records.
 
-  Source: Boomi developer docs + connector configuration reference
+  Source: Verified against actual GET /Component responses (2026-02-19)
   Confidence: HIGH
 
   Key structural points:
-    - Root element inside <bns:object>: <GenericConnectorConfig xmlns="">
-    - All settings stored as <field id="...">value</field> key-value pairs
-    - subType on Component wrapper identifies connector: httpclnt, db, disk, sftp, ftp, etc.
-    - Encrypted fields stored as <EncryptedValue> inside <field>
+    - Inner XML element varies by connector type (NOT a single generic schema):
+        HTTP Client: <HttpSettings> with typed attributes
+        Database, SFTP, Disk, etc.: <GenericConnectorConfig> with <field id="..."> pairs
+    - subType on Component wrapper: http, db, disk, sftp, ftp, etc.
     - <bns:encryptedValues> uses XPath to track which fields are encrypted
     - strip-env-config.groovy empties: password, host, url, port, EncryptedValue,
       apiKey, apiToken, secretKey, clientSecret, connectionString, jdbcUrl,
@@ -23,18 +23,18 @@
   records map dev connection IDs → prod connection IDs.
 -->
 
-<!-- === HTTP CLIENT CONNECTION === -->
+<!-- === HTTP CLIENT CONNECTION (verified from live API response) === -->
 
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <bns:Component
     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
     xmlns:bns="http://api.platform.boomi.com/"
-    folderFullPath="Promoted/#Connections"
+    folderFullPath="{accountName}/#Connections"
     componentId="a1b2c3d4-e5f6-7890-abcd-ef1234567890"
-    version="3"
-    name="PROMO - HTTP Connection - Boomi API"
+    version="10"
+    name="PROMO - HTTP Client Connection"
     type="connector-settings"
-    subType="httpclnt"
+    subType="http"
     createdDate="2024-01-15T10:00:00Z"
     createdBy="admin@example.com"
     modifiedDate="2024-06-01T12:00:00Z"
@@ -42,28 +42,49 @@
     deleted="false"
     currentVersion="true"
     folderName="#Connections"
-    folderId="RjoxMjM0NTY">
-    <bns:encryptedValues>
-        <!-- XPath expressions pointing into <bns:object> to identify encrypted fields -->
-        <bns:encryptedValue path="//GenericConnectorConfig/field[@id='password']/text()" isSet="true"/>
-    </bns:encryptedValues>
-    <bns:description>HTTP Client connection for Boomi Platform REST API calls</bns:description>
+    folderId="RjoxMjM0NTY"
+    branchName="main"
+    branchId="{branchId}">
+    <bns:encryptedValues/>
+    <bns:description/>
     <bns:object>
-        <GenericConnectorConfig xmlns="">
-            <field id="url">https://api.boomi.com</field>               <!-- STRIPPED by strip-env-config -->
-            <field id="authType">basic</field>                           <!-- none|basic|passworddigest|custom|ntlm|oauth|oauth2|awssig -->
-            <field id="username">BOOMI_TOKEN.user@example.com</field>
-            <field id="password">
-                <EncryptedValue>AQEDAHh...base64ciphertext...==</EncryptedValue>  <!-- STRIPPED -->
-            </field>
-            <field id="cookieScope">none</field>                         <!-- none|process|account -->
-            <field id="connectTimeout">30000</field>                     <!-- milliseconds -->
-            <field id="readTimeout">120000</field>                       <!-- milliseconds -->
-            <!-- SSL Options (when configured):
-            <field id="clientCertificate">{certComponentId}</field>
-            <field id="trustAllCerts">false</field>
-            -->
-        </GenericConnectorConfig>
+        <HttpSettings xmlns=""
+                      authenticationType="BASIC"
+                      url="https://api.boomi.com">
+            <AuthSettings user="BOOMI_TOKEN.user@example.com"
+                          password=""/>                                     <!-- STRIPPED by strip-env-config -->
+            <OAuthSettings accessToken=""
+                           accessTokenURL=""
+                           authorizationURL=""
+                           consumerKey=""
+                           realm=""
+                           requestTokenURL=""
+                           signatureMethod="SHA256"
+                           suppressBlankAccessToken="false"/>
+            <OAuth2Settings grantType="code">
+                <credentials clientId=""/>
+                <authorizationTokenEndpoint url="">
+                    <sslOptions/>
+                </authorizationTokenEndpoint>
+                <authorizationParameters/>
+                <accessTokenEndpoint url="">
+                    <sslOptions/>
+                </accessTokenEndpoint>
+                <accessTokenParameters/>
+                <scope/>
+            </OAuth2Settings>
+            <AwsSettings>
+                <credentials>
+                    <accessKeyId/>
+                    <awsService>s3</awsService>
+                    <customService/>
+                    <awsRegion>ap-northeast-1</awsRegion>
+                    <customRegion/>
+                </credentials>
+            </AwsSettings>
+            <SSLOptions clientauth="false"
+                        trustServerCert="false"/>
+        </HttpSettings>
     </bns:object>
 </bns:Component>
 

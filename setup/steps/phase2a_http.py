@@ -162,24 +162,17 @@ class CreateHttpConn(BaseStep):
 
         connections_folder_id = state.get_component_id("folders", "Connections") or ""
 
-        # Build connection component XML
-        # Structure must match Boomi's GenericConnectorConfig format
-        # (see integration/api-requests/component-types/connector-settings.xml)
+        # Build connection component XML — structure from actual GET /Component response
+        # HTTP Client connections use <HttpSettings> (not GenericConnectorConfig)
         component_xml = (
             '<?xml version="1.0" encoding="UTF-8"?>\n'
             '<bns:Component xmlns:bns="http://api.platform.boomi.com/" '
             f'name="PROMO - HTTP Client Connection" type="connector-settings" '
-            f'subType="httpclnt" folderId="{connections_folder_id}">\n'
+            f'subType="http" folderId="{connections_folder_id}">\n'
             "  <bns:object>\n"
-            '    <GenericConnectorConfig xmlns="">\n'
-            f'      <field id="url">https://api.boomi.com</field>\n'
-            f'      <field id="authType">basic</field>\n'
-            f'      <field id="username">{api_user}</field>\n'
-            f'      <field id="password">{api_token}</field>\n'
-            '      <field id="cookieScope">none</field>\n'
-            '      <field id="connectTimeout">30000</field>\n'
-            '      <field id="readTimeout">120000</field>\n'
-            "    </GenericConnectorConfig>\n"
+            f'    <HttpSettings xmlns="" authenticationType="BASIC" url="https://api.boomi.com">\n'
+            f'      <AuthSettings user="{api_user}" password="{api_token}"/>\n'
+            "    </HttpSettings>\n"
             "  </bns:object>\n"
             "</bns:Component>"
         )
