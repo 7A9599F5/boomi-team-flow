@@ -243,6 +243,43 @@ class PlatformApi:
             return int(result.get("numberOfResults", 0))
         return 0
 
+    def find_component_id_by_name(self, name: str) -> Optional[str]:
+        """Find a current, non-deleted component by exact name. Returns componentId or None."""
+        query_json = json.dumps({
+            "QueryFilter": {
+                "expression": {
+                    "@type": "GroupingExpression",
+                    "operator": "and",
+                    "nestedExpression": [
+                        {
+                            "@type": "SimpleExpression",
+                            "operator": "EQUALS",
+                            "property": "name",
+                            "argument": [name],
+                        },
+                        {
+                            "@type": "SimpleExpression",
+                            "operator": "EQUALS",
+                            "property": "currentVersion",
+                            "argument": ["true"],
+                        },
+                        {
+                            "@type": "SimpleExpression",
+                            "operator": "EQUALS",
+                            "property": "deleted",
+                            "argument": ["false"],
+                        },
+                    ],
+                }
+            }
+        })
+        result = self.query_component_metadata(query_json)
+        if isinstance(result, dict) and int(result.get("numberOfResults", 0)) > 0:
+            results = result.get("result", [])
+            if results:
+                return results[0].get("componentId", None)
+        return None
+
     @staticmethod
     def parse_component_id(xml_response: str) -> str:
         """Extract componentId attribute from Component API XML response."""

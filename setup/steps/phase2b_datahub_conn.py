@@ -262,18 +262,41 @@ class DiscoverDhTemplate(BaseStep):
             ui.print_info("Would guide user to create a DataHub operation and export its XML")
             return StepStatus.COMPLETED
 
+        op_name = "PROMO - DH Op - Query ComponentMapping"
+
         guide_and_wait(
             "Create ONE DataHub Operation manually in Boomi AtomSphere:\n\n"
             "1. Go to Build > New Component > Connector > MDM (DataHub)\n"
-            "2. Name it: PROMO - DH Op - Query ComponentMapping\n"
+            f"2. Name it: {op_name}\n"
             "3. Set Connection: select the DataHub Connection from step 2.5\n"
             "4. Configure: Entity=ComponentMapping, Action=QUERY\n"
-            "5. Save the component\n"
-            "6. Copy the component ID from the URL bar",
+            "5. Save the component",
             build_guide_ref="05-connections-operations.md",
         )
 
-        comp_id = collect_component_id("DataHub Operation component ID")
+        # Auto-discover by name first, fall back to manual ID entry
+        comp_id = self.platform_api.find_component_id_by_name(op_name)
+        if comp_id:
+            ui.print_success(f"Found '{op_name}' → {comp_id}")
+        else:
+            ui.print_info("Could not find component by name — enter ID manually")
+            comp_id = collect_component_id("DataHub Operation component ID")
+
+            # Validate the pasted ID matches the expected component
+            try:
+                import re as _re
+                comp_xml = self.platform_api.get_component(comp_id)
+                comp_str = comp_xml if isinstance(comp_xml, str) else str(comp_xml)
+                name_match = _re.search(r'name="([^"]*)"', comp_str)
+                actual_name = name_match.group(1) if name_match else ""
+                if actual_name and actual_name != op_name:
+                    ui.print_error(
+                        f"Component '{comp_id}' is named '{actual_name}', "
+                        f"expected '{op_name}'. Please check the ID."
+                    )
+                    return StepStatus.FAILED
+            except BoomiApiError:
+                pass  # proceed — GET failure will be caught below
 
         try:
             template_xml = self.platform_api.get_component(comp_id)
@@ -285,8 +308,6 @@ class DiscoverDhTemplate(BaseStep):
             state.set_discovery_template("dh_operation_template_xml", template_str)
             ui.print_success("DataHub operation template captured and stored")
 
-            # Store this first operation
-            op_name = "PROMO - DH Op - Query ComponentMapping"
             state.store_component_id("dh_operations", op_name, comp_id)
             state.mark_step_item_complete("2.7_create_dh_ops", op_name)
 
