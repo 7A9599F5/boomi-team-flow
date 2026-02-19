@@ -321,20 +321,6 @@ class CreateDhOps(BaseStep):
         all_op_names = [op[0] for op in DH_OPERATIONS]
         remaining = state.get_remaining_items("2.7_create_dh_ops", all_op_names)
 
-        # Verify that ops marked "done" actually exist in Boomi — re-queue if missing
-        done_ops = [n for n in all_op_names if n not in remaining]
-        for op_name in done_ops:
-            stored_id = state.get_component_id("dh_operations", op_name)
-            if not stored_id:
-                ui.print_info(f"Re-queuing '{op_name}' (no stored component ID)")
-                remaining.append(op_name)
-                continue
-            try:
-                self.platform_api.get_component(stored_id)
-            except BoomiApiError:
-                ui.print_info(f"Re-queuing '{op_name}' (component {stored_id} not found)")
-                remaining.append(op_name)
-
         if not remaining:
             ui.print_success(f"All {len(DH_OPERATIONS)} DataHub operations already created")
             return StepStatus.COMPLETED
@@ -417,6 +403,16 @@ class VerifyPhase2(BaseStep):
                 actual = self.platform_api.count_components_by_prefix(prefix)
                 if actual >= expected:
                     ui.print_success(f"{label}: {actual}/{expected}")
+                elif prefix == "PROMO - DH Op":
+                    # Auto-repair: re-create missing DH ops from template
+                    repaired = self._repair_missing_dh_ops(state, expected - actual)
+                    if repaired:
+                        actual = self.platform_api.count_components_by_prefix(prefix)
+                    if actual >= expected:
+                        ui.print_success(f"{label}: {actual}/{expected} (repaired)")
+                    else:
+                        ui.print_error(f"{label}: {actual}/{expected} (missing {expected - actual})")
+                        all_passed = False
                 else:
                     ui.print_error(f"{label}: {actual}/{expected} (missing {expected - actual})")
                     all_passed = False
@@ -440,6 +436,42 @@ class VerifyPhase2(BaseStep):
         else:
             ui.print_error("Phase 2 verification failed — check counts above")
             return StepStatus.FAILED
+
+    def _repair_missing_dh_ops(self, state: SetupState, missing: int) -> bool:
+        """Re-create DH ops whose stored ID no longer exists in Boomi."""
+        template_xml = state.api_first_discovery.get("dh_operation_template_xml")
+        if not template_xml:
+            ui.print_error("Cannot repair — DH operation template not in state")
+            return False
+
+        ops_folder_id = state.get_component_id("folders", "Operations") or ""
+        repaired = 0
+
+        for op_name, entity, action in DH_OPERATIONS:
+            stored_id = state.get_component_id("dh_operations", op_name)
+            if stored_id:
+                try:
+                    self.platform_api.get_component(stored_id)
+                    continue  # exists — skip
+                except BoomiApiError:
+                    pass  # missing — re-create below
+
+            ui.print_info(f"Repairing '{op_name}'...")
+            parameterized = _parameterize_dh_template(
+                template_xml, op_name, entity, action, ops_folder_id
+            )
+            try:
+                result = self.platform_api.create_component(parameterized)
+                comp_id = _extract_id(result)
+                if comp_id:
+                    state.store_component_id("dh_operations", op_name, comp_id)
+                    state.mark_step_item_complete("2.7_create_dh_ops", op_name)
+                    repaired += 1
+                    ui.print_success(f"Repaired '{op_name}' → {comp_id}")
+            except BoomiApiError as exc:
+                ui.print_error(f"Failed to repair '{op_name}': {exc}")
+
+        return repaired > 0
 
 
 # -- Shared utilities --
