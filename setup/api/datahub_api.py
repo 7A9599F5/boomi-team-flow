@@ -169,6 +169,16 @@ class DataHubApi:
         # Empty body POST — pass None so no Content-Type is sent
         result = self._client.post(url, accept_xml=True)
         if isinstance(result, str):
+            # Extract UUID via regex to handle BOM or other invisible chars
+            # that .strip() doesn't remove — a BOM in the repo_id corrupts
+            # the URL for subsequent GET /repositories/{repoId}/status calls.
+            match = re.search(
+                r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}",
+                result,
+                re.IGNORECASE,
+            )
+            if match:
+                return match.group(0)
             return result.strip()
         if isinstance(result, dict):
             return result.get("id", str(result))

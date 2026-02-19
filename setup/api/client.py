@@ -102,7 +102,9 @@ class BoomiClient:
         if resp.status_code == 204 or not resp.text:
             return {}
         if "xml" in content_type or accept_xml:
-            return resp.text
+            # Strip UTF-8 BOM — some endpoints return BOM (\ufeff) which is
+            # invisible in terminals but corrupts URLs when IDs are extracted.
+            return resp.text.lstrip("\ufeff")
         return resp.json()
 
     def get(self, url: str, accept_xml: bool = False, **kwargs: Any) -> dict | str:
