@@ -369,9 +369,6 @@ class CreateHttpOps(BaseStep):
 
         return xml
 
-    @staticmethod
-    def _extract_id(result: dict | str) -> str:
-        """Extract component ID from API response."""
-        if isinstance(result, dict):
-            return result.get("@id", "") or result.get("id", "")
-        return ""
+    def _extract_id(self, result: dict | str) -> str:
+        """Extract component ID from API response (XML or dict)."""
+        return self.platform_api.parse_component_id(result)

@@ -376,10 +376,9 @@ class VerifyPhase2(BaseStep):
 
 
 def _extract_id(result: dict | str) -> str:
-    """Extract component ID from API response."""
-    if isinstance(result, dict):
-        return result.get("@id", "") or result.get("id", "")
-    return ""
+    """Extract component ID from API response (XML or dict)."""
+    from setup.api.platform_api import PlatformApi
+    return PlatformApi.parse_component_id(result)
 
 
 def _parameterize_dh_template(
