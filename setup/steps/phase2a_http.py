@@ -162,16 +162,36 @@ class CreateHttpConn(BaseStep):
 
         connections_folder_id = state.get_component_id("folders", "Connections") or ""
 
-        # Build connection component XML — structure from actual GET /Component response
-        # HTTP Client connections use <HttpSettings> (not GenericConnectorConfig)
+        # Build connection component XML — full structure required by Boomi's
+        # XSD validation (all child elements of HttpSettings must be present)
         component_xml = (
             '<?xml version="1.0" encoding="UTF-8"?>\n'
-            '<bns:Component xmlns:bns="http://api.platform.boomi.com/" '
-            f'name="PROMO - HTTP Client Connection" type="connector-settings" '
-            f'subType="http" folderId="{connections_folder_id}">\n'
+            '<bns:Component xmlns:bns="http://api.platform.boomi.com/"\n'
+            f'              name="PROMO - HTTP Client Connection"\n'
+            f'              type="connector-settings"\n'
+            f'              subType="http"\n'
+            f'              folderId="{connections_folder_id}">\n'
+            "  <bns:encryptedValues/>\n"
             "  <bns:object>\n"
             f'    <HttpSettings xmlns="" authenticationType="BASIC" url="https://api.boomi.com">\n'
             f'      <AuthSettings user="{api_user}" password="{api_token}"/>\n'
+            '      <OAuthSettings accessToken="" accessTokenURL="" authorizationURL=""\n'
+            '                     consumerKey="" realm="" requestTokenURL=""\n'
+            '                     signatureMethod="SHA256" suppressBlankAccessToken="false"/>\n'
+            '      <OAuth2Settings grantType="code">\n'
+            '        <credentials clientId=""/>\n'
+            '        <authorizationTokenEndpoint url=""><sslOptions/></authorizationTokenEndpoint>\n'
+            "        <authorizationParameters/>\n"
+            '        <accessTokenEndpoint url=""><sslOptions/></accessTokenEndpoint>\n'
+            "        <accessTokenParameters/>\n"
+            "        <scope/>\n"
+            "      </OAuth2Settings>\n"
+            "      <AwsSettings>\n"
+            "        <credentials><accessKeyId/><awsService>s3</awsService>\n"
+            "          <customService/><awsRegion>ap-northeast-1</awsRegion><customRegion/>\n"
+            "        </credentials>\n"
+            "      </AwsSettings>\n"
+            '      <SSLOptions clientauth="false" trustServerCert="false"/>\n'
             "    </HttpSettings>\n"
             "  </bns:object>\n"
             "</bns:Component>"
