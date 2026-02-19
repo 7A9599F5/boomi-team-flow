@@ -135,28 +135,40 @@ class CreateDhConn(BaseStep):
             ui.print_info("Would create DataHub Connection component via Platform API")
             return StepStatus.COMPLETED
 
-        repo_id = state.config.get("boomi_repo_id", "")
+        account_id = state.config.get("boomi_account_id", "")
         token = state.config.get("datahub_token", "")
+        cloud_name = state.config.get("hub_cloud_name", "")
         connections_folder_id = state.get_component_id("folders", "Connections") or ""
 
-        if not repo_id:
-            ui.print_error("Repository ID not found in state — run step 1.0 first")
+        if not account_id:
+            ui.print_error("Account ID not found in config")
             return StepStatus.FAILED
 
         if not token:
             ui.print_error("DataHub token not found in state — run step 2.4 first")
             return StepStatus.FAILED
 
+        if not cloud_name:
+            ui.print_error("Hub Cloud name not found in state — run step 1.0 first")
+            return StepStatus.FAILED
+
+        # DataHub (MDM) connector uses GenericConnectionConfig with field elements.
+        # subType is the official Boomi DataHub connector identifier.
         component_xml = (
             '<?xml version="1.0" encoding="UTF-8"?>\n'
-            '<bns:Component xmlns:bns="http://api.platform.boomi.com/" '
-            f'name="PROMO - DataHub Connection" type="connector-settings" '
-            f'subType="mdm" folderId="{connections_folder_id}">\n'
+            '<bns:Component xmlns:bns="http://api.platform.boomi.com/"\n'
+            '              name="PROMO - DataHub Connection"\n'
+            '              type="connector-settings"\n'
+            '              subType="officialboomi-X3979C-boomid-prod"\n'
+            f'              folderId="{connections_folder_id}">\n'
+            "  <bns:encryptedValues/>\n"
             "  <bns:object>\n"
-            "    <ConnectorSettings>\n"
-            f"      <RepositoryId>{repo_id}</RepositoryId>\n"
-            f"      <AuthToken>{token}</AuthToken>\n"
-            "    </ConnectorSettings>\n"
+            '    <GenericConnectionConfig xmlns="">\n'
+            f'      <field id="cloudName" type="string" value="{cloud_name}"/>\n'
+            '      <field id="customUrl" type="string" value=""/>\n'
+            f'      <field id="accountId" type="string" value="{account_id}"/>\n'
+            f'      <field id="token" type="password" value="{token}"/>\n'
+            "    </GenericConnectionConfig>\n"
             "  </bns:object>\n"
             "</bns:Component>"
         )

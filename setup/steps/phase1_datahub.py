@@ -37,20 +37,36 @@ class CreateRepo(BaseStep):
     def execute(self, state: SetupState, dry_run: bool = False) -> StepStatus:
         ui.print_step(self.step_id, self.name, self.step_type.value)
 
-        # Skip if already configured, but still ensure hub_cloud_url is populated
+        # Skip if already configured, but still ensure hub_cloud_url and hub_cloud_name are populated
         existing = state.config.get("boomi_repo_id", "")
         if existing:
             ui.print_success(f"Repository already exists (ID: {existing})")
-            # C2a fix: ensure hub_cloud_url is populated from list_repositories
-            # so that record operations can use the correct Repository API host.
-            if not state.config.get("hub_cloud_url") and not dry_run:
-                try:
-                    self.datahub_api.list_repositories()
-                    if self.datahub_api._config.hub_cloud_url:
-                        state.update_config({"hub_cloud_url": self.datahub_api._config.hub_cloud_url})
-                        ui.print_info(f"Hub cloud URL refreshed: {self.datahub_api._config.hub_cloud_url}")
-                except BoomiApiError:
-                    pass  # Non-fatal; will fail later when record ops are called
+            if not dry_run:
+                # C2a fix: ensure hub_cloud_url is populated from list_repositories
+                # so that record operations can use the correct Repository API host.
+                if not state.config.get("hub_cloud_url"):
+                    try:
+                        self.datahub_api.list_repositories()
+                        if self.datahub_api._config.hub_cloud_url:
+                            state.update_config({"hub_cloud_url": self.datahub_api._config.hub_cloud_url})
+                            ui.print_info(f"Hub cloud URL refreshed: {self.datahub_api._config.hub_cloud_url}")
+                    except BoomiApiError:
+                        pass  # Non-fatal; will fail later when record ops are called
+                # Backfill hub_cloud_name for DataHub Connection creation (step 2.5)
+                if not state.config.get("hub_cloud_name"):
+                    try:
+                        clouds = self.datahub_api.get_hub_clouds()
+                        if len(clouds) == 1:
+                            state.update_config({"hub_cloud_name": clouds[0]["name"]})
+                            ui.print_info(f"Hub cloud name: {clouds[0]['name']}")
+                        elif clouds:
+                            idx = prompt_choice(
+                                "Select the Hub Cloud used for the PromotionHub repository:",
+                                [f"{c['name']} ({c['cloudId']})" for c in clouds],
+                            )
+                            state.update_config({"hub_cloud_name": clouds[idx]["name"]})
+                    except BoomiApiError:
+                        pass  # Non-fatal; step 2.5 will report the missing name
             return StepStatus.COMPLETED
 
         if dry_run:
@@ -81,6 +97,9 @@ class CreateRepo(BaseStep):
             idx = prompt_choice("Select a Hub Cloud for the repository:", choices)
             cloud = clouds[idx]
             ui.print_info(f"Selected Hub Cloud: {cloud['name']}")
+
+        # Persist cloud name for DataHub Connection creation (step 2.5)
+        state.update_config({"hub_cloud_name": cloud["name"]})
 
         # Step 3: Create the repository (async)
         try:
