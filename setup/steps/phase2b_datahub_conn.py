@@ -149,8 +149,27 @@ class CreateDhConn(BaseStep):
             return StepStatus.FAILED
 
         if not cloud_name:
-            ui.print_error("Hub Cloud name not found in state — run step 1.0 first")
-            return StepStatus.FAILED
+            # Backfill: fetch hub cloud name directly from API instead of hard-failing
+            try:
+                clouds = self.datahub_api.get_hub_clouds()
+                if len(clouds) == 1:
+                    cloud_name = clouds[0]["name"]
+                elif clouds:
+                    from setup.ui.prompts import prompt_choice
+                    idx = prompt_choice(
+                        "Select the Hub Cloud used for the PromotionHub repository:",
+                        [f"{c['name']} ({c['cloudId']})" for c in clouds],
+                    )
+                    cloud_name = clouds[idx]["name"]
+                if cloud_name:
+                    state.update_config({"hub_cloud_name": cloud_name})
+                    ui.print_info(f"Hub cloud name resolved: {cloud_name}")
+                else:
+                    ui.print_error("No Hub Clouds found — check DataHub provisioning")
+                    return StepStatus.FAILED
+            except BoomiApiError as exc:
+                ui.print_error(f"Could not fetch Hub Clouds to resolve cloud name: {exc}")
+                return StepStatus.FAILED
 
         # DataHub (MDM) connector uses GenericConnectionConfig with field elements.
         # subType is the official Boomi DataHub connector identifier.

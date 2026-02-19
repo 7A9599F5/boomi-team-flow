@@ -53,6 +53,7 @@ def _empty_state() -> dict:
             "datahub_token": "",
             "datahub_user": "",
             "hub_cloud_url": "",
+            "hub_cloud_name": "",
             "universe_ids": {},
         },
         "component_ids": _empty_component_ids(),
