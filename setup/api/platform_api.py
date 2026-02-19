@@ -38,10 +38,10 @@ class PlatformApi:
         url = f"{self._base}/Component"
         return self._client.post(url, data=xml_body, content_type="application/xml", accept_xml=True)
 
-    def query_components(self, query_filter: str) -> dict | str:
-        """POST /Component/query with XML filter body."""
-        url = f"{self._base}/Component/query"
-        return self._client.post(url, data=query_filter, content_type="application/xml", accept_xml=True)
+    def query_component_metadata(self, query_filter: str) -> dict | str:
+        """POST /ComponentMetadata/query with JSON filter body."""
+        url = f"{self._base}/ComponentMetadata/query"
+        return self._client.post(url, data=query_filter)
 
     # -- Folder operations --
 
@@ -209,18 +209,36 @@ class PlatformApi:
     # -- Utility --
 
     def count_components_by_prefix(self, prefix: str) -> int:
-        """Query components with name starting with prefix, return count."""
+        """Query current (non-deleted) components with name starting with prefix."""
         query_json = json.dumps({
             "QueryFilter": {
                 "expression": {
-                    "argument": [prefix],
-                    "operator": "STARTS_WITH",
-                    "property": "name",
+                    "@type": "GroupingExpression",
+                    "operator": "and",
+                    "nestedExpression": [
+                        {
+                            "@type": "SimpleExpression",
+                            "operator": "STARTS_WITH",
+                            "property": "name",
+                            "argument": [prefix],
+                        },
+                        {
+                            "@type": "SimpleExpression",
+                            "operator": "EQUALS",
+                            "property": "currentVersion",
+                            "argument": ["true"],
+                        },
+                        {
+                            "@type": "SimpleExpression",
+                            "operator": "EQUALS",
+                            "property": "deleted",
+                            "argument": ["false"],
+                        },
+                    ],
                 }
             }
         })
-        url = f"{self._base}/Component/query"
-        result = self._client.post(url, data=query_json)
+        result = self.query_component_metadata(query_json)
         if isinstance(result, dict):
             return int(result.get("numberOfResults", 0))
         return 0

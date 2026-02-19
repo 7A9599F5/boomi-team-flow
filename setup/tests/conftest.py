@@ -46,7 +46,7 @@ def mock_platform_api() -> MagicMock:
     """Mocked PlatformApi."""
     api = MagicMock()
     api.get_component.return_value = {"componentId": "comp-1", "name": "TestComponent"}
-    api.query_components.return_value = {"numberOfResults": 0, "result": []}
+    api.query_component_metadata.return_value = {"numberOfResults": 0, "result": []}
     api.count_components_by_prefix.return_value = 0
     return api
 
