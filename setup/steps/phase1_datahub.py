@@ -558,6 +558,45 @@ class SeedDevAccess(BaseStep):
                 return False
             seen[uid] = model_name
 
+        # Verify actual model name matches expected name via GET /models/{id}
+        da_uid = uids.get("DevAccountAccess", "")
+        if da_uid:
+            try:
+                model_resp = self.datahub_api.get_model(da_uid)
+                if isinstance(model_resp, str):
+                    import re
+                    name_match = re.search(r'name="([^"]+)"', model_resp)
+                    if not name_match:
+                        name_match = re.search(r"<mdm:name>([^<]+)</mdm:name>", model_resp)
+                    actual_name = name_match.group(1) if name_match else "UNKNOWN"
+                    ui.print_info(f"  Model {da_uid} actual name: '{actual_name}'")
+                    if actual_name != "DevAccountAccess":
+                        ui.print_error(
+                            f"NAME MISMATCH: universe {da_uid} contains model "
+                            f"'{actual_name}', not 'DevAccountAccess'. "
+                            f"The state has the wrong model ID stored."
+                        )
+                        # Attempt to find the real DevAccountAccess model
+                        real_id = self.datahub_api.find_model_by_name("DevAccountAccess")
+                        if real_id:
+                            ui.print_info(
+                                f"  Found real DevAccountAccess model: {real_id}"
+                            )
+                            state.store_universe_id("DevAccountAccess", real_id)
+                            state.store_component_id("models", "DevAccountAccess", real_id)
+                            self.datahub_api._config.universe_ids["DevAccountAccess"] = real_id
+                            ui.print_success("  Auto-corrected universe_id — retrying")
+                        else:
+                            ui.print_error(
+                                "  Could not find 'DevAccountAccess' in GET /models. "
+                                "Check the model name in DataHub UI."
+                            )
+                            return False
+                else:
+                    ui.print_info(f"  Model response (non-XML): {model_resp}")
+            except BoomiApiError as exc:
+                ui.print_warning(f"  Could not verify model name: {exc}")
+
         # Log the URL that will be used
         hub_url = self.datahub_api._config.hub_cloud_url
         final_uid = uids.get("DevAccountAccess", "MISSING")
