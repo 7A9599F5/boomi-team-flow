@@ -5,7 +5,7 @@ are not supported.  See rest-api.md for full reference.
 
 Two separate API surfaces:
   - Platform API  (api.boomi.com)   — model/repo lifecycle, credentials: BOOMI_TOKEN.user:token
-  - Repository API (hub_cloud_url)  — record CRUD,          credentials: Basic accountId:hubAuthToken
+  - Repository API (hub_cloud_url)  — record CRUD,          credentials: Basic username:hubAuthToken
 """
 from __future__ import annotations
 
@@ -41,7 +41,7 @@ class DataHubApi:
     Uses two distinct API surfaces:
     - Platform API (self._client, base=api.boomi.com) for model/repo lifecycle operations.
     - Repository API (self._repo_client, base=hub_cloud_url) for record CRUD operations.
-      The Repository API uses Basic Auth with {accountId}:{hubAuthToken}.
+      The Repository API uses Basic Auth with {username}:{hubAuthToken}.
     """
 
     def __init__(self, client: BoomiClient, config: BoomiConfig) -> None:
@@ -57,21 +57,29 @@ class DataHubApi:
     def _repo_client(self) -> BoomiClient:
         """Lazy-initialized BoomiClient for Repository API record operations.
 
-        Uses Basic Auth with {accountId}:{hubAuthToken} credentials.
-        The hub_auth_token and hub_cloud_url must be set on config before
-        record operations are called (populated by GetDhToken + list_repositories).
+        Uses Basic Auth with {username}:{hubAuthToken} credentials.
+        The hub_auth_user, hub_auth_token, and hub_cloud_url must be set on
+        config before record operations are called (populated by GetDhToken +
+        list_repositories).
         """
         if self._repo_client_instance is None:
-            account_id = self._config.boomi_account_id
+            auth_user = self._config.hub_auth_user
             auth_token = self._config.hub_auth_token
+            if not auth_user:
+                raise BoomiApiError(
+                    401,
+                    "hub_auth_user is not configured — run step 2.4 (GetDhToken) to collect "
+                    "the DataHub Repository API username",
+                    "",
+                )
             if not auth_token:
                 raise BoomiApiError(
                     401,
                     "hub_auth_token is not configured — run step 2.4 (GetDhToken) first",
                     "",
                 )
-            # Repository API uses Basic Auth: base64("{accountId}:{hubAuthToken}")
-            raw = f"{account_id}:{auth_token}"
+            # Repository API uses Basic Auth: base64("{username}:{hubAuthToken}")
+            raw = f"{auth_user}:{auth_token}"
             encoded = base64.b64encode(raw.encode()).decode()
             auth_header = f"Basic {encoded}"
             # Build a BoomiClient instance for the Repository API using plain Basic Auth.

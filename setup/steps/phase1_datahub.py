@@ -100,12 +100,16 @@ class CreateRepo(BaseStep):
         state.update_config({"boomi_repo_id": repo_id})
         self.config.boomi_repo_id = repo_id
 
-        # Step 4: Poll until creation completes
-        try:
-            ui.print_info("Waiting for repository creation to complete...")
-            self.datahub_api.poll_repo_created(repo_id)
-        except BoomiApiError as exc:
-            ui.print_error(f"Repository creation did not complete: {exc}")
+        # Step 4: Manual confirmation (polling is unreliable — status API returns UNKNOWN)
+        confirmed = guide_and_confirm(
+            "Verify the repository was created successfully in AtomSphere:\n\n"
+            "1. Navigate to Services > DataHub > Repositories\n"
+            "2. Look for the 'PromotionHub' repository in the list\n\n"
+            "Is the PromotionHub repository visible?",
+            "Repository created?",
+        )
+        if not confirmed:
+            ui.print_error("Repository creation not confirmed — re-run this step after verifying")
             return StepStatus.FAILED
 
         # Step 5: Fetch repository list to extract hub_cloud_url (repositoryBaseUrl)

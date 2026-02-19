@@ -51,6 +51,7 @@ def _empty_state() -> dict:
             "cloud_base_url": "https://api.boomi.com",
             "fss_environment_id": "",
             "datahub_token": "",
+            "datahub_user": "",
             "hub_cloud_url": "",
             "universe_ids": {},
         },

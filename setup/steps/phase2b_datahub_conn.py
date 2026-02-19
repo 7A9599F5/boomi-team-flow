@@ -53,35 +53,54 @@ class GetDhToken(BaseStep):
         ui.print_step(self.step_id, self.name, self.step_type.value)
 
         existing_token = state.config.get("datahub_token", "")
-        if existing_token:
-            ui.print_success("DataHub token already configured")
+        existing_user = state.config.get("datahub_user", "")
+        if existing_token and existing_user:
+            ui.print_success("DataHub username and token already configured")
             return StepStatus.COMPLETED
 
         if dry_run:
-            ui.print_info("Would guide user to obtain DataHub auth token")
+            ui.print_info("Would guide user to obtain DataHub auth username and token")
             return StepStatus.COMPLETED
 
-        token = guide_and_collect(
-            "Obtain a DataHub authentication token:\n\n"
-            "1. Navigate to Services > DataHub > Repositories\n"
-            "2. Select the 'PromotionHub' repository\n"
-            "3. Click Configure > Authentication Token\n"
-            "4. Generate or copy the existing token\n\n"
-            "This token is used by the DataHub Connection for API calls.",
-            "DataHub Token",
-        )
+        if not existing_user:
+            username = guide_and_collect(
+                "Obtain the DataHub Repository API username:\n\n"
+                "1. Navigate to Services > DataHub > Repositories\n"
+                "2. Select the 'PromotionHub' repository\n"
+                "3. Click Configure > Authentication Token\n"
+                "4. Copy the 'Username' value shown on the token page\n\n"
+                "This is a generated username (NOT your Boomi account ID).\n"
+                "It is used for Basic Auth when calling the Repository API.",
+                "DataHub Username",
+            )
+            state.update_config({"datahub_user": username})
+            ui.print_success("DataHub username stored")
+        else:
+            ui.print_success("DataHub username already configured")
 
-        # Verify by attempting a list-sources call
-        try:
-            self.datahub_api.list_sources()
-            ui.print_success("DataHub token verified successfully")
-        except BoomiApiError:
-            ui.print_warning(
-                "Could not verify token via API (may still be valid for connector use)"
+        if not existing_token:
+            token = guide_and_collect(
+                "Now copy the DataHub authentication token from the same page:\n\n"
+                "1. On the Authentication Token page, copy the 'Token' value\n"
+                "2. If no token exists, click Generate to create one\n\n"
+                "This token is paired with the username above for Repository API auth.",
+                "DataHub Token",
             )
 
-        state.update_config({"datahub_token": token})
-        ui.print_success("DataHub token stored")
+            # Verify by attempting a list-sources call
+            try:
+                self.datahub_api.list_sources()
+                ui.print_success("DataHub token verified successfully")
+            except BoomiApiError:
+                ui.print_warning(
+                    "Could not verify token via API (may still be valid for connector use)"
+                )
+
+            state.update_config({"datahub_token": token})
+            ui.print_success("DataHub token stored")
+        else:
+            ui.print_success("DataHub token already configured")
+
         return StepStatus.COMPLETED
 
 

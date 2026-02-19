@@ -29,7 +29,11 @@ class BoomiConfig(BaseModel):
     )
     hub_auth_token: str = Field(
         default="",
-        description="DataHub auth token for Repository API Basic Auth ({accountId}:{token})",
+        description="DataHub auth token for Repository API Basic Auth",
+    )
+    hub_auth_user: str = Field(
+        default="",
+        description="DataHub auth username for Repository API Basic Auth (generated, not account ID)",
     )
     universe_ids: dict = Field(
         default_factory=dict,
@@ -103,7 +107,7 @@ def load_config(
     if existing_state_config:
         for key in (
             "boomi_account_id", "boomi_repo_id", "cloud_base_url", "fss_environment_id",
-            "hub_cloud_url", "datahub_token",
+            "hub_cloud_url", "datahub_token", "datahub_user",
         ):
             val = existing_state_config.get(key, "")
             if val:
@@ -111,6 +115,9 @@ def load_config(
         # hub_auth_token is stored in state as datahub_token; map it to hub_auth_token
         if "datahub_token" in values:
             values["hub_auth_token"] = values.pop("datahub_token")
+        # hub_auth_user is stored in state as datahub_user; map it to hub_auth_user
+        if "datahub_user" in values:
+            values["hub_auth_user"] = values.pop("datahub_user")
         # universe_ids is a dict, handle separately
         uid_val = existing_state_config.get("universe_ids")
         if uid_val and isinstance(uid_val, dict):
