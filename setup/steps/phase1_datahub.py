@@ -266,12 +266,17 @@ class CreateModel(BaseStep):
 
 
 class StageSources(BaseStep):
-    """Step 1.2d — Create staging areas for all source-model pairs.
+    """Step 1.2d — Enable Initial Load, create staging areas, and finish load for all source-model pairs.
 
     After models are deployed to the repository (steps 1.2a-c), each source
-    must have a staging area created in the universe before it can send record
-    update batches.  Without this, record writes from a source are rejected:
-      "this source is not yet marked as one that can send updates"
+    must be put into Initial Load mode before a staging area can be created.
+    The per-source lifecycle is:
+      1. enableInitialLoad  — puts the source in a valid state
+      2. stagingArea/create — creates the staging area (allows record batches)
+      3. finishInitialLoad  — releases the lock for the next source
+
+    Only one source per universe can be in Initial Load mode at a time, so we
+    must fully cycle (enable → stage → finish) each source before starting the next.
 
     Reads the source lists from model specs to build the pairs dynamically.
     """
@@ -285,7 +290,7 @@ class StageSources(BaseStep):
 
     @property
     def name(self) -> str:
-        return "Stage Sources for Record Updates"
+        return "Stage Sources and Initialize Load Mode"
 
     @property
     def step_type(self) -> StepType:
@@ -344,12 +349,44 @@ class StageSources(BaseStep):
                 return StepStatus.FAILED
 
             try:
+                # Step 1: Enable Initial Load — puts source in valid state
+                try:
+                    self.datahub_api.enable_initial_load(universe_id, source_name)
+                    ui.print_info(
+                        f"Enabled Initial Load for '{source_name}' in '{model_name}'"
+                    )
+                except BoomiApiError as exc:
+                    # Already in Initial Load mode is fine (idempotent)
+                    if exc.status_code == 400:
+                        ui.print_info(
+                            f"Initial Load already active for '{source_name}' in '{model_name}'"
+                        )
+                    else:
+                        raise
+
+                # Step 2: Create staging area
                 system_id = self.datahub_api.add_staging_area(
                     universe_id=universe_id,
                     source_id=source_name,
                     name=source_name,
                     staging_id=source_name,
                 )
+
+                # Step 3: Finish Initial Load — release lock for next source
+                try:
+                    self.datahub_api.finish_initial_load(universe_id, source_name)
+                    ui.print_info(
+                        f"Finished Initial Load for '{source_name}' in '{model_name}'"
+                    )
+                except BoomiApiError as exc:
+                    # Already finished is fine (idempotent)
+                    if exc.status_code == 400:
+                        ui.print_info(
+                            f"Initial Load already finished for '{source_name}' in '{model_name}'"
+                        )
+                    else:
+                        raise
+
                 state.mark_step_item_complete(self.step_id, item_key)
                 # Persist system staging area ID for potential future use
                 state.store_component_id(
@@ -361,6 +398,11 @@ class StageSources(BaseStep):
             except BoomiApiError as exc:
                 # "Already exists" is success — the staging area was created previously
                 if exc.status_code == 400 and "already" in exc.body.lower():
+                    # Still need to finish initial load in case it's hanging
+                    try:
+                        self.datahub_api.finish_initial_load(universe_id, source_name)
+                    except BoomiApiError:
+                        pass  # Best-effort cleanup
                     state.mark_step_item_complete(self.step_id, item_key)
                     ui.print_success(
                         f"Staging area for '{source_name}' in '{model_name}' already exists"

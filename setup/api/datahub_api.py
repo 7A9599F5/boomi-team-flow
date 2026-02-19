@@ -588,6 +588,40 @@ class DataHubApi:
         return "UNKNOWN"
 
     # ------------------------------------------------------------------
+    # Initial Load operations  (universe-scoped, Platform API)
+    # ------------------------------------------------------------------
+
+    def enable_initial_load(self, universe_id: str, source_id: str) -> str:
+        """POST /repositories/{repoId}/universes/{universeId}/sources/{sourceId}/enableInitialLoad.
+
+        Puts the source into Initial Load mode so a staging area can be
+        created.  Only one source per universe can be in this mode at a time.
+        Sends an empty body.  Returns the raw response string.
+        """
+        repo_id = self._config.boomi_repo_id
+        url = (
+            f"{self._base}/repositories/{repo_id}"
+            f"/universes/{universe_id}"
+            f"/sources/{source_id}/enableInitialLoad"
+        )
+        return self._client.post(url, accept_xml=True)
+
+    def finish_initial_load(self, universe_id: str, source_id: str) -> str:
+        """POST /repositories/{repoId}/universes/{universeId}/sources/{sourceId}/finishInitialLoad.
+
+        Releases the Initial Load lock for the source so the next source
+        can be initialized.  Must be called after staging area creation.
+        Sends an empty body.  Returns the raw response string.
+        """
+        repo_id = self._config.boomi_repo_id
+        url = (
+            f"{self._base}/repositories/{repo_id}"
+            f"/universes/{universe_id}"
+            f"/sources/{source_id}/finishInitialLoad"
+        )
+        return self._client.post(url, accept_xml=True)
+
+    # ------------------------------------------------------------------
     # Model operations  (account-scoped, NOT repository-scoped)
     # ------------------------------------------------------------------
 
