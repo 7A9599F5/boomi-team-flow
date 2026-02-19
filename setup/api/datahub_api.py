@@ -5,7 +5,8 @@ are not supported.  See rest-api.md for full reference.
 
 Two separate API surfaces:
   - Platform API  (api.boomi.com)   — model/repo lifecycle, credentials: BOOMI_TOKEN.user:token
-  - Repository API (hub_cloud_url)  — record CRUD,          credentials: Basic username:hubAuthToken
+  - Repository API (hub_cloud_url)  — record CRUD,          credentials: Basic generatedUser:hubAuthToken
+    (generatedUser is from the repo's Authentication Token page, NOT the Boomi account ID)
 """
 from __future__ import annotations
 
@@ -45,7 +46,7 @@ class DataHubApi:
     Uses two distinct API surfaces:
     - Platform API (self._client, base=api.boomi.com) for model/repo lifecycle operations.
     - Repository API (self._repo_client, base=hub_cloud_url) for record CRUD operations.
-      The Repository API uses Basic Auth with {username}:{hubAuthToken}.
+      The Repository API uses Basic Auth with {generatedUser}:{hubAuthToken}.
     """
 
     def __init__(self, client: BoomiClient, config: BoomiConfig) -> None:
@@ -58,14 +59,17 @@ class DataHubApi:
         self._repo_client_instance: Optional[BoomiClient] = None
 
     # Auth format candidates for the Repository API (tried in order).
-    # Per Boomi docs: Basic Auth = base64({accountId}:{hubAuthToken})
+    # The correct username is the GENERATED USERNAME from the DataHub repo's
+    # Authentication Token page — NOT the Boomi account ID.
     # https://help.boomi.com/docs/Atomsphere/Master%20Data%20Hub/REST%20APIs/r-mdm-Repository_API
     _AUTH_FORMATS = [
-        # Format 1: accountId:hubAuthToken  (per Boomi DataHub docs — primary)
+        # Format 1: generatedUser:hubAuthToken  (correct — generated username from repo)
+        "generated_hub",
+        # Format 2: accountId:hubAuthToken  (legacy fallback — some envs may accept)
         "account_hub",
-        # Format 2: BOOMI_TOKEN.user:apiToken  (Platform API format — some envs may accept)
+        # Format 3: BOOMI_TOKEN.user:apiToken  (Platform API format — some envs may accept)
         "boomi_token",
-        # Format 3: accountId:apiToken  (cross-format fallback)
+        # Format 4: accountId:apiToken  (cross-format fallback)
         "account_api",
     ]
 
@@ -78,7 +82,9 @@ class DataHubApi:
         Returns None if required credentials are missing for that format.
         """
         cfg = self._config
-        if fmt == "account_hub" and cfg.boomi_account_id and cfg.hub_auth_token:
+        if fmt == "generated_hub" and cfg.hub_auth_user and cfg.hub_auth_token:
+            raw = f"{cfg.hub_auth_user}:{cfg.hub_auth_token}"
+        elif fmt == "account_hub" and cfg.boomi_account_id and cfg.hub_auth_token:
             raw = f"{cfg.boomi_account_id}:{cfg.hub_auth_token}"
         elif fmt == "boomi_token" and cfg.boomi_user and cfg.boomi_token:
             raw = f"BOOMI_TOKEN.{cfg.boomi_user}:{cfg.boomi_token}"
@@ -154,9 +160,10 @@ class DataHubApi:
     def _repo_client(self) -> BoomiClient:
         """Lazy-initialized BoomiClient for Repository API record operations.
 
-        Uses the documented auth format: Basic base64({accountId}:{hubAuthToken}).
-        If hub_cloud_url and universe_ids are available, probes to verify auth
-        before caching the client.
+        Uses Basic base64({generatedUser}:{hubAuthToken}) where generatedUser
+        is the generated username from the DataHub repo's Authentication Token
+        page (NOT the Boomi account ID).  Falls back to accountId formats if
+        the generated username is not configured.
         """
         if self._repo_client_instance is not None:
             return self._repo_client_instance
@@ -174,9 +181,10 @@ class DataHubApi:
             raise BoomiApiError(
                 401,
                 "No DataHub credentials available. Ensure:\n"
-                "  - boomi_account_id is set (config or BOOMI_ACCOUNT env var)\n"
+                "  - datahub_user is set (generated username from repo Authentication Token page)\n"
                 "  - hub_auth_token is set (run step 2.4 or set datahub_token in state)\n"
-                "  - OR boomi_user + boomi_token are set (env vars BOOMI_USER/BOOMI_TOKEN)",
+                "  - OR boomi_account_id + hub_auth_token as fallback\n"
+                "  - OR boomi_user + boomi_token (env vars BOOMI_USER/BOOMI_TOKEN)",
                 "",
             )
 
@@ -199,9 +207,7 @@ class DataHubApi:
 
             probe_body = (
                 '<?xml version="1.0" encoding="UTF-8"?>\n'
-                '<RecordQueryRequest limit="1">\n'
-                "  <view><fieldId>RECORD_ID</fieldId></view>\n"
-                "</RecordQueryRequest>"
+                '<RecordQueryRequest limit="1"/>'
             )
             results: list[tuple[str, int, str]] = []
 
@@ -262,7 +268,7 @@ class DataHubApi:
             )
 
         # Cannot probe (no hub_url or no universe_ids deployed yet).
-        # Use the primary format (accountId:hubAuthToken) per Boomi docs.
+        # Use the first available format (generatedUser:hubAuthToken preferred).
         # Auth will be validated on the first real record operation.
         fmt, header = candidates[0]
         logger.info(
@@ -623,7 +629,7 @@ class DataHubApi:
         """POST https://{hub_cloud_url}/mdm/universes/{universeId}/records/query.
 
         C2a fix: Uses Repository API host (hub_cloud_url) and universe ID path.
-        C2b fix: Uses repo credentials via _repo_client (accountId:hubAuthToken Basic Auth).
+        C2b fix: Uses repo credentials via _repo_client (generatedUser:hubAuthToken Basic Auth).
         """
         url = f"{self._record_base(model_name)}/records/query"
         return self._repo_client.post(

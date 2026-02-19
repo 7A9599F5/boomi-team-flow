@@ -18,6 +18,7 @@ cfg = state["config"]
 account_id = cfg.get("boomi_account_id", "")
 hub_token = cfg.get("datahub_token", "")
 hub_url = cfg.get("hub_cloud_url", "")
+hub_user = cfg.get("datahub_user", "")
 universe_ids = cfg.get("universe_ids", {})
 
 # Platform creds from env
@@ -26,6 +27,7 @@ boomi_token = os.environ.get("BOOMI_TOKEN", "")
 
 print("=== DataHub Auth Diagnostic ===")
 print(f"account_id:    {'set (' + account_id[:8] + '..., ' + str(len(account_id)) + ' chars)' if account_id else 'MISSING'}")
+print(f"hub_user:      {'set (' + hub_user[:8] + '..., ' + str(len(hub_user)) + ' chars)' if hub_user else 'MISSING (datahub_user in state)'}")
 print(f"hub_token:     {'set (' + hub_token[:4] + '..., ' + str(len(hub_token)) + ' chars)' if hub_token else 'MISSING'}")
 print(f"hub_url:       {hub_url or 'MISSING'}")
 print(f"universe_ids:  {len(universe_ids)} models")
@@ -58,9 +60,7 @@ if universe_ids:
     test_url = f"{hub_url}/mdm/universes/{uid}/records/query"
     test_data = (
         '<?xml version="1.0" encoding="UTF-8"?>\n'
-        '<RecordQueryRequest limit="1">\n'
-        '  <view><fieldId>RECORD_ID</fieldId></view>\n'
-        '</RecordQueryRequest>'
+        '<RecordQueryRequest limit="1"/>'
     )
     print(f"Test URL: POST {test_url}")
     print(f"Universe: {model_name} ({uid})")
@@ -71,8 +71,12 @@ else:
 
 print()
 
-# Auth formats to try
+# Auth formats to try (generated username first — this is the correct format)
 formats = []
+
+if hub_user and hub_token:
+    raw0 = f"{hub_user}:{hub_token}"
+    formats.append(("generatedUser:hubToken", raw0))
 
 if account_id and hub_token:
     raw1 = f"{account_id}:{hub_token}"

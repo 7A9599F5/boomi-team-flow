@@ -119,6 +119,10 @@ def load_config(
         # hub_auth_token is stored in state as datahub_token; map to config field name
         if "datahub_token" in values:
             values["hub_auth_token"] = values.pop("datahub_token")
+        # hub_auth_user is stored in state as datahub_user; map to config field name
+        dh_user = existing_state_config.get("datahub_user", "")
+        if dh_user:
+            values["hub_auth_user"] = dh_user
         # universe_ids is a dict, handle separately
         uid_val = existing_state_config.get("universe_ids")
         if uid_val and isinstance(uid_val, dict):
