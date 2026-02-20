@@ -14,6 +14,7 @@ Before building individual processes, understand the shape types and patterns us
 | Set Properties | Gear | Reads JSON fields into Dynamic Process Properties (DPPs) |
 | Data Process | Script icon | Runs Groovy scripts for XML/JSON manipulation |
 | Decision | Diamond | Branches logic based on DPP values or document content |
+| Route | Branching arrows | Routes documents to named branches based on a DPP value; supports 3+ paths (unlike Decision's TRUE/FALSE) |
 | Map | Double arrows | Transforms data between profiles (XML to JSON, JSON to JSON) |
 | For Each (Loop) | Circular arrows | Iterates over arrays or repeated documents |
 | Try/Catch | Shield | Wraps risky steps; catch block handles per-component failures |

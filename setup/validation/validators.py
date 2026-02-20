@@ -95,11 +95,11 @@ def validate_http_ops_count(
 def validate_dh_ops_count(
     platform_api: Any, state: Any
 ) -> tuple[bool, str]:
-    """Count DataHub operations matching 'PROMO - DH Op' prefix, expect 10."""
+    """Count DataHub operations matching 'PROMO - DH Op' prefix, expect 11."""
     count = platform_api.count_components_by_prefix("PROMO - DH Op")
-    if count != 10:
-        return False, f"Found {count} DataHub operations, expected 10"
-    return True, "All 10 DataHub operations found"
+    if count != 11:
+        return False, f"Found {count} DataHub operations, expected 11"
+    return True, "All 11 DataHub operations found"
 
 
 def validate_profile_count(

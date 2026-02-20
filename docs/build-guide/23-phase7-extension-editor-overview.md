@@ -23,7 +23,7 @@ Phase 7 adds fine-grained environment extension editing to the Promotion Dashboa
 | DataHub Models | 3 | +2 | 5 |
 | Connections | 2 | 0 | 2 |
 | HTTP Client Ops | 20 | +8 | 28 |
-| DataHub Ops | 6 | +4 | 10 |
+| DataHub Ops | 7 | +4 | 11 |
 | JSON Profiles | 30 | +12 | 42 |
 | Integration Processes | 14 | +6 | 20 |
 | FSS Operations | 15 | +6 | 21 |
@@ -31,7 +31,7 @@ Phase 7 adds fine-grained environment extension editing to the Promotion Dashboa
 | Custom Components | 1 | +1 | 2 |
 | Flow Connector | 1 | 0 | 1 |
 | Flow Application | 1 | 0 | 1 |
-| **Total** | **94** | **+39** | **133** |
+| **Total** | **95** | **+39** | **134** |
 
 ### New DataHub Models
 

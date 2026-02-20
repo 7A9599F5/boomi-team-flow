@@ -65,7 +65,7 @@ Invoke-RestMethod -Uri "https://api.boomi.com/partner/api/rest/v1/{accountId}/Co
 
 ### Step 2.4 -- Create DataHub Operations
 
-Create 6 DataHub operations -- a Query and an Update for each of the 3 models. Each operation uses the `PROMO - DataHub Connection` from Step 2.3.
+Create 7 DataHub operations -- a Query and an Update for each of the 3 models, plus a Delete for ComponentMapping. Each operation uses the `PROMO - DataHub Connection` from Step 2.3.
 
 #### Quick Reference Table
 
@@ -73,10 +73,11 @@ Create 6 DataHub operations -- a Query and an Update for each of the 3 models. E
 |---|---------------|-------|--------|---------------|
 | 1 | PROMO - DH Op - Query ComponentMapping | ComponentMapping | Query Golden Records | Import from model |
 | 2 | PROMO - DH Op - Update ComponentMapping | ComponentMapping | Update Golden Records | Import from model |
-| 3 | PROMO - DH Op - Query DevAccountAccess | DevAccountAccess | Query Golden Records | Import from model |
-| 4 | PROMO - DH Op - Update DevAccountAccess | DevAccountAccess | Update Golden Records | Import from model |
-| 5 | PROMO - DH Op - Query PromotionLog | PromotionLog | Query Golden Records | Import from model |
-| 6 | PROMO - DH Op - Update PromotionLog | PromotionLog | Update Golden Records | Import from model |
+| 3 | PROMO - DH Op - Delete ComponentMapping | ComponentMapping | Delete Golden Records | Import from model |
+| 4 | PROMO - DH Op - Query DevAccountAccess | DevAccountAccess | Query Golden Records | Import from model |
+| 5 | PROMO - DH Op - Update DevAccountAccess | DevAccountAccess | Update Golden Records | Import from model |
+| 6 | PROMO - DH Op - Query PromotionLog | PromotionLog | Query Golden Records | Import from model |
+| 7 | PROMO - DH Op - Update PromotionLog | PromotionLog | Update Golden Records | Import from model |
 
 #### Step 2.4.1 -- PROMO - DH Op - Query ComponentMapping
 
@@ -127,10 +128,11 @@ To create all 6 DataHub operations via API, use the same curl/PowerShell templat
 |------|---------------|--------|-------|
 | 2.4.1 | PROMO - DH Op - Query ComponentMapping | QUERY | ComponentMapping |
 | 2.4.2 | PROMO - DH Op - Update ComponentMapping | UPDATE | ComponentMapping |
-| 2.4.3 | PROMO - DH Op - Query DevAccountAccess | QUERY | DevAccountAccess |
-| 2.4.4 | PROMO - DH Op - Update DevAccountAccess | UPDATE | DevAccountAccess |
-| 2.4.5 | PROMO - DH Op - Query PromotionLog | QUERY | PromotionLog |
-| 2.4.6 | PROMO - DH Op - Update PromotionLog | UPDATE | PromotionLog |
+| 2.4.3 | PROMO - DH Op - Delete ComponentMapping | DELETE | ComponentMapping |
+| 2.4.4 | PROMO - DH Op - Query DevAccountAccess | QUERY | DevAccountAccess |
+| 2.4.5 | PROMO - DH Op - Update DevAccountAccess | UPDATE | DevAccountAccess |
+| 2.4.6 | PROMO - DH Op - Query PromotionLog | QUERY | PromotionLog |
+| 2.4.7 | PROMO - DH Op - Update PromotionLog | UPDATE | PromotionLog |
 
 > **Note:** DataHub operations auto-generate request/response profiles when created via the UI's Import feature. When creating via API, the profile import step must be handled separately -- use the [API-First Discovery Workflow](22-api-automation-guide.md#api-first-discovery-workflow) to capture the exact XML structure from a UI-created operation.
 
@@ -154,7 +156,18 @@ To create all 6 DataHub operations via API, use the same curl/PowerShell templat
 5. Click **Import**, select model: `ComponentMapping`. The auto-generated profile includes the `<batch src="PROMOTION_ENGINE">` wrapper and all model fields.
 6. **Save**.
 
-#### Step 2.4.3 -- PROMO - DH Op - Query DevAccountAccess
+#### Step 2.4.3 -- PROMO - DH Op - Delete ComponentMapping
+
+> **API Alternative:** Use the batch creation template above with this operation's values from the lookup table.
+
+1. **Build --> New Component --> Connector --> Operation --> Boomi DataHub**.
+2. Name: `PROMO - DH Op - Delete ComponentMapping`.
+3. Connection: `PROMO - DataHub Connection`.
+4. Action: **Delete Golden Records**.
+5. Click **Import**, select model: `ComponentMapping`. The auto-generated profile includes the match key fields needed to identify the record to delete.
+6. **Save**.
+
+#### Step 2.4.4 -- PROMO - DH Op - Query DevAccountAccess
 
 > **API Alternative:** Use the batch creation template above with this operation's values from the lookup table.
 
@@ -165,7 +178,7 @@ Follows the same pattern as Step 2.4.1 with these differences:
 3. Import from model: `DevAccountAccess`.
 4. **Save**.
 
-#### Step 2.4.4 -- PROMO - DH Op - Update DevAccountAccess
+#### Step 2.4.5 -- PROMO - DH Op - Update DevAccountAccess
 
 > **API Alternative:** Use the batch creation template above with this operation's values from the lookup table.
 
@@ -176,7 +189,7 @@ Follows the same pattern as Step 2.4.2 with these differences:
 3. Import from model: `DevAccountAccess`. The auto-generated profile uses `<batch src="ADMIN_CONFIG">` as the source wrapper.
 4. **Save**.
 
-#### Step 2.4.5 -- PROMO - DH Op - Query PromotionLog
+#### Step 2.4.6 -- PROMO - DH Op - Query PromotionLog
 
 > **API Alternative:** Use the batch creation template above with this operation's values from the lookup table.
 
@@ -187,7 +200,7 @@ Follows the same pattern as Step 2.4.1 with these differences:
 3. Import from model: `PromotionLog`.
 4. **Save**.
 
-#### Step 2.4.6 -- PROMO - DH Op - Update PromotionLog
+#### Step 2.4.7 -- PROMO - DH Op - Update PromotionLog
 
 > **API Alternative:** Use the batch creation template above with this operation's values from the lookup table.
 
@@ -266,15 +279,15 @@ Invoke-RestMethod -Uri "https://api.boomi.com/mdm/api/v1/repositories/{repositor
 
 #### Phase 2 Component Checklist
 
-Before proceeding to Phase 3, confirm all 17 components exist in **Build --> Component Explorer**:
+Before proceeding to Phase 3, confirm all 18 components exist in **Build --> Component Explorer**:
 
 | Type | Count | Components |
 |------|-------|------------|
 | HTTP Client Connection | 1 | `PROMO - Partner API Connection` |
 | HTTP Client Operation | 9 | `PROMO - HTTP Op - GET Component` through `PROMO - HTTP Op - POST IntegrationPack` |
 | DataHub Connection | 1 | `PROMO - DataHub Connection` |
-| DataHub Operation | 6 | `PROMO - DH Op - Query ComponentMapping` through `PROMO - DH Op - Update PromotionLog` |
-| **Total** | **17** | |
+| DataHub Operation | 7 | `PROMO - DH Op - Query ComponentMapping` through `PROMO - DH Op - Update PromotionLog` (incl. Delete ComponentMapping) |
+| **Total** | **18** | |
 
 ---
 
