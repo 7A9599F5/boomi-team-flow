@@ -524,15 +524,15 @@ Invoke-RestMethod -Uri "https://api.boomi.com/partner/api/rest/v1/$env:BOOMI_ACC
 | # | Component Name | Model | Action |
 |---|---------------|-------|--------|
 | 1 | `PROMO - DH Op - Query ComponentMapping` | ComponentMapping | QUERY |
-| 2 | `PROMO - DH Op - Upsert ComponentMapping` | ComponentMapping | UPSERT |
+| 2 | `PROMO - DH Op - Update ComponentMapping` | ComponentMapping | UPSERT |
 | 3 | `PROMO - DH Op - Query DevAccountAccess` | DevAccountAccess | QUERY |
 | 4 | `PROMO - DH Op - Query PromotionLog` | PromotionLog | QUERY |
-| 5 | `PROMO - DH Op - Upsert PromotionLog` | PromotionLog | UPSERT |
+| 5 | `PROMO - DH Op - Update PromotionLog` | PromotionLog | UPSERT |
 | 6 | `PROMO - DH Op - Delete PromotionLog` | PromotionLog | DELETE |
 | 7 | `PROMO - DH Op - Query ExtensionAccessMapping` | ExtensionAccessMapping | QUERY |
-| 8 | `PROMO - DH Op - Upsert ExtensionAccessMapping` | ExtensionAccessMapping | UPSERT |
+| 8 | `PROMO - DH Op - Update ExtensionAccessMapping` | ExtensionAccessMapping | UPSERT |
 | 9 | `PROMO - DH Op - Query ClientAccountConfig` | ClientAccountConfig | QUERY |
-| 10 | `PROMO - DH Op - Upsert ClientAccountConfig` | ClientAccountConfig | UPSERT |
+| 10 | `PROMO - DH Op - Update ClientAccountConfig` | ClientAccountConfig | UPSERT |
 
 > **Recommended workflow:** Create operation #1 manually (Build -> New Component -> Connector -> Operation -> Boomi DataHub), import the model profile, export via `GET /Component/{id}`, and use the exported XML as a template for the remaining 9.
 

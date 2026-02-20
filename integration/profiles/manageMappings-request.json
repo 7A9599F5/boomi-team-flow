@@ -1,6 +1,8 @@
 {
   "action": "string",
   "devComponentId": "string",
+  "devAccountId": "string",
   "prodComponentId": "string",
-  "componentName": "string"
+  "componentName": "string",
+  "componentType": "string"
 }

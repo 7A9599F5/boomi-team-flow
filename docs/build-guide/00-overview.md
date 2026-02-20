@@ -52,7 +52,7 @@ The system comprises **133 components** across 7 phases:
 | 5 | Flow Application | 1 | Promotion Dashboard (3 swimlanes, 9 pages) |
 | 7 | DataHub Models | 2 | ExtensionAccessMapping, ClientAccountConfig |
 | 7 | HTTP Client Operations | 8 | Account, Environment, Extensions CRUD, MapExtension, ComponentReference |
-| 7 | DataHub Operations | 4 | Query + Upsert for ExtensionAccessMapping and ClientAccountConfig |
+| 7 | DataHub Operations | 4 | Query + Update for ExtensionAccessMapping and ClientAccountConfig |
 | 7 | JSON Profiles | 12 | Request + Response for 6 new message actions (K-O, Q; incl. ValidateScript pair) |
 | 7 | Integration Processes | 6 | K (listClientAccounts), L (getExtensions), M (updateExtensions), N (copyExtensionsTestToProd), O (updateMapExtension), Q (validateScript) |
 | 7 | FSS Operations | 6 | One per new message action |

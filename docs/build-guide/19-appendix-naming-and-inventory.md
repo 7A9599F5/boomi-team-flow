@@ -153,9 +153,9 @@ Phase 7 -- HTTP Client Operations (+8):
 
 Phase 7 -- DataHub Operations (+4):
 [ ] 105. PROMO - DH Op - Query ExtensionAccessMapping
-[ ] 106. PROMO - DH Op - Upsert ExtensionAccessMapping
+[ ] 106. PROMO - DH Op - Update ExtensionAccessMapping
 [ ] 107. PROMO - DH Op - Query ClientAccountConfig
-[ ] 108. PROMO - DH Op - Upsert ClientAccountConfig
+[ ] 108. PROMO - DH Op - Update ClientAccountConfig
 
 Phase 7 -- JSON Profiles (+10):
 [ ] 109. PROMO - Profile - ListClientAccountsRequest

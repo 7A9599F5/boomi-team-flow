@@ -17,16 +17,16 @@ from setup.ui.prompts import (
 # 10 DataHub Operations — name, entity, action
 DH_OPERATIONS: list[tuple[str, str, str]] = [
     ("PROMO - DH Op - Query ComponentMapping", "ComponentMapping", "QUERY"),
-    ("PROMO - DH Op - Upsert ComponentMapping", "ComponentMapping", "UPSERT"),
+    ("PROMO - DH Op - Update ComponentMapping", "ComponentMapping", "UPSERT"),
     ("PROMO - DH Op - Query DevAccountAccess", "DevAccountAccess", "QUERY"),
     ("PROMO - DH Op - Query PromotionLog", "PromotionLog", "QUERY"),
-    ("PROMO - DH Op - Upsert PromotionLog", "PromotionLog", "UPSERT"),
+    ("PROMO - DH Op - Update PromotionLog", "PromotionLog", "UPSERT"),
     ("PROMO - DH Op - Delete PromotionLog", "PromotionLog", "DELETE"),
     # Phase 7 — Extension Editor
     ("PROMO - DH Op - Query ExtensionAccessMapping", "ExtensionAccessMapping", "QUERY"),
-    ("PROMO - DH Op - Upsert ExtensionAccessMapping", "ExtensionAccessMapping", "UPSERT"),
+    ("PROMO - DH Op - Update ExtensionAccessMapping", "ExtensionAccessMapping", "UPSERT"),
     ("PROMO - DH Op - Query ClientAccountConfig", "ClientAccountConfig", "QUERY"),
-    ("PROMO - DH Op - Upsert ClientAccountConfig", "ClientAccountConfig", "UPSERT"),
+    ("PROMO - DH Op - Update ClientAccountConfig", "ClientAccountConfig", "UPSERT"),
 ]
 
 
