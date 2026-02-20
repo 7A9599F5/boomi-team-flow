@@ -35,14 +35,14 @@ For components with complex internal XML (Integration Processes, Maps), the guid
 
 ## Bill of Materials
 
-The system comprises **134 components** across 7 phases:
+The system comprises **135 components** across 7 phases:
 
 | Phase | Category | Count | Components |
 |-------|----------|-------|------------|
 | 1 | DataHub Models | 3 | ComponentMapping, DevAccountAccess, PromotionLog (37 fields incl. peer/admin review, branching, multi-environment, withdrawal) |
 | 2 | Connections | 2 | HTTP Client (Partner API), DataHub |
 | 2 | HTTP Client Operations | 20 | GET/POST/QUERY for Component, Reference, Metadata, PackagedComponent; GET ReleaseIntegrationPackStatus; IntegrationPack (create, query, get); Branch (create, query, get, delete); MergeRequest (create, execute, get); Add To IntegrationPack, ReleaseIntegrationPack |
-| 2 | DataHub Operations | 7 | Query + Update for each of 3 models, plus Delete ComponentMapping |
+| 2 | DataHub Operations | 8 | Query + Update for each of 3 models, plus Delete for ComponentMapping and PromotionLog |
 | 3 | JSON Profiles | 30 | Request + Response for each of 15 message actions (incl. checkReleaseStatus) |
 | 3 | Integration Processes | 14 | A0, A, B, C, D, E, E2, E3, E4, E5, F, G, J, P |
 | 4 | FSS Operations | 15 | One per message action |
@@ -57,7 +57,7 @@ The system comprises **134 components** across 7 phases:
 | 7 | Integration Processes | 6 | K (listClientAccounts), L (getExtensions), M (updateExtensions), N (copyExtensionsTestToProd), O (updateMapExtension), Q (validateScript) |
 | 7 | FSS Operations | 6 | One per new message action |
 | 7 | Custom Component | 1 | ExtensionEditor (React custom component for env extension editing) |
-| | **Total** | **134** | |
+| | **Total** | **135** | |
 
 ---
 
