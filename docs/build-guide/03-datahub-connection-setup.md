@@ -120,9 +120,9 @@ Invoke-RestMethod -Uri "https://api.boomi.com/partner/api/rest/v1/{accountId}/Co
 
 **Verify:** Response returns HTTP 200 with the created component. Capture the `componentId` from the response.
 
-##### Batch Creation Template for All 6 Operations
+##### Batch Creation Template for All 7 Operations
 
-To create all 6 DataHub operations via API, use the same curl/PowerShell template above, substituting values from this table:
+To create all 7 DataHub operations via API, use the same curl/PowerShell template above, substituting values from this table:
 
 | Step | Operation Name | Action | Model |
 |------|---------------|--------|-------|
