@@ -444,9 +444,9 @@ After successful release to Production:
    - Input: Combined JSON with extensions, componentMappings, and devAccountAccessRecords
    - Output: Array of ExtensionAccessMapping records
 
-5. **DataHub Upsert — Store ExtensionAccessMapping Records**
-   - Operation: `PROMO - DH Op - Upsert ExtensionAccessMapping`
-   - Upsert each record (match on `environmentId` + `prodComponentId`)
+5. **DataHub Update — Store ExtensionAccessMapping Records**
+   - Operation: `PROMO - DH Op - Update ExtensionAccessMapping`
+   - Update each record (match on `environmentId` + `prodComponentId`)
 
 **Error Handling:** Cache refresh failures MUST NOT fail the overall release. If it fails:
 - Log: `logger.warning("ExtensionAccessMapping cache refresh failed for environment {environmentId}: {error}")`

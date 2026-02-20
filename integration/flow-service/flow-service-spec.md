@@ -330,16 +330,20 @@ Connections are shared resources pre-configured in the parent account's `#Connec
 **Request Fields**:
 - `action` (string: "query" | "update" | "delete")
 - `devComponentId` (string, conditional)
+- `devAccountId` (string, conditional) — required for update/delete (compound match key)
 - `prodComponentId` (string, conditional)
 - `componentName` (string, conditional)
+- `componentType` (string, optional) — e.g., "process", "connector-settings"; useful for admin seeding
 
 **Response Fields**:
 - `success` (boolean)
 - `mappings` (array)
   - `devComponentId` (string)
+  - `devAccountId` (string)
   - `prodComponentId` (string)
   - `componentName` (string)
   - `componentType` (string)
+  - `mappingSource` (string) — "PROMOTION_ENGINE" or "ADMIN_SEEDING"
   - `lastPromoted` (datetime)
 - `errorCode` (string, optional)
 - `errorMessage` (string, optional)

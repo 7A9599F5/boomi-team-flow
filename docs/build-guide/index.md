@@ -9,7 +9,7 @@ This guide walks through building every component of the Promotion System step b
 | 00 | [Overview & Prerequisites](00-overview.md) | Intro, how to use, prerequisites, BOM, naming convention, dependency build order, repo file reference |
 | 01 | [Phase 1: DataHub Foundation](01-datahub-foundation.md) | 3 DataHub models, seed data, CRUD test & cleanup |
 | 02 | [Phase 2a: HTTP Client Setup](02-http-client-setup.md) | HTTP Client connection + 20 HTTP Client operations |
-| 03 | [Phase 2b: DataHub Connection Setup](03-datahub-connection-setup.md) | DataHub connection + 6 DataHub operations + Phase 2 verify & checklist |
+| 03 | [Phase 2b: DataHub Connection Setup](03-datahub-connection-setup.md) | DataHub connection + 8 DataHub operations + Phase 2 verify & checklist |
 | 04 | [Phase 3: Process Canvas Fundamentals](04-process-canvas-fundamentals.md) | Phase 3 intro: shapes, profile import, Groovy scripts, DPP pattern, general process skeleton |
 | 05 | [Process F: Mapping CRUD](05-process-f-mapping-crud.md) | Process F — template "hello world" process, fully detailed shape-by-shape |
 | 06 | [Process A0: Get Dev Accounts](06-process-a0-get-dev-accounts.md) | Process A0 — SSO group to dev account access lookup |

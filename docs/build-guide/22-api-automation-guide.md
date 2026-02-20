@@ -64,7 +64,7 @@ Step 5:  JSON Profiles (42)
 Step 6:  HTTP Client Connection
 Step 7:  HTTP Client Operations (28)
 Step 8:  DataHub Connection
-Step 9:  DataHub Operations (10)
+Step 9:  DataHub Operations (12)
 Step 10: FSS Operations (21)
 Step 11: Integration Processes (20)
 Step 12: Flow Service
@@ -488,11 +488,11 @@ Invoke-RestMethod -Uri "https://api.boomi.com/partner/api/rest/v1/$env:BOOMI_ACC
 
 ---
 
-#### Step 9 -- Create 10 DataHub Operations (Batch)
+#### Step 9 -- Create 12 DataHub Operations (Batch)
 
 Reference: [Phase 2b: DataHub Connection Setup](03-datahub-connection-setup.md), Step 2.4
 
-Each DataHub operation is a `connector-action` component with subType `mdm`. All 10 use the `PROMO - DataHub Connection` from Step 8.
+Each DataHub operation is a `connector-action` component with subType `mdm`. All 12 use the `PROMO - DataHub Connection` from Step 8.
 
 **Template (single operation):**
 
@@ -519,22 +519,24 @@ Invoke-RestMethod -Uri "https://api.boomi.com/partner/api/rest/v1/$env:BOOMI_ACC
   -Method POST -Headers $BoomiHeadersXml -Body $dhOpXml
 ```
 
-**Complete DataHub Operation Inventory (10 operations):**
+**Complete DataHub Operation Inventory (12 operations):**
 
 | # | Component Name | Model | Action |
 |---|---------------|-------|--------|
 | 1 | `PROMO - DH Op - Query ComponentMapping` | ComponentMapping | QUERY |
-| 2 | `PROMO - DH Op - Upsert ComponentMapping` | ComponentMapping | UPSERT |
-| 3 | `PROMO - DH Op - Query DevAccountAccess` | DevAccountAccess | QUERY |
-| 4 | `PROMO - DH Op - Query PromotionLog` | PromotionLog | QUERY |
-| 5 | `PROMO - DH Op - Upsert PromotionLog` | PromotionLog | UPSERT |
-| 6 | `PROMO - DH Op - Delete PromotionLog` | PromotionLog | DELETE |
-| 7 | `PROMO - DH Op - Query ExtensionAccessMapping` | ExtensionAccessMapping | QUERY |
-| 8 | `PROMO - DH Op - Upsert ExtensionAccessMapping` | ExtensionAccessMapping | UPSERT |
-| 9 | `PROMO - DH Op - Query ClientAccountConfig` | ClientAccountConfig | QUERY |
-| 10 | `PROMO - DH Op - Upsert ClientAccountConfig` | ClientAccountConfig | UPSERT |
+| 2 | `PROMO - DH Op - Update ComponentMapping` | ComponentMapping | UPDATE |
+| 3 | `PROMO - DH Op - Delete ComponentMapping` | ComponentMapping | DELETE |
+| 4 | `PROMO - DH Op - Query DevAccountAccess` | DevAccountAccess | QUERY |
+| 5 | `PROMO - DH Op - Update DevAccountAccess` | DevAccountAccess | UPDATE |
+| 6 | `PROMO - DH Op - Query PromotionLog` | PromotionLog | QUERY |
+| 7 | `PROMO - DH Op - Update PromotionLog` | PromotionLog | UPDATE |
+| 8 | `PROMO - DH Op - Delete PromotionLog` | PromotionLog | DELETE |
+| 9 | `PROMO - DH Op - Query ExtensionAccessMapping` | ExtensionAccessMapping | QUERY |
+| 10 | `PROMO - DH Op - Update ExtensionAccessMapping` | ExtensionAccessMapping | UPDATE |
+| 11 | `PROMO - DH Op - Query ClientAccountConfig` | ClientAccountConfig | QUERY |
+| 12 | `PROMO - DH Op - Update ClientAccountConfig` | ClientAccountConfig | UPDATE |
 
-> **Recommended workflow:** Create operation #1 manually (Build -> New Component -> Connector -> Operation -> Boomi DataHub), import the model profile, export via `GET /Component/{id}`, and use the exported XML as a template for the remaining 9.
+> **Recommended workflow:** Create operation #1 manually (Build -> New Component -> Connector -> Operation -> Boomi DataHub), import the model profile, export via `GET /Component/{id}`, and use the exported XML as a template for the remaining 11.
 
 ---
 
@@ -1145,7 +1147,7 @@ Invoke-RestMethod -Uri "https://api.boomi.com/partner/api/rest/v1/$env:BOOMI_ACC
   -Method POST -Headers $BoomiHeaders -Body $queryBody
 ```
 
-Verify `numberOfResults` equals **59** (28 HTTP Client + 10 DataHub + 21 FSS operations).
+Verify `numberOfResults` equals **61** (28 HTTP Client + 12 DataHub + 21 FSS operations).
 
 #### 4. Verify Profiles
 
@@ -1289,12 +1291,12 @@ A successful `getDevAccounts` response with `"success": true` confirms the entir
 | DataHub Sources | 3 | Check via DataHub UI |
 | Connections | 2 | GET Component for each ID |
 | HTTP Client Operations | 28 | STARTS_WITH "PROMO - HTTP Op" |
-| DataHub Operations | 10 | STARTS_WITH "PROMO - DH Op" |
+| DataHub Operations | 12 | STARTS_WITH "PROMO - DH Op" |
 | FSS Operations | 21 | STARTS_WITH "PROMO - FSS Op" |
 | JSON Profiles | 42 | STARTS_WITH "PROMO - Profile" |
 | Integration Processes | 20 | type = "process", STARTS_WITH "PROMO - " |
 | Flow Service | 1 | name = "PROMO - Flow Service" |
-| **Total Components** | **133** | |
+| **Total Components** | **135** | |
 
 ---
 

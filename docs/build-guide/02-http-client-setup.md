@@ -1,6 +1,6 @@
 ## Phase 2: Integration Connections & Operations
 
-This phase creates the connection and operation components that all integration processes depend on. There are 2 connections and 26 operations total (20 HTTP Client + 6 DataHub).
+This phase creates the connection and operation components that all integration processes depend on. There are 2 connections and 28 operations total (20 HTTP Client + 8 DataHub).
 
 ### Step 2.1 -- Create HTTP Client Connection (Partner API)
 

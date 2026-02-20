@@ -8,7 +8,7 @@ Phase 7 adds fine-grained environment extension editing to the Promotion Dashboa
 |----------|---------------|---------|
 | DataHub Models | +2 | ExtensionAccessMapping, ClientAccountConfig |
 | HTTP Client Operations | +8 | Account, Environment, Extensions CRUD, MapExtension, ComponentReference |
-| DataHub Operations | +4 | Query + Upsert for ExtensionAccessMapping and ClientAccountConfig |
+| DataHub Operations | +4 | Query + Update for ExtensionAccessMapping and ClientAccountConfig |
 | JSON Profiles | +12 | Request + Response for 6 new message actions (K-O, Q) |
 | Integration Processes | +6 | K (listClientAccounts), L (getExtensions), M (updateExtensions), N (copyExtensionsTestToProd), O (updateMapExtension), Q (validateScript) |
 | FSS Operations | +6 | One per new message action |
@@ -23,7 +23,7 @@ Phase 7 adds fine-grained environment extension editing to the Promotion Dashboa
 | DataHub Models | 3 | +2 | 5 |
 | Connections | 2 | 0 | 2 |
 | HTTP Client Ops | 20 | +8 | 28 |
-| DataHub Ops | 6 | +4 | 10 |
+| DataHub Ops | 8 | +4 | 12 |
 | JSON Profiles | 30 | +12 | 42 |
 | Integration Processes | 14 | +6 | 20 |
 | FSS Operations | 15 | +6 | 21 |
@@ -31,7 +31,7 @@ Phase 7 adds fine-grained environment extension editing to the Promotion Dashboa
 | Custom Components | 1 | +1 | 2 |
 | Flow Connector | 1 | 0 | 1 |
 | Flow Application | 1 | 0 | 1 |
-| **Total** | **94** | **+39** | **133** |
+| **Total** | **96** | **+39** | **135** |
 
 ### New DataHub Models
 
@@ -67,9 +67,9 @@ Phase 7 adds fine-grained environment extension editing to the Promotion Dashboa
 | # | Operation Name | Model | Action |
 |---|---------------|-------|--------|
 | 1 | `PROMO - DH Op - Query ExtensionAccessMapping` | ExtensionAccessMapping | Query Golden Records |
-| 2 | `PROMO - DH Op - Upsert ExtensionAccessMapping` | ExtensionAccessMapping | Update Golden Records |
+| 2 | `PROMO - DH Op - Update ExtensionAccessMapping` | ExtensionAccessMapping | Update Golden Records |
 | 3 | `PROMO - DH Op - Query ClientAccountConfig` | ClientAccountConfig | Query Golden Records |
-| 4 | `PROMO - DH Op - Upsert ClientAccountConfig` | ClientAccountConfig | Update Golden Records |
+| 4 | `PROMO - DH Op - Update ClientAccountConfig` | ClientAccountConfig | Update Golden Records |
 
 ### Phase 7 Build Order
 

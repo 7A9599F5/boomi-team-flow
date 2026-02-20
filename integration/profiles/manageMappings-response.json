@@ -5,9 +5,11 @@
   "mappings": [
     {
       "devComponentId": "string",
+      "devAccountId": "string",
       "prodComponentId": "string",
       "componentName": "string",
       "componentType": "string",
+      "mappingSource": "string",
       "lastPromoted": "2026-01-01T00:00:00.000Z"
     }
   ]
