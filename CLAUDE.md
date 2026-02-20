@@ -120,9 +120,9 @@ When working with Component CRUD templates (`create-component.xml`, `update-comp
 | Database Profile | `profile.db` | `<DatabaseProfile>` | Yes |
 | Connection | `connector-settings` | `<GenericConnectorConfig>` | **No** |
 | Connector Operation | `connector-action` | `<Operation>` (HTTP Client) / varies by connector | Yes |
-| Map | `map` | `<map>` | Yes |
-| Map Script | `scripting` (scriptType=mapscript) | `<scripting>` | Yes |
-| Process Script | `scripting` (scriptType=processscript) | `<scripting>` | Yes |
+| Map | `transform.map` | `<map>` | Yes |
+| Map Script | `script.mapping` | `<scripting>` (scriptType=mapscript) | Yes |
+| Process Script | `script.processing` | `<scripting>` (scriptType=processscript) | Yes |
 | Process Route | `processroute` | `<processRoute>` | Yes |
 | Cross Ref Table | `crossref` | `<CrossRefTable>` | Yes |
 

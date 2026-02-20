@@ -57,7 +57,7 @@ try {
         extensions.partial = true
 
         // Remove @type annotations that may cause issues
-        // (keep them — Boomi API expects them for typed objects)
+        // (keep them - Boomi API expects them for typed objects)
 
         // Count remaining copyable fields
         int fieldsCopied = 0

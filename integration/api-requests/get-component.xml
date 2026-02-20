@@ -41,9 +41,9 @@
     type="profile.db"        → component-types/profile-db.xml
     type="connector-settings"→ component-types/connector-settings.xml
     type="connector-action"  → component-types/connector-action.xml
-    type="map"               → component-types/map.xml
-    type="scripting"         → component-types/scripting-mapscript.xml
-                               component-types/scripting-processscript.xml
+    type="transform.map"     → component-types/map.xml
+    type="script.mapping"    → component-types/scripting-mapscript.xml
+    type="script.processing" → component-types/scripting-processscript.xml
     type="processroute"      → component-types/processroute.xml
     type="crossref"          → component-types/crossref.xml
 -->

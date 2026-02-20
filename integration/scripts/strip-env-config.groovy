@@ -32,9 +32,9 @@ try {
         // Determine component type from DPP (set by upstream process)
         String componentType = ExecutionUtil.getDynamicProcessProperty("currentComponentType")?.toLowerCase() ?: ''
 
-        // Only strip sensitive types — skip profiles, maps, processroutes, etc.
+        // Only strip sensitive types - skip profiles, maps, processroutes, etc.
         if (!sensitiveTypes.contains(componentType)) {
-            logger.info("Component type '${componentType}' is not sensitive — skipping stripping")
+            logger.info("Component type '${componentType}' is not sensitive - skipping stripping")
             ExecutionUtil.setDynamicProcessProperty("configStripped", "false", false)
             ExecutionUtil.setDynamicProcessProperty("strippedElements", "", false)
             dataContext.storeStream(new ByteArrayInputStream(xmlContent.getBytes("UTF-8")), props)
@@ -76,7 +76,7 @@ try {
         dataContext.storeStream(new ByteArrayInputStream(outputXml.getBytes("UTF-8")), props)
     }
 } catch (Exception e) {
-    // CRITICAL: Fail hard on any error — never pass through unstripped XML that might contain credentials
+    // CRITICAL: Fail hard on any error - never pass through unstripped XML that might contain credentials
     logger.severe("strip-env-config FAILED: " + e.getMessage())
-    throw new Exception("strip-env-config FAILED — refusing to pass through potentially unstripped XML: " + e.getMessage())
+    throw new Exception("strip-env-config FAILED - refusing to pass through potentially unstripped XML: " + e.getMessage())
 }

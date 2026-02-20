@@ -22,7 +22,7 @@ _TEMPLATE = """\
     xmlns:bns="http://api.platform.boomi.com/"
     folderFullPath="{folder_full_path}"
     name="{component_name}"
-    type="scripting">
+    type="script.processing">
     <bns:object>
         <scripting xmlns="" scriptType="processscript" language="groovy2">
             <script><![CDATA[{groovy_content}]]></script>

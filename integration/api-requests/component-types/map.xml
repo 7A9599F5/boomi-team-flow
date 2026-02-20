@@ -1,6 +1,6 @@
 <!--
   Component Object Reference: Map
-  API type attribute: map
+  API type attribute: transform.map
 
   Transforms data from a source profile to a destination profile with
   field-to-field mappings and optional functions (built-in, user-defined, scripting).
@@ -31,7 +31,7 @@
     componentId="{uuid}"
     version="3"
     name="PROMO - Map - PromotionResponseTransform"
-    type="map"
+    type="transform.map"
     createdDate="2026-01-15T10:00:00Z"
     createdBy="admin@example.com"
     modifiedDate="2026-02-17T09:00:00Z"

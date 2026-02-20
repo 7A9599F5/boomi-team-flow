@@ -117,8 +117,8 @@ try {
                 devAccountName = m.devAccountName
                 authorizedGroups.addAll(ssoGroupsByAccount[m.devAccountId] ?: [])
             } else {
-                // No ComponentMapping found — default to admin-only
-                logger.info("No ComponentMapping for prodComponentId=${comp.prodComponentId} — defaulting to admin-only")
+                // No ComponentMapping found - default to admin-only
+                logger.info("No ComponentMapping for prodComponentId=${comp.prodComponentId} - defaulting to admin-only")
             }
 
             accessMappings << [

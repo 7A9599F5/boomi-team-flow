@@ -846,7 +846,7 @@ print(xml)
 
 ### Script Creation (Automated)
 
-The setup tool can automatically create all 11 Groovy process scripts from the source files in `integration/scripts/`. Each `.groovy` file is wrapped in the proper `<bns:Component type="scripting">` XML envelope with CDATA content.
+The setup tool can automatically create all 11 Groovy process scripts from the source files in `integration/scripts/`. Each `.groovy` file is wrapped in the proper `<bns:Component type="script.processing">` XML envelope with CDATA content.
 
 **Scripts created:**
 

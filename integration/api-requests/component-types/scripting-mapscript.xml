@@ -1,6 +1,6 @@
 <!--
   Component Object Reference: Map Script (Scripting Component)
-  API type attribute: scripting
+  API type attribute: script.mapping
 
   A reusable Groovy or JavaScript function used inside Map components for
   custom field transformation logic. Distinguished from Process Script by
@@ -36,7 +36,7 @@
     componentId="{uuid}"
     version="2"
     name="PROMO - MapScript - FormatComponentName"
-    type="scripting"
+    type="script.mapping"
     createdDate="2026-01-15T10:00:00Z"
     createdBy="admin@example.com"
     modifiedDate="2026-02-17T09:00:00Z"

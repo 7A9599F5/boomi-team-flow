@@ -27,7 +27,7 @@ try {
         if (type == 'process') return 5  // Sub-processes before root
         if (type == 'processroute') return 6
         // Unknown types sort last (safer than middle)
-        logger.warning("Unknown component type '${type}' for component ${componentId} — defaulting to priority 5 (last)")
+        logger.warning("Unknown component type '${type}' for component ${componentId} - defaulting to priority 5 (last)")
         return 5
     }
 

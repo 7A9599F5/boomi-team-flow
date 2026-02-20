@@ -41,11 +41,11 @@ try {
         String promotionId = xml.promotionId?.text() ?: ""
 
         if (promotionId && promotedSet.contains(promotionId)) {
-            // This test deployment has already been promoted to production — exclude it
+            // This test deployment has already been promoted to production - exclude it
             filteredCount++
-            logger.info("Excluding test deployment ${promotionId} — already promoted to production")
+            logger.info("Excluding test deployment ${promotionId} - already promoted to production")
         } else {
-            // This test deployment has NOT been promoted — keep it
+            // This test deployment has NOT been promoted - keep it
             passedCount++
             dataContext.storeStream(
                 new ByteArrayInputStream(docText.getBytes("UTF-8")), props)

@@ -27,7 +27,7 @@ Logger logger = Logger.getLogger("validate-connection-mappings")
 
 try {
     if (dataContext.getDataCount() > 1) {
-        logger.warning("validate-connection-mappings expects a single document but received ${dataContext.getDataCount()} — processing first document only")
+        logger.warning("validate-connection-mappings expects a single document but received ${dataContext.getDataCount()} - processing first document only")
     }
 
     // Read the sorted components from the document stream
@@ -48,16 +48,16 @@ try {
     def connections = components.findAll { it.type == "connection" || it.type == "connector-settings" }
     def nonConnections = components.findAll { it.type != "connection" && it.type != "connector-settings" }
 
-    // Validate ALL connections have mappings — collect ALL missing, don't stop on first
+    // Validate ALL connections have mappings - collect ALL missing, don't stop on first
     def missingMappings = []
 
     connections.each { conn ->
         String devId = conn.devComponentId
         if (connCache.containsKey(devId)) {
-            // Found — pre-load into componentMappingCache for rewrite-references.groovy
+            // Found - pre-load into componentMappingCache for rewrite-references.groovy
             compCache[devId] = connCache[devId]
         } else {
-            // Missing — add to error report
+            // Missing - add to error report
             missingMappings << [
                 devComponentId: conn.devComponentId,
                 name: conn.name,

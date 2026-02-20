@@ -50,7 +50,7 @@ class TestComponentEnvelope:
         )
 
         assert 'name="PROMO - Script - BuildVisitedSet"' in xml
-        assert 'type="scripting"' in xml
+        assert 'type="script.processing"' in xml
         assert 'folderFullPath="Promoted/Scripts"' in xml
 
     def test_xmlns_declarations(self) -> None:

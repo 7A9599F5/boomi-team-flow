@@ -10,7 +10,7 @@ Logger logger = Logger.getLogger("normalize-xml")
  * normalize-xml.groovy
  *
  * Purpose: Pretty-print XML for consistent line-by-line comparison in diff view.
- * Used by: Process G (generateComponentDiff) — normalizes both branch and main XML
+ * Used by: Process G (generateComponentDiff) - normalizes both branch and main XML
  *          before returning to the UI for client-side diff rendering.
  *
  * Input:  Raw component XML from Platform API (GET /Component/{id} or /Component/{id}~{branchId})
@@ -28,7 +28,7 @@ try {
         String xmlContent = is.getText("UTF-8")
 
         if (xmlContent == null || xmlContent.trim().isEmpty()) {
-            logger.info("Empty XML input — passing through as empty string")
+            logger.info("Empty XML input - passing through as empty string")
             dataContext.storeStream(new ByteArrayInputStream("".getBytes("UTF-8")), props)
             continue
         }
