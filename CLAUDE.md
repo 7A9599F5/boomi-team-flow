@@ -122,7 +122,7 @@ When working with Component CRUD templates (`create-component.xml`, `update-comp
 | Connector Operation | `connector-action` | `<Operation>` (HTTP Client) / varies by connector | Yes |
 | Map | `transform.map` | `<map>` | Yes |
 | Map Script | `script.mapping` | `<scripting>` (scriptType=mapscript) | Yes |
-| Process Script | `script.processing` | `<scripting>` (scriptType=processscript) | Yes |
+| Process Script | `script.processing` | `<ProcessingScript>` | Yes |
 | Process Route | `processroute` | `<processRoute>` | Yes |
 | Cross Ref Table | `crossref` | `<CrossRefTable>` | Yes |
 

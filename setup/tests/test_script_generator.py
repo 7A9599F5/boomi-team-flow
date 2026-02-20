@@ -63,11 +63,12 @@ class TestComponentEnvelope:
 
 class TestScriptTypeAndLanguage:
     def test_script_type_and_language(self) -> None:
-        """scripting element has scriptType=processscript and language=groovy2."""
+        """ProcessingScript element has language=groovy2 (no scriptType attribute)."""
         xml = generate_script_xml("def x = 1", "PROMO - Script - Test")
 
-        assert 'scriptType="processscript"' in xml
+        assert "<ProcessingScript" in xml
         assert 'language="groovy2"' in xml
+        assert "scriptType" not in xml
 
 
 class TestStemToComponentName:

@@ -3,13 +3,15 @@
   API type attribute: script.processing
 
   A reusable Groovy or JavaScript component used inside Data Process steps
-  (Custom Scripting step type). Distinguished from Map Script by scriptType.
+  (Custom Scripting step type). Distinguished from Map Script by element name
+  (ProcessingScript vs MappingScript — unverified for Map Script, needs discovery).
 
-  Source: Boomi scripting docs + confirmed real XML from GitHub repos
-  Confidence: HIGH
+  Source: Confirmed via API-First Discovery (GET /Component on real process script)
+  Confidence: HIGH (verified against live Boomi API response 2026-02-19)
 
   Key structural points:
-    - Root element: <scripting xmlns="" scriptType="processscript" language="groovy2">
+    - Root element: <ProcessingScript xmlns="" language="groovy2">
+    - NO scriptType attribute (unlike the type= attribute on the outer Component)
     - NO <inputs>/<outputs> (unlike Map Scripts)
     - Uses dataContext API to iterate over documents
     - Must call dataContext.storeStream() to pass documents forward
@@ -53,7 +55,7 @@
     <bns:encryptedValues/>
     <bns:description>Builds visited set for recursive dependency traversal in Process B</bns:description>
     <bns:object>
-        <scripting xmlns="" scriptType="processscript" language="groovy2">
+        <ProcessingScript xmlns="" language="groovy2">
             <!-- Process scripts have NO input/output declarations -->
             <!-- They use dataContext API to read/write documents -->
             <script><![CDATA[
@@ -92,7 +94,7 @@ for (int i = 0; i < dataContext.getDataCount(); i++) {
     dataContext.storeStream(outStream, props)
 }
             ]]></script>
-        </scripting>
+        </ProcessingScript>
     </bns:object>
 </bns:Component>
 
@@ -101,7 +103,7 @@ for (int i = 0; i < dataContext.getDataCount(); i++) {
 
 <!--
 <bns:object>
-    <scripting xmlns="" scriptType="processscript" language="groovy2">
+    <ProcessingScript xmlns="" language="groovy2">
         <script><![CDATA[
 import java.util.Properties
 import java.io.InputStream
@@ -113,7 +115,7 @@ for (int i = 0; i < dataContext.getDataCount(); i++) {
     dataContext.storeStream(is, props)
 }
         ]]></script>
-    </scripting>
+    </ProcessingScript>
 </bns:object>
 -->
 
@@ -122,7 +124,7 @@ for (int i = 0; i < dataContext.getDataCount(); i++) {
 
 <!--
 <bns:object>
-    <scripting xmlns="" scriptType="processscript" language="javascript">
+    <ProcessingScript xmlns="" language="javascript">
         <script><![CDATA[
 for (var i = 0; i < dataContext.getDataCount(); i++) {
     var is = dataContext.getStream(i);
@@ -130,6 +132,6 @@ for (var i = 0; i < dataContext.getDataCount(); i++) {
     dataContext.storeStream(is, props);
 }
         ]]></script>
-    </scripting>
+    </ProcessingScript>
 </bns:object>
 -->

@@ -24,9 +24,9 @@ _TEMPLATE = """\
     name="{component_name}"
     type="script.processing">
     <bns:object>
-        <scripting xmlns="" scriptType="processscript" language="groovy2">
+        <ProcessingScript xmlns="" language="groovy2">
             <script><![CDATA[{groovy_content}]]></script>
-        </scripting>
+        </ProcessingScript>
     </bns:object>
 </bns:Component>"""
 
