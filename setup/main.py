@@ -308,6 +308,34 @@ def reset_step(ctx: click.Context, step_ids: tuple[str, ...]) -> None:
     click.echo("Done. Run 'setup' to re-execute reset steps.")
 
 
+@cli.command("discover-xml")
+@click.argument("component_id")
+@click.pass_context
+def discover_xml(ctx: click.Context, component_id: str) -> None:
+    """GET /Component/{id} and dump the raw XML structure.
+
+    Use this for API-First Discovery: create a component manually in the
+    Boomi UI, note its component ID from Revision History, then run:
+
+        python -m setup discover-xml <component-id>
+    """
+    state = _load_state(ctx.obj["state_file"])
+    config = load_config(existing_state_config=state.config, interactive=True)
+    config.verbose = ctx.obj.get("verbose", False)
+
+    if not config.has_credentials:
+        click.echo("Error: no credentials configured. Run 'configure' first.")
+        raise SystemExit(1)
+
+    platform_api, _ = _init_apis(config)
+    try:
+        result = platform_api.get_component(component_id)
+        click.echo(result)
+    except Exception as exc:
+        click.echo(f"Error: {exc}")
+        raise SystemExit(1)
+
+
 def main() -> None:
     cli()
 
