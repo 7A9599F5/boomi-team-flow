@@ -250,6 +250,8 @@ class CreateScripts(BaseStep):
                 script_xml = generate_script_xml(
                     groovy_content, component_name, "Promoted/Scripts"
                 )
+                # DEBUG: show envelope being sent to Boomi
+                ui.print_info(f"[DEBUG] XML envelope (first 400 chars):\n{script_xml[:400]}")
                 result = self.platform_api.create_component(script_xml)
                 comp_id = self.platform_api.parse_component_id(result)
                 if comp_id:
