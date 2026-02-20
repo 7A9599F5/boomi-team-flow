@@ -158,6 +158,9 @@ class TestApiFirstDiscovery:
         discovery = mock_state.api_first_discovery
         assert discovery["http_operation_template_xml"] == "<xml>template</xml>"
         assert discovery["dh_operation_template_xml"] is None
+        assert discovery["dh_operation_template_query_xml"] is None
+        assert discovery["dh_operation_template_update_xml"] is None
+        assert discovery["dh_operation_template_delete_xml"] is None
 
     def test_discovery_persists_to_disk(self, tmp_path: Path) -> None:
         """Discovery templates survive save/load cycle."""

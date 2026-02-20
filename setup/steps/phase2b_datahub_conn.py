@@ -234,7 +234,53 @@ class CreateDhConn(BaseStep):
 
 
 class DiscoverDhTemplate(BaseStep):
-    """Step 2.6 — Discover DataHub Operation template via API-first pattern."""
+    """Step 2.6 — Discover per-action-type DataHub Operation templates.
+
+    Captures three structurally distinct templates (QUERY, UPDATE, DELETE)
+    because each action type has different inner XML that cannot be derived
+    by swapping the ``<Action>`` tag alone.
+    """
+
+    # Template definitions: (action, template_key, reference_op_name, instructions)
+    _TEMPLATES = [
+        (
+            "QUERY",
+            "dh_operation_template_query_xml",
+            "PROMO - DH Op - Query ComponentMapping",
+            "Create a QUERY DataHub Operation manually in Boomi AtomSphere:\n\n"
+            "1. Go to Build > New Component > Connector > MDM (DataHub)\n"
+            "2. Name it: PROMO - DH Op - Query ComponentMapping\n"
+            "3. Set Connection: select the DataHub Connection from step 2.5\n"
+            "4. Configure: Entity=ComponentMapping, Action=QUERY\n"
+            "5. Import: click Import, then OK with NO filters selected\n"
+            "   (processes build filter XML at runtime via Map shapes)\n"
+            "6. Save the component",
+        ),
+        (
+            "UPDATE",
+            "dh_operation_template_update_xml",
+            "PROMO - DH Op - Update ComponentMapping",
+            "Create an UPDATE DataHub Operation manually in Boomi AtomSphere:\n\n"
+            "1. Go to Build > New Component > Connector > MDM (DataHub)\n"
+            "2. Name it: PROMO - DH Op - Update ComponentMapping\n"
+            "3. Set Connection: select the DataHub Connection from step 2.5\n"
+            "4. Configure: Entity=ComponentMapping, Action=UPDATE\n"
+            "5. Import: click Import, select source = PROMOTION_ENGINE, then OK\n"
+            "6. Save the component",
+        ),
+        (
+            "DELETE",
+            "dh_operation_template_delete_xml",
+            "PROMO - DH Op - Delete ComponentMapping",
+            "Create a DELETE DataHub Operation manually in Boomi AtomSphere:\n\n"
+            "1. Go to Build > New Component > Connector > MDM (DataHub)\n"
+            "2. Name it: PROMO - DH Op - Delete ComponentMapping\n"
+            "3. Set Connection: select the DataHub Connection from step 2.5\n"
+            "4. Configure: Entity=ComponentMapping, Action=DELETE\n"
+            "5. Import: click Import with default settings, then OK\n"
+            "6. Save the component",
+        ),
+    ]
 
     @property
     def step_id(self) -> str:
@@ -242,7 +288,7 @@ class DiscoverDhTemplate(BaseStep):
 
     @property
     def name(self) -> str:
-        return "Discover DataHub Operation Template"
+        return "Discover DataHub Operation Templates"
 
     @property
     def step_type(self) -> StepType:
@@ -255,68 +301,109 @@ class DiscoverDhTemplate(BaseStep):
     def execute(self, state: SetupState, dry_run: bool = False) -> StepStatus:
         ui.print_step(self.step_id, self.name, self.step_type.value)
 
-        existing = state.api_first_discovery.get("dh_operation_template_xml")
-        if existing:
-            ui.print_success("DataHub operation template already discovered")
+        # Check if all per-action templates already exist
+        discovery = state.api_first_discovery
+        all_present = all(
+            discovery.get(tpl[1]) for tpl in self._TEMPLATES
+        )
+        if all_present:
+            ui.print_success("All 3 DataHub operation templates already discovered")
             return StepStatus.COMPLETED
 
         if dry_run:
-            ui.print_info("Would guide user to create a DataHub operation and export its XML")
+            needed = [
+                tpl[0] for tpl in self._TEMPLATES
+                if not discovery.get(tpl[1])
+            ]
+            ui.print_info(
+                f"Would guide user to create DataHub operations for: "
+                f"{', '.join(needed)}"
+            )
             return StepStatus.COMPLETED
 
-        op_name = "PROMO - DH Op - Query ComponentMapping"
+        for action, template_key, op_name, instructions in self._TEMPLATES:
+            # Already captured?
+            if discovery.get(template_key):
+                ui.print_success(f"{action} template already discovered")
+                continue
 
-        guide_and_wait(
-            "Create ONE DataHub Operation manually in Boomi AtomSphere:\n\n"
-            "1. Go to Build > New Component > Connector > MDM (DataHub)\n"
-            f"2. Name it: {op_name}\n"
-            "3. Set Connection: select the DataHub Connection from step 2.5\n"
-            "4. Configure: Entity=ComponentMapping, Action=QUERY\n"
-            "5. Save the component",
-            build_guide_ref="05-connections-operations.md",
-        )
+            # Backward compat: migrate legacy single template → QUERY key
+            if action == "QUERY":
+                legacy = discovery.get("dh_operation_template_xml")
+                if legacy:
+                    state.set_discovery_template(template_key, legacy)
+                    ui.print_success(
+                        f"{action} template migrated from legacy "
+                        f"dh_operation_template_xml"
+                    )
+                    continue
 
-        # Auto-discover by name first, fall back to manual ID entry
-        comp_id = self.platform_api.find_component_id_by_name(op_name)
-        if comp_id:
-            ui.print_success(f"Found '{op_name}' → {comp_id}")
-        else:
-            ui.print_info("Could not find component by name — enter ID manually")
-            comp_id = collect_component_id("DataHub Operation component ID")
+            guide_and_wait(
+                instructions,
+                build_guide_ref="05-connections-operations.md",
+            )
 
-            # Validate the pasted ID matches the expected component
+            # Auto-discover by name first, fall back to manual ID entry
+            comp_id = self.platform_api.find_component_id_by_name(op_name)
+            if comp_id:
+                ui.print_success(f"Found '{op_name}' → {comp_id}")
+            else:
+                ui.print_info(
+                    "Could not find component by name — enter ID manually"
+                )
+                comp_id = collect_component_id(
+                    f"{action} DataHub Operation component ID"
+                )
+                # Validate the pasted ID matches the expected component
+                try:
+                    import re as _re
+                    comp_xml = self.platform_api.get_component(comp_id)
+                    comp_str = (
+                        comp_xml if isinstance(comp_xml, str) else str(comp_xml)
+                    )
+                    name_match = _re.search(r'name="([^"]*)"', comp_str)
+                    actual_name = name_match.group(1) if name_match else ""
+                    if actual_name and actual_name != op_name:
+                        ui.print_error(
+                            f"Component '{comp_id}' is named '{actual_name}', "
+                            f"expected '{op_name}'. Please check the ID."
+                        )
+                        return StepStatus.FAILED
+                except BoomiApiError:
+                    pass  # proceed — GET failure will be caught below
+
             try:
-                import re as _re
-                comp_xml = self.platform_api.get_component(comp_id)
-                comp_str = comp_xml if isinstance(comp_xml, str) else str(comp_xml)
-                name_match = _re.search(r'name="([^"]*)"', comp_str)
-                actual_name = name_match.group(1) if name_match else ""
-                if actual_name and actual_name != op_name:
+                template_xml = self.platform_api.get_component(comp_id)
+                if not template_xml:
                     ui.print_error(
-                        f"Component '{comp_id}' is named '{actual_name}', "
-                        f"expected '{op_name}'. Please check the ID."
+                        f"Empty response when fetching {action} DataHub "
+                        f"operation component"
                     )
                     return StepStatus.FAILED
-            except BoomiApiError:
-                pass  # proceed — GET failure will be caught below
 
-        try:
-            template_xml = self.platform_api.get_component(comp_id)
-            if not template_xml:
-                ui.print_error("Empty response when fetching DataHub operation component")
+                template_str = (
+                    template_xml
+                    if isinstance(template_xml, str)
+                    else str(template_xml)
+                )
+                state.set_discovery_template(template_key, template_str)
+                ui.print_success(
+                    f"{action} DataHub operation template captured and stored"
+                )
+
+                # Also track this component in state for step 2.7
+                state.store_component_id("dh_operations", op_name, comp_id)
+                state.mark_step_item_complete("2.7_create_dh_ops", op_name)
+
+            except BoomiApiError as exc:
+                ui.print_error(
+                    f"Failed to export {action} DataHub operation template: "
+                    f"{exc}"
+                )
                 return StepStatus.FAILED
 
-            template_str = template_xml if isinstance(template_xml, str) else str(template_xml)
-            state.set_discovery_template("dh_operation_template_xml", template_str)
-            ui.print_success("DataHub operation template captured and stored")
-
-            state.store_component_id("dh_operations", op_name, comp_id)
-            state.mark_step_item_complete("2.7_create_dh_ops", op_name)
-
-            return StepStatus.COMPLETED
-        except BoomiApiError as exc:
-            ui.print_error(f"Failed to export DataHub operation template: {exc}")
-            return StepStatus.FAILED
+        ui.print_success("All 3 DataHub operation templates discovered")
+        return StepStatus.COMPLETED
 
 
 class CreateDhOps(BaseStep):
@@ -348,10 +435,7 @@ class CreateDhOps(BaseStep):
             ui.print_success(f"All {len(DH_OPERATIONS)} DataHub operations already created")
             return StepStatus.COMPLETED
 
-        template_xml = state.api_first_discovery.get("dh_operation_template_xml")
-        if not template_xml:
-            ui.print_error("DataHub operation template not found — run step 2.6 first")
-            return StepStatus.FAILED
+        discovery = state.api_first_discovery
 
         if dry_run:
             ui.print_info(f"Would create {len(remaining)} DataHub operations from template")
@@ -367,10 +451,25 @@ class CreateDhOps(BaseStep):
                 return StepStatus.FAILED
 
             _, entity, action = op_def
+
+            # Select per-action template; fall back to legacy single template
+            template_key = f"dh_operation_template_{action.lower()}_xml"
+            template_xml = discovery.get(template_key)
+            use_legacy = False
+            if not template_xml:
+                template_xml = discovery.get("dh_operation_template_xml")
+                use_legacy = True
+            if not template_xml:
+                ui.print_error(
+                    f"No {action} template found — run step 2.6 first"
+                )
+                return StepStatus.FAILED
+
             ui.print_progress(idx, total, op_name)
 
             parameterized = _parameterize_dh_template(
-                template_xml, op_name, entity, action, ops_folder_id
+                template_xml, op_name, entity, ops_folder_id,
+                action=action if use_legacy else None,
             )
 
             try:
@@ -464,7 +563,7 @@ class VerifyPhase2(BaseStep):
         """Check each DH op by stored ID, report actual name, repair if needed."""
         import re as _re
 
-        template_xml = state.api_first_discovery.get("dh_operation_template_xml")
+        discovery = state.api_first_discovery
         ops_folder_id = state.get_component_id("folders", "Operations") or ""
         repaired = 0
 
@@ -472,10 +571,9 @@ class VerifyPhase2(BaseStep):
             stored_id = state.get_component_id("dh_operations", op_name)
             if not stored_id:
                 ui.print_error(f"  {op_name}: NO stored ID")
-                if template_xml:
-                    repaired += self._try_create_dh_op(
-                        state, op_name, entity, action, template_xml, ops_folder_id
-                    )
+                repaired += self._try_create_dh_op(
+                    state, discovery, op_name, entity, action, ops_folder_id
+                )
                 continue
 
             # Fetch component and check its actual name
@@ -491,33 +589,44 @@ class VerifyPhase2(BaseStep):
                         f"  {op_name}: NAME MISMATCH — stored ID {stored_id} "
                         f"has name '{actual_name}'"
                     )
-                    # Re-create with correct name
-                    if template_xml:
-                        repaired += self._try_create_dh_op(
-                            state, op_name, entity, action, template_xml, ops_folder_id
-                        )
+                    repaired += self._try_create_dh_op(
+                        state, discovery, op_name, entity, action, ops_folder_id
+                    )
             except BoomiApiError as exc:
                 ui.print_error(f"  {op_name}: GET failed ({stored_id}) — {exc}")
-                if template_xml:
-                    repaired += self._try_create_dh_op(
-                        state, op_name, entity, action, template_xml, ops_folder_id
-                    )
+                repaired += self._try_create_dh_op(
+                    state, discovery, op_name, entity, action, ops_folder_id
+                )
 
         return repaired > 0
 
     def _try_create_dh_op(
         self,
         state: SetupState,
+        discovery: dict,
         op_name: str,
         entity: str,
         action: str,
-        template_xml: str,
         folder_id: str,
     ) -> int:
         """Attempt to create a single DH op from template. Returns 1 on success, 0 on failure."""
+        # Select per-action template; fall back to legacy single template
+        template_key = f"dh_operation_template_{action.lower()}_xml"
+        template_xml = discovery.get(template_key)
+        use_legacy = False
+        if not template_xml:
+            template_xml = discovery.get("dh_operation_template_xml")
+            use_legacy = True
+        if not template_xml:
+            ui.print_error(
+                f"  No {action} template available — run step 2.6 first"
+            )
+            return 0
+
         ui.print_info(f"  Creating '{op_name}'...")
         parameterized = _parameterize_dh_template(
-            template_xml, op_name, entity, action, folder_id
+            template_xml, op_name, entity, folder_id,
+            action=action if use_legacy else None,
         )
         try:
             result = self.platform_api.create_component(parameterized)
@@ -545,10 +654,15 @@ def _parameterize_dh_template(
     template_xml: str,
     name: str,
     entity: str,
-    action: str,
     folder_id: str,
+    action: str | None = None,
 ) -> str:
-    """Replace name, entity, action, and folder in the DataHub operation template XML."""
+    """Replace name, entity, folder (and optionally action) in a DH operation template.
+
+    When using per-action templates the ``<Action>`` element is already correct,
+    so *action* should be ``None``.  Pass *action* only when falling back to
+    the legacy single-template path.
+    """
     import re
 
     xml = template_xml
@@ -567,7 +681,8 @@ def _parameterize_dh_template(
     xml = re.sub(r"<Entity>[^<]*</Entity>", f"<Entity>{entity}</Entity>", xml)
     xml = re.sub(r"<ObjectName>[^<]*</ObjectName>", f"<ObjectName>{entity}</ObjectName>", xml)
 
-    # Replace action
-    xml = re.sub(r"<Action>[^<]*</Action>", f"<Action>{action}</Action>", xml)
+    # Only swap action when using legacy single-template fallback
+    if action is not None:
+        xml = re.sub(r"<Action>[^<]*</Action>", f"<Action>{action}</Action>", xml)
 
     return xml

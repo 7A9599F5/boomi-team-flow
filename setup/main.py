@@ -291,16 +291,22 @@ def reset_step(ctx: click.Context, step_ids: tuple[str, ...]) -> None:
             click.echo(f"  {tk}: item tracker cleared")
 
         # Clear associated discovery templates
-        template_map = {
-            "2.3": "http_operation_template_xml",
-            "2.6": "dh_operation_template_xml",
-            "3.1": "profile_template_xml",
-            "4.1": "fss_operation_template_xml",
+        template_map: dict[str, list[str]] = {
+            "2.3": ["http_operation_template_xml"],
+            "2.6": [
+                "dh_operation_template_xml",
+                "dh_operation_template_query_xml",
+                "dh_operation_template_update_xml",
+                "dh_operation_template_delete_xml",
+            ],
+            "3.1": ["profile_template_xml"],
+            "4.1": ["fss_operation_template_xml"],
         }
-        template_key = template_map.get(step_id)
-        if template_key and state._data.get("api_first_discovery", {}).get(template_key):
-            state._data["api_first_discovery"][template_key] = None
-            click.echo(f"  {step_id}: cleared discovery template '{template_key}'")
+        template_keys = template_map.get(step_id, [])
+        for template_key in template_keys:
+            if state._data.get("api_first_discovery", {}).get(template_key):
+                state._data["api_first_discovery"][template_key] = None
+                click.echo(f"  {step_id}: cleared discovery template '{template_key}'")
 
         click.echo(f"  {step_id}: {old_status} -> pending")
 

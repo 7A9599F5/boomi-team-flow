@@ -264,6 +264,9 @@ All progress is persisted to `.boomi-setup-state.json` (write-through — saved 
   "api_first_discovery": {
     "http_operation_template_xml": "<Component .../>",
     "dh_operation_template_xml": null,
+    "dh_operation_template_query_xml": null,
+    "dh_operation_template_update_xml": null,
+    "dh_operation_template_delete_xml": null,
     "fss_operation_template_xml": null,
     "profile_template_xml": null
   }

@@ -35,6 +35,9 @@ def _empty_api_first_discovery() -> dict:
     return {
         "http_operation_template_xml": None,
         "dh_operation_template_xml": None,
+        "dh_operation_template_query_xml": None,
+        "dh_operation_template_update_xml": None,
+        "dh_operation_template_delete_xml": None,
         "fss_operation_template_xml": None,
         "profile_template_xml": None,
     }
@@ -103,6 +106,13 @@ class SetupState:
             if key not in existing:
                 existing[key] = default_val
         data["component_ids"] = existing
+        # Backfill api_first_discovery keys added after this state file was created
+        disc_defaults = _empty_api_first_discovery()
+        existing_disc = data.get("api_first_discovery", {})
+        for key, default_val in disc_defaults.items():
+            if key not in existing_disc:
+                existing_disc[key] = default_val
+        data["api_first_discovery"] = existing_disc
         return cls(data, path)
 
     @classmethod
