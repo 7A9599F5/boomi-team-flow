@@ -77,7 +77,7 @@ Admin views and manages dev-to-prod component ID mappings stored in the DataHub.
 
 **Page load:**
 
-1. Message step: action = `manageMappings`, input = `operation` = "list", output = `mappings` array.
+1. Message step: action = `manageMappings`, input = `action` = "query", output = `mappings` array.
 2. Decision step: check success.
 
 **UI components:**
@@ -90,10 +90,9 @@ Admin views and manages dev-to-prod component ID mappings stored in the DataHub.
 4. **Mapping Data Grid** bound to `mappings`. 8 columns: Component Name, Type (badge), Dev Account (truncated GUID with tooltip), Dev Component ID (truncated GUID), Prod Component ID (truncated GUID), Prod Version, Last Promoted (default sort descending), Promoted By. Pagination at 50 rows per page.
 5. **"Export to CSV"** button (top right): Exports the current filtered view to `component-mappings-{date}.csv`.
 6. **Manual Mapping Form** (collapsible, collapsed by default): Expand via "Add/Edit Mapping" toggle. Fields: Dev Component ID, Dev Account ID, Prod Component ID, Component Name, Component Type dropdown. CRUD operations use the `manageMappings` action:
-   - Create: `operation` = "create" with mapping object
-   - Update: `operation` = "update" with mapping ID and changed fields
-   - Delete: `operation` = "delete" with mapping ID
-   - Each operation followed by a Decision step checking success. On success, refresh the grid and collapse the form. On failure, display the error and keep the form open.
+   - Update: `action` = "update" with `devComponentId`, `prodComponentId`, `componentName`
+   - Delete: `action` = "delete" with `devComponentId`
+   - Each action followed by a Decision step checking success. On success, refresh the grid and collapse the form. On failure, display the error and keep the form open.
 7. **"Back to Admin Approval Queue"** link: Navigate to Page 7.
 
 ### Step 5.3 -- Configure SSO

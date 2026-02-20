@@ -12,8 +12,7 @@ The Mapping Viewer page allows admins to view, search, filter, and manually mana
 
 2. **Message step execution:** `manageMappings`
    - Input:
-     - `operation` = "list"
-     - Optional filters (if implemented): account, component type
+     - `action` = "query"
    - Output: `mappings` array (all ComponentMapping records)
 
 3. **Populate Mapping Data Grid:**
@@ -287,8 +286,8 @@ API Connection,connection,a1b2c3d4-...,dev789-...,prod012-...,3,2026-02-14 09:15
    - Validation: Check all required fields filled and valid
    - Behavior:
      - Trigger Message step → `manageMappings` with:
-       - `operation` = "create" (if new) or "update" (if editing)
-       - `mapping` object with form values
+       - `action` = "update" (DataHub upsert handles both create and update)
+       - `devComponentId`, `prodComponentId`, `componentName` from form values
      - On success:
        - Refresh Mapping Data Grid
        - Collapse form
@@ -366,7 +365,7 @@ canonical connection IDs. The same parent connection can be mapped from multiple
    - Type: Button (primary)
    - Label: "Seed Connection Mapping"
    - Behavior:
-     - Trigger `manageMappings` with `operation = "create"` and `mappingSource = "ADMIN_SEEDING"`
+     - Trigger `manageMappings` with `action = "update"` and `mappingSource = "ADMIN_SEEDING"`
      - Component type auto-set to `"connection"`
      - On success: refresh grid, collapse form, show success message
      - On error: show error, keep form open
@@ -503,20 +502,19 @@ canonical connection IDs. The same parent connection can be mapped from multiple
 
 ## Data Operations
 
-### List Mappings (Default)
+### Query Mappings (Default)
 
-**Operation:** `manageMappings` with `operation = "list"`
+**Action:** `manageMappings` with `action = "query"`
 
 **Request:**
 ```json
 {
-  "operation": "list",
-  "filters": {
-    "componentType": "process",
-    "devAccountId": "a1b2c3d4-..."
-  }
+  "action": "query",
+  "devComponentId": ""
 }
 ```
+
+> When `devComponentId` is empty, returns all mappings. When populated, filters to that specific component.
 
 **Response:**
 ```json
@@ -524,40 +522,33 @@ canonical connection IDs. The same parent connection can be mapped from multiple
   "success": true,
   "mappings": [
     {
+      "devComponentId": "dev123-...",
+      "prodComponentId": "prod456-...",
       "componentName": "Order Processing Main",
       "componentType": "process",
-      "devAccountId": "a1b2c3d4-...",
-      "devComponentId": "dev123-...",
-      "prodAccountId": "prod-primary-...",
-      "prodComponentId": "prod456-...",
-      "prodLatestVersion": 5,
-      "lastPromotedAt": "2026-02-15T14:30:00Z",
-      "lastPromotedBy": "john@company.com"
-    },
-    ...
+      "lastPromoted": "2026-02-15T14:30:00Z"
+    }
   ]
 }
 ```
 
+> **Note:** Filtering by component type, dev account, and text search is performed client-side in Flow on the loaded `mappings` array, not via separate API parameters.
+
 ---
 
-### Create Mapping (Manual)
+### Update/Create Mapping (Manual)
 
-**Operation:** `manageMappings` with `operation = "create"`
+**Action:** `manageMappings` with `action = "update"`
+
+DataHub upsert handles both create (new mapping) and update (existing mapping) based on match rules (`devComponentId` + `devAccountId`).
 
 **Request:**
 ```json
 {
-  "operation": "create",
-  "mapping": {
-    "componentName": "New API Connection",
-    "componentType": "connection",
-    "devAccountId": "a1b2c3d4-...",
-    "devComponentId": "dev999-...",
-    "prodAccountId": "prod-primary-...",
-    "prodComponentId": "prod888-...",
-    "lastPromotedBy": "admin@company.com"
-  }
+  "action": "update",
+  "devComponentId": "dev999-...",
+  "prodComponentId": "prod888-...",
+  "componentName": "New API Connection"
 }
 ```
 
@@ -565,34 +556,7 @@ canonical connection IDs. The same parent connection can be mapped from multiple
 ```json
 {
   "success": true,
-  "message": "Mapping created successfully",
-  "mappingId": "mapping123-..."
-}
-```
-
----
-
-### Update Mapping (Manual)
-
-**Operation:** `manageMappings` with `operation = "update"`
-
-**Request:**
-```json
-{
-  "operation": "update",
-  "mappingId": "mapping123-...",
-  "mapping": {
-    "prodComponentId": "prod777-...",
-    "prodLatestVersion": 6
-  }
-}
-```
-
-**Response:**
-```json
-{
-  "success": true,
-  "message": "Mapping updated successfully"
+  "mappings": []
 }
 ```
 
@@ -600,13 +564,13 @@ canonical connection IDs. The same parent connection can be mapped from multiple
 
 ### Delete Mapping (Manual)
 
-**Operation:** `manageMappings` with `operation = "delete"`
+**Action:** `manageMappings` with `action = "delete"`
 
 **Request:**
 ```json
 {
-  "operation": "delete",
-  "mappingId": "mapping123-..."
+  "action": "delete",
+  "devComponentId": "dev999-..."
 }
 ```
 
@@ -614,7 +578,7 @@ canonical connection IDs. The same parent connection can be mapped from multiple
 ```json
 {
   "success": true,
-  "message": "Mapping deleted successfully"
+  "mappings": []
 }
 ```
 

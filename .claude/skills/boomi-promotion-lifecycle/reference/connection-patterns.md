@@ -52,7 +52,7 @@
 **Admin Workflow:**
 1. Create connections in parent account under `#Connections` folder
 2. For each dev account, identify the connection IDs that dev processes reference
-3. Use Process F (manageMappings) with `operation: "create"` to seed ComponentMapping records:
+3. Use Process F (manageMappings) with `action: "update"` to seed ComponentMapping records (DataHub upsert creates or updates):
    ```json
    {
      "devComponentId": "dev-conn-123",

@@ -313,7 +313,7 @@ These user stories cover the Admin role (`ABC_BOOMI_FLOW_ADMIN`) in the Boomi De
 
 **Flow:**
 1. Admin navigates to Page 8 (Mapping Viewer) — either from Page 7's "View Component Mappings" link or directly
-2. System calls `manageMappings` with `operation = "list"`
+2. System calls `manageMappings` with `action = "query"`
 3. Mapping Data Grid loads with all ComponentMapping records, sorted by `lastPromotedAt` descending
 4. Grid shows columns: Component Name, Type (badge), Dev Account (truncated GUID), Dev Component ID, Prod Component ID, Prod Version, Last Promoted, Promoted By, Mapping Source (badge)
 5. Admin uses the Filter Bar to narrow results:
@@ -327,7 +327,7 @@ These user stories cover the Admin role (`ABC_BOOMI_FLOW_ADMIN`) in the Boomi De
 
 **Acceptance Criteria:**
 - [ ] Page 8 is only accessible to `ABC_BOOMI_FLOW_ADMIN` users
-- [ ] Grid loads all ComponentMapping records via `manageMappings (operation = "list")`
+- [ ] Grid loads all ComponentMapping records via `manageMappings (action = "query")`
 - [ ] Default sort is `lastPromotedAt` descending
 - [ ] Component type column renders color-coded badges (process=blue, connection=green, map=purple, profile=orange, operation=teal)
 - [ ] PROMOTION_ENGINE source badge displays as "Engine" (blue); ADMIN_SEEDING as "Admin Seeded" (purple)
@@ -336,7 +336,7 @@ These user stories cover the Admin role (`ABC_BOOMI_FLOW_ADMIN`) in the Boomi De
 - [ ] Pagination shows 50 rows per page with Previous/Next and page number controls
 
 **Triggered API Calls:**
-- `manageMappings` → Process F (with `operation = "list"`)
+- `manageMappings` → Process F (with `action = "query"`)
 
 **Error Scenarios:**
 - `manageMappings` failure: Navigate to Error Page
@@ -391,7 +391,7 @@ These user stories cover the Admin role (`ABC_BOOMI_FLOW_ADMIN`) in the Boomi De
    - Connection Name: human-readable name (e.g., "SFTP - Orders Server")
    - Parent Account Connection ID: canonical GUID from the `#Connections` folder
 4. Admin clicks "Seed Connection Mapping"
-5. System calls `manageMappings` with `operation = "create"` and `mappingSource = "ADMIN_SEEDING"`, `componentType = "connection"` (auto-set)
+5. System calls `manageMappings` with `action = "update"` and `mappingSource = "ADMIN_SEEDING"`, `componentType = "connection"` (auto-set)
 6. On success: form collapses, grid refreshes, success toast: "Mapping saved successfully"
 7. The seeded mapping appears at the top of the grid (most recently promoted = now)
 8. Clicking "Cancel" collapses the form without saving
@@ -407,7 +407,7 @@ These user stories cover the Admin role (`ABC_BOOMI_FLOW_ADMIN`) in the Boomi De
 - [ ] Duplicate mapping (same `devComponentId` + `devAccountId`) is rejected with an error
 
 **Triggered API Calls:**
-- `manageMappings` → Process F (with `operation = "create"`, `mappingSource = "ADMIN_SEEDING"`)
+- `manageMappings` → Process F (with `action = "update"`, `mappingSource = "ADMIN_SEEDING"`)
 
 **Error Scenarios:**
 - `DUPLICATE_MAPPING`: Mapping already exists for this dev component ID + dev account ID — show error inline, keep form open
@@ -436,7 +436,7 @@ These user stories cover the Admin role (`ABC_BOOMI_FLOW_ADMIN`) in the Boomi De
    - Prod Account ID (read-only, pre-populated with the primary account ID)
 4. Admin clicks "Save Mapping"
 5. System validates all required fields and GUID formats
-6. System calls `manageMappings` with `operation = "create"` (new mapping) or `operation = "update"` (editing existing)
+6. System calls `manageMappings` with `action = "update"` (DataHub upsert handles both create and update)
 7. On success: form collapses, grid refreshes, success toast: "Mapping saved successfully"
 8. Clicking "Cancel" collapses the form without saving
 
@@ -447,10 +447,10 @@ These user stories cover the Admin role (`ABC_BOOMI_FLOW_ADMIN`) in the Boomi De
 - [ ] Prod Account ID is pre-populated and read-only (always primary account)
 - [ ] On success: form collapses, grid refreshes, success message shown
 - [ ] Uniqueness constraint: Dev Component ID + Dev Account ID must not duplicate an existing mapping
-- [ ] `manageMappings` is called with `operation = "create"` for new mappings
+- [ ] `manageMappings` is called with `action = "update"` (upsert handles create and update)
 
 **Triggered API Calls:**
-- `manageMappings` → Process F (with `operation = "create"` or `"update"`)
+- `manageMappings` → Process F (with `action = "update"`)
 
 **Error Scenarios:**
 - `DUPLICATE_MAPPING`: Show inline error; keep form open
@@ -472,19 +472,19 @@ These user stories cover the Admin role (`ABC_BOOMI_FLOW_ADMIN`) in the Boomi De
 2. Admin opens the Manual Mapping Form for the selected row (or uses a per-row "Delete" action)
 3. System displays a confirmation dialog: "Are you sure you want to delete this mapping? This cannot be undone."
 4. Admin confirms deletion
-5. System calls `manageMappings` with `operation = "delete"` and `mappingId`
+5. System calls `manageMappings` with `action = "delete"` and `devComponentId`
 6. On success: success toast shown; grid refreshes; deleted row removed
 7. Clicking "Cancel" on the confirmation dialog cancels the operation
 
 **Acceptance Criteria:**
 - [ ] Delete action requires a confirmation dialog before executing
-- [ ] After confirmation, `manageMappings (operation = "delete")` is called with the correct `mappingId`
+- [ ] After confirmation, `manageMappings (action = "delete")` is called with the correct `devComponentId`
 - [ ] Deleted mapping is removed from the grid on success
 - [ ] A success toast is shown after deletion
 - [ ] Deletion is irreversible; there is no undo mechanism
 
 **Triggered API Calls:**
-- `manageMappings` → Process F (with `operation = "delete"`)
+- `manageMappings` → Process F (with `action = "delete"`)
 
 **Error Scenarios:**
 - `manageMappings` API failure: Show error toast; mapping remains in grid

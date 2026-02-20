@@ -167,10 +167,7 @@ These properties are available to all processes via Flow Service component confi
 
 | DPP Name | Type | Set By | Used By | Persist | Description |
 |----------|------|--------|---------|---------|-------------|
-| `operation` | String | Set Properties (step 2) | Decision (step 3), Map (steps 5, 8) | false | CRUD operation: `"list"`, `"create"`, or `"update"` |
-| `filterDevAccountId` | String | Set Properties (step 2) | DataHub Query filter (step 4) | false | Optional filter: dev account ID |
-| `filterComponentType` | String | Set Properties (step 2) | DataHub Query filter (step 4) | false | Optional filter: component type |
-| `filterComponentName` | String | Set Properties (step 2) | DataHub Query filter (step 4) | false | Optional filter: component name |
+| `action` | String | Set Properties (step 2) | Decision (step 3) | false | CRUD action: `"query"`, `"update"`, or `"delete"` |
 
 ---
 

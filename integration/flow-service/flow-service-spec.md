@@ -325,7 +325,7 @@ Process D MUST validate that the admin submitting the deployment is not the same
 **Description**: Allows querying and manual editing of dev-to-prod component ID mappings stored in the DataHub (admin/troubleshooting feature).
 
 **Connection Seeding Workflow:**
-Connections are shared resources pre-configured in the parent account's `#Connections` folder. Admins use the `manageMappings` action with `operation = "create"` to seed ComponentMapping records that link each dev account's connection IDs to the parent's canonical connection IDs. The same parent connection can be mapped from multiple dev accounts (each dev account has its own connection component IDs, but they all map to the same parent `#Connections` component).
+Connections are shared resources pre-configured in the parent account's `#Connections` folder. Admins use the `manageMappings` action with `action = "update"` to seed ComponentMapping records that link each dev account's connection IDs to the parent's canonical connection IDs. The same parent connection can be mapped from multiple dev accounts (each dev account has its own connection component IDs, but they all map to the same parent `#Connections` component).
 
 **Request Fields**:
 - `action` (string: "query" | "update" | "delete")

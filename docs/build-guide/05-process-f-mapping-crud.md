@@ -18,15 +18,14 @@ This is the simplest process — a good "hello world" to validate the FSS-to-pro
 | `PROMO - Profile - ManageMappingsResponse` | `/integration/profiles/manageMappings-response.json` |
 
 The request JSON contains:
-- `operation` (string): one of `"list"`, `"create"`, `"update"`
-- `filters` (object): optional filter fields (`devAccountId`, `componentType`, `componentName`)
-- `mapping` (object): the mapping record to create or update (used by create/update operations)
+- `action` (string): one of `"query"`, `"update"`, `"delete"`
+- `devComponentId` (string, conditional): the dev component ID to query, update, or delete
+- `prodComponentId` (string, conditional): the production component ID (used by update)
+- `componentName` (string, conditional): human-readable name (used by update)
 
 The response JSON contains:
 - `success`, `errorCode`, `errorMessage` (standard error contract)
-- `operation` (string): echoes the requested operation
-- `mappings` (array): returned mapping records (for list operations)
-- `totalCount` (number): count of returned records
+- `mappings` (array): returned mapping records (for query operations)
 
 #### FSS Operation
 
@@ -46,59 +45,55 @@ The response JSON contains:
 
 2. **Set Properties** (read request fields into DPPs)
    - Drag a **Set Properties** shape onto the canvas; connect Start to it
-   - Add property: DPP `operation` = read from document using JSON profile `PROMO - Profile - ManageMappingsRequest`, path: `operation`
-   - Add property: DPP `filterDevAccountId` = read from document path: `filters/devAccountId`
-   - Add property: DPP `filterComponentType` = read from document path: `filters/componentType`
-   - Add property: DPP `filterComponentName` = read from document path: `filters/componentName`
+   - Add property: DPP `action` = read from document using JSON profile `PROMO - Profile - ManageMappingsRequest`, path: `action`
 
-3. **Decision** (branch on operation type)
+3. **Decision** (branch on action type)
    - Drag a **Decision** shape; connect Set Properties to it
-   - First branch condition: DPP `operation` **EQUALS** `"list"`
-   - Name this branch: `List`
-   - Default (else) branch handles create and update operations
+   - First branch condition: DPP `action` **EQUALS** `"query"`
+   - Name this branch: `Query`
+   - Default (else) branch handles update and delete operations
 
-4. **List branch — DataHub Query**
-   - From the Decision `List` branch, add a **Connector** shape (DataHub)
+4. **Query branch — DataHub Query**
+   - From the Decision `Query` branch, add a **Connector** shape (DataHub)
    - Connector: `PROMO - DataHub Connection`
    - Operation: `PROMO - DH Op - Query ComponentMapping`
-   - The query applies filters from the DPPs set in step 2 (configure filter parameters in the operation to read from DPPs `filterDevAccountId`, `filterComponentType`, `filterComponentName`)
-   - If all filters are empty, the query returns all records (up to the limit)
+   - Configure the query to filter by `devComponentId` from the incoming request (if provided)
+   - If `devComponentId` is empty, the query returns all records (up to the limit)
 
-5. **List branch — Map to response**
-   - Add a **Map** shape after the DataHub Query on the List branch
+5. **Query branch — Map to response**
+   - Add a **Map** shape after the DataHub Query on the Query branch
    - Source profile: DataHub ComponentMapping query response (XML)
    - Destination profile: `PROMO - Profile - ManageMappingsResponse` (JSON)
    - Map fields:
      - Each `ComponentMapping` record maps to an entry in the `mappings` array
-     - Map `devComponentId`, `devAccountId`, `prodComponentId`, `componentName`, `componentType`, `prodAccountId`, `prodLatestVersion`, `lastPromotedAt`, `lastPromotedBy`
+     - Map `devComponentId`, `prodComponentId`, `componentName`, `componentType`, `lastPromoted`
      - Set `success` = `true`
-     - Set `operation` = DPP `operation`
-     - Set `totalCount` = count of records returned
 
-6. **List branch — Return Documents**
+6. **Query branch — Return Documents**
    - Add a **Return Documents** shape after the Map; connect to it
    - No configuration needed — this sends the mapped response JSON back to Flow
 
-7. **Create/Update branch — DataHub Update**
-   - From the Decision default branch, add a **Connector** shape (DataHub)
+7. **Update/Delete branch — Map request to DataHub XML**
+   - From the Decision default branch, add a **Map** shape
+   - Source: `PROMO - Profile - ManageMappingsRequest` (JSON)
+   - Destination: DataHub ComponentMapping update request (XML)
+   - Map `devComponentId`, `prodComponentId`, `componentName` from the flat request fields
+
+8. **Update/Delete branch — DataHub Update**
+   - Add a **Connector** shape (DataHub) after the Map
    - Connector: `PROMO - DataHub Connection`
    - Operation: `PROMO - DH Op - Update ComponentMapping`
-   - The incoming document must be transformed to the DataHub XML update format before this shape
-   - Add a **Map** shape between the Decision and the DataHub Update connector:
-     - Source: `PROMO - Profile - ManageMappingsRequest` (JSON) — specifically the `mapping` object
-     - Destination: DataHub ComponentMapping update request (XML)
-     - Map `mapping.devComponentId`, `mapping.devAccountId`, `mapping.prodComponentId`, `mapping.componentName`, `mapping.componentType`, `mapping.prodAccountId`, `mapping.prodLatestVersion`
+   - For `"update"`: the DataHub upsert creates or updates the mapping record based on match rules (`devComponentId` + `devAccountId`)
+   - For `"delete"`: send an update that marks the record for removal (or use the DataHub Repository API delete endpoint)
 
-8. **Create/Update branch — Map to response**
+9. **Update/Delete branch — Map to response**
    - Add a **Map** shape after the DataHub Update connector
    - Source: DataHub update response (XML)
    - Destination: `PROMO - Profile - ManageMappingsResponse` (JSON)
    - Set `success` = `true`
-   - Set `operation` = DPP `operation`
-   - Set `totalCount` = `1`
 
-9. **Create/Update branch — Return Documents**
-   - Add a **Return Documents** shape; connect to it
+10. **Update/Delete branch — Return Documents**
+    - Add a **Return Documents** shape; connect to it
 
 #### Error Handling
 
@@ -112,11 +107,11 @@ Add a **Try/Catch** around the DataHub connector shapes (both branches). In the 
 **Verify:**
 
 - Deploy the process to your public cloud atom
-- Send a test request through the Flow Service with `operation = "list"` and empty filters
-- **Expected**: response with `success = true`, `operation = "list"`, `mappings = []` (empty array, since no records exist yet), `totalCount = 0`
-- Send a test request with `operation = "create"` and a populated `mapping` object
-- **Expected**: response with `success = true`, `operation = "create"`, `totalCount = 1`
-- Send another `operation = "list"` request
+- Send a test request through the Flow Service with `action = "query"` and a `devComponentId` that has no mapping
+- **Expected**: response with `success = true`, `mappings = []` (empty array, since no records exist yet)
+- Send a test request with `action = "update"` and populated `devComponentId`, `prodComponentId`, `componentName`
+- **Expected**: response with `success = true`
+- Send another `action = "query"` request with the same `devComponentId`
 - **Expected**: the mapping you just created appears in the `mappings` array
 
 ---
